@@ -1,0 +1,49 @@
+# ---------- Dependências ----------
+node_modules/
+frontend/node_modules/
+backend/vendor/
+
+# ---------- Build / distribuição ----------
+dist/
+build/
+frontend/dist/
+frontend/build/
+.vite/
+
+# ---------- Variáveis de ambiente e credenciais ----------
+.env
+.env.*
+!.env.example
+backend/config/database.php
+*.pem
+*.key
+
+# ---------- IDE / editor ----------
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ---------- Logs ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+backend/logs/
+
+# ---------- Sistema operacional ----------
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ---------- Uploads e temporários ----------
+backend/uploads/*
+!backend/uploads/.gitkeep
+tmp/
+temp/
+*.tmp
+*.bak
