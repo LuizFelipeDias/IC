@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\Noticia;
+use App\Models\Projeto;
 use App\Models\Usuario;
+use App\Models\Vaga;
 use Database\Factories\UsuarioFactory;
 use Laravel\Sanctum\Sanctum;
 
@@ -64,4 +67,18 @@ it('exclui a própria conta', function () {
     $this->deleteJson('/api/usuario/me')->assertNoContent();
 
     expect(Usuario::find($usuario->id))->toBeNull();
+});
+
+it('exclui a conta de quem publicou: vagas saem junto, notícias e projetos ficam sem autor', function () {
+    $empresa = Usuario::factory()->empresa()->create();
+    $vaga = Vaga::factory()->for($empresa, 'usuario')->create();
+    $noticia = Noticia::factory()->for($empresa, 'usuario')->create();
+    $projeto = Projeto::factory()->for($empresa, 'usuario')->create();
+
+    Sanctum::actingAs($empresa);
+    $this->deleteJson('/api/usuario/me')->assertNoContent();
+
+    expect(Vaga::find($vaga->id))->toBeNull()
+        ->and($noticia->fresh()->id_usuario)->toBeNull()
+        ->and($projeto->fresh()->id_usuario)->toBeNull();
 });
