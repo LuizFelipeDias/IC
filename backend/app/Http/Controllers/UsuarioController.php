@@ -15,7 +15,7 @@ class UsuarioController extends Controller
      */
     public function store(UsuarioRequest $request)
     {
-        $usuario = Usuario::create($request->safe()->except('senha_atual'));
+        $usuario = Usuario::create($request->safe()->except('senha_atual'))->refresh();
 
         return response()->json([
             'message' => 'Cadastro realizado com sucesso.',

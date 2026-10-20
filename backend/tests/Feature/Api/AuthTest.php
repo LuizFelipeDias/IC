@@ -57,9 +57,9 @@ it('exige os dados que o banco obriga para pessoa física e jurídica', function
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['cnpj', 'cpf']);
 
-    $this->postJson('/api/usuario', dadosCadastro(['empresa' => true]))
+    $this->postJson('/api/usuario', dadosCadastro(['tipo_usuario' => 'administrador']))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('empresa');
+        ->assertJsonValidationErrors('tipo_usuario');
 });
 
 it('limita tentativas de login por e-mail', function () {
@@ -90,5 +90,5 @@ it('exige token em /usuario/me', function () {
     $this->getJson('/api/usuario/me')
         ->assertOk()
         ->assertJsonPath('id', $usuario->id)
-        ->assertJsonPath('tipo', 'estudante');
+        ->assertJsonPath('tipo_usuario', 'pessoa_fisica');
 });

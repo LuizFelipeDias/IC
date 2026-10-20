@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\PapelUsuario;
+use App\Enums\Perfil;
+use App\Enums\TipoUsuario;
 use Database\Factories\UsuarioFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -17,8 +20,14 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $email
  * @property bool $empresa
  * @property bool $estudante
+ * @property TipoUsuario $tipo_usuario
+ * @property PapelUsuario $papel
+ * @property bool $prestador_servico
  */
-#[Fillable(['nome', 'email', 'telefone', 'senha', 'estudante', 'empresa', 'cpf', 'sexo', 'profissao', 'cnpj'])]
+#[Fillable([
+    'nome', 'email', 'telefone', 'senha', 'estudante', 'empresa', 'cpf', 'sexo', 'profissao', 'cnpj',
+    'tipo_usuario', 'prestador_servico', 'codigo_inep',
+])]
 #[Hidden(['senha', 'remember_token'])]
 class Usuario extends Authenticatable
 {
@@ -26,6 +35,13 @@ class Usuario extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'usuario';
+
+    /** Mesmos defaults do banco, para o model recém-criado já tê-los. */
+    protected $attributes = [
+        'tipo_usuario' => 'pessoa_fisica',
+        'papel' => 'usuario',
+        'prestador_servico' => false,
+    ];
 
     public function getAuthPasswordName(): string
     {
@@ -39,19 +55,48 @@ class Usuario extends Authenticatable
             'empresa' => 'boolean',
             'sexo' => 'boolean',
             'senha' => 'hashed',
+            'tipo_usuario' => TipoUsuario::class,
+            'papel' => PapelUsuario::class,
+            'prestador_servico' => 'boolean',
         ];
     }
 
-    /**
-     * Perfil textual usado pelo front para escolher a visão (empregador/candidato).
-     */
-    public function tipo(): string
+    public function ehPessoaFisica(): bool
     {
-        return match (true) {
-            $this->empresa => 'empresa',
-            $this->estudante => 'estudante',
-            default => 'usuario',
+        return $this->tipo_usuario === TipoUsuario::PessoaFisica;
+    }
+
+    public function ehModerador(): bool
+    {
+        return in_array($this->papel, [PapelUsuario::Moderador, PapelUsuario::Admin], true);
+    }
+
+    /**
+     * Fonte única das regras de acesso por tipo de usuário (RBAC).
+     */
+    public function temPerfil(Perfil $perfil): bool
+    {
+        return match ($perfil) {
+            Perfil::Solicitante => in_array($this->tipo_usuario, [TipoUsuario::Escola, TipoUsuario::Empresa], true),
+            Perfil::Prestador => $this->tipo_usuario === TipoUsuario::Laboratorio
+                || ($this->ehPessoaFisica() && $this->prestador_servico),
+            Perfil::Contratante => $this->tipo_usuario->ehPessoaJuridica(),
+            Perfil::Candidato => $this->ehPessoaFisica(),
+            Perfil::Publicador => $this->tipo_usuario->ehPessoaJuridica() || $this->ehModerador(),
+            Perfil::Moderador => $this->ehModerador(),
         };
+    }
+
+    /**
+     * Mapa perfil => bool enviado ao front para mostrar ou esconder ações.
+     *
+     * @return array<string, bool>
+     */
+    public function perfis(): array
+    {
+        return collect(Perfil::cases())
+            ->mapWithKeys(fn (Perfil $perfil) => [$perfil->value => $this->temPerfil($perfil)])
+            ->all();
     }
 
     public function vagas(): HasMany

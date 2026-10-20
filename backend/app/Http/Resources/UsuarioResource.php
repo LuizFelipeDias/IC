@@ -19,7 +19,7 @@ class UsuarioResource extends JsonResource
             'id' => $this->id,
             'nome' => $this->nome,
             'profissao' => $this->profissao,
-            'tipo' => $this->tipo(),
+            'tipo' => $this->tipo_usuario->value,
         ];
     }
 }
