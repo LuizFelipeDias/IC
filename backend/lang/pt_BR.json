@@ -1,0 +1,9 @@
+{
+    "Unauthenticated.": "Faça login para continuar.",
+    "This action is unauthorized.": "Você não tem permissão para esta ação.",
+    "Too Many Attempts.": "Muitas tentativas. Aguarde um pouco e tente novamente.",
+    "The given data was invalid.": "Os dados enviados são inválidos.",
+    "(and :count more error)": "(e mais :count erro)",
+    "(and :count more errors)": "(e mais :count erros)",
+    "Invalid signature.": "Link inválido ou expirado."
+}
