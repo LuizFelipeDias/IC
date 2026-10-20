@@ -4,26 +4,41 @@ namespace Database\Factories;
 
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 
+/**
+ * @extends Factory<Usuario>
+ */
 class UsuarioFactory extends Factory
 {
     protected $model = Usuario::class;
 
+    /** Senha em texto puro de todos os usuários de teste/seed. */
+    public const SENHA = 'Senha@123';
+
     public function definition(): array
     {
         return [
-            'nome' => $this->faker->word(),
-            'telefone' => $this->faker->word(),
-            'senha' => $this->faker->word(),
-            'estudante' => $this->faker->boolean(),
-            'empresa' => $this->faker->boolean(),
-            'cpf' => $this->faker->word(),
-            'sexo' => $this->faker->boolean(),
-            'profissao' => $this->faker->word(),
-            'cnpj' => $this->faker->word(),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'nome' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
+            'telefone' => fake()->numerify('(42) 9####-####'),
+            'senha' => self::SENHA,
+            'estudante' => true,
+            'empresa' => false,
+            'cpf' => fake()->unique()->numerify('###.###.###-##'),
+            'sexo' => fake()->boolean(),
+            'profissao' => fake()->jobTitle(),
+            'cnpj' => null,
         ];
+    }
+
+    public function empresa(): static
+    {
+        return $this->state(fn () => [
+            'estudante' => false,
+            'empresa' => true,
+            'cpf' => null,
+            'sexo' => null,
+            'cnpj' => fake()->unique()->numerify('##.###.###/0001-##'),
+        ]);
     }
 }

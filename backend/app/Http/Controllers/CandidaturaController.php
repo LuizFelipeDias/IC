@@ -2,27 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\CandidaturaResource;
 use App\Models\Candidatura;
 use App\Models\Vaga;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class CandidaturaController extends Controller
 {
-    /** Valores aceitos na coluna status (varchar(50), default 'Em análise'). */
-    private const STATUS = ['Em análise', 'Aprovada', 'Reprovada', 'Cancelada'];
-
     /**
      * Candidaturas do usuário autenticado.
-     * Sem este escopo, qualquer usuário logado veria as candidaturas
-     * de todos os demais — inclusive em quais vagas se inscreveram.
      */
     public function index(Request $request)
     {
-        return Candidatura::with('vaga:id,titulo,tema,cidade')
-            ->where('id_usuario', $request->user()->id)
+        $candidaturas = $request->user()->candidaturas()
+            ->with('vaga')
             ->orderByDesc('data_candidatura')
-            ->get();
+            ->paginate($this->porPagina($request, 100));
+
+        return CandidaturaResource::collection($candidaturas);
     }
 
     /**
@@ -30,55 +29,50 @@ class CandidaturaController extends Controller
      */
     public function porVaga(Request $request, Vaga $vaga)
     {
-        abort_unless($vaga->id_usuario === $request->user()->id, 403, 'Esta vaga não é sua.');
+        Gate::authorize('verCandidaturas', $vaga);
 
-        return Candidatura::with('usuario:id,nome,email')
-            ->where('id_vaga', $vaga->id)
+        $candidaturas = $vaga->candidaturas()
+            ->with('usuario')
             ->orderByDesc('data_candidatura')
-            ->get();
+            ->paginate($this->porPagina($request));
+
+        return CandidaturaResource::collection($candidaturas);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'id_vaga' => 'required|exists:vagas,id',
+        $dados = $request->validate([
+            'id_vaga' => ['required', 'integer', 'exists:vagas,id'],
         ]);
 
-        $chave = [
-            'id_usuario' => $request->user()->id,
-            'id_vaga'    => $request->integer('id_vaga'),
-        ];
-
         // O candidato não escolhe o próprio status: o banco aplica 'Em análise'.
-        // firstOrCreate evita duplicata mesmo sem UNIQUE na tabela.
-        $candidatura = Candidatura::firstOrCreate($chave);
+        // O índice UNIQUE(id_usuario, id_vaga) garante que não haja duplicata.
+        $candidatura = Candidatura::firstOrCreate([
+            'id_usuario' => $request->user()->id,
+            'id_vaga' => $dados['id_vaga'],
+        ]);
 
-        return response()->json($candidatura, $candidatura->wasRecentlyCreated ? 201 : 200);
+        return (new CandidaturaResource($candidatura->refresh()))
+            ->response()
+            ->setStatusCode($candidatura->wasRecentlyCreated ? 201 : 200);
     }
 
-    /**
-     * Mudança de status — quem decide é o dono da vaga, não o candidato.
-     */
     public function update(Request $request, Candidatura $candidatura)
     {
-        $vaga = Vaga::findOrFail($candidatura->id_vaga);
-        abort_unless($vaga->id_usuario === $request->user()->id, 403, 'Esta vaga não é sua.');
+        Gate::authorize('update', $candidatura);
 
         $dados = $request->validate([
-            'status' => ['required', Rule::in(self::STATUS)],
+            'status' => ['required', Rule::in(Candidatura::STATUS)],
         ]);
 
         $candidatura->update($dados);
 
-        return $candidatura;
+        return new CandidaturaResource($candidatura);
     }
 
-    /**
-     * O candidato desiste da própria candidatura.
-     */
-    public function destroy(Request $request, Candidatura $candidatura)
+    public function destroy(Candidatura $candidatura)
     {
-        abort_unless($candidatura->id_usuario === $request->user()->id, 403);
+        Gate::authorize('delete', $candidatura);
 
         $candidatura->delete();
 

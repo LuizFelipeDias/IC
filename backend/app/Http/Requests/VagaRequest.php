@@ -6,21 +6,21 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class VagaRequest extends FormRequest
 {
-    public function rules(): array
-    {
-        return [
-            'id_usuario' => ['required', 'integer'],
-            'titulo' => ['required'],
-            'tema' => ['required'],
-            'cep' => ['required'],
-            'cidade' => ['required'],
-            'texto' => ['required'],
-            'data_publicacao' => ['required', 'date'],
-        ];
-    }
-
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function rules(): array
+    {
+        $obrigatorio = $this->isMethod('post') ? 'required' : 'sometimes';
+
+        return [
+            'titulo' => [$obrigatorio, 'string', 'max:255'],
+            'texto' => [$obrigatorio, 'string', 'max:20000'],
+            'tema' => ['nullable', 'string', 'max:100'],
+            'cep' => ['nullable', 'string', 'max:10'],
+            'cidade' => ['nullable', 'string', 'max:100'],
+        ];
     }
 }

@@ -2,10 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Models\Usuario;
 use App\Models\Vaga;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 
+/**
+ * @extends Factory<Vaga>
+ */
 class VagaFactory extends Factory
 {
     protected $model = Vaga::class;
@@ -13,15 +16,13 @@ class VagaFactory extends Factory
     public function definition(): array
     {
         return [
-            'id_usuario' => $this->faker->randomNumber(),
-            'titulo' => $this->faker->word(),
-            'tema' => $this->faker->word(),
-            'cep' => $this->faker->word(),
-            'cidade' => $this->faker->word(),
-            'texto' => $this->faker->word(),
-            'data_publicacao' => Carbon::now(),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'id_usuario' => Usuario::factory()->empresa(),
+            'titulo' => fake()->sentence(4),
+            'tema' => fake()->randomElement(['Modelagem 3D', 'Pós-processamento', 'Manutenção', 'Reciclagem']),
+            'cep' => fake()->numerify('84###-###'),
+            'cidade' => 'Ponta Grossa',
+            'texto' => fake()->paragraphs(2, true),
+            'data_publicacao' => now(),
         ];
     }
 }

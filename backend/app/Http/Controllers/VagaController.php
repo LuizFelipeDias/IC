@@ -2,80 +2,68 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\VagaRequest;
+use App\Http\Resources\VagaResource;
 use App\Models\Vaga;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class VagaController extends Controller
 {
     /**
      * Listagem pública das vagas publicadas.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return Vaga::orderByDesc('data_publicacao')->get();
+        $vagas = Vaga::with('usuario')
+            ->orderByDesc('data_publicacao')
+            ->paginate($this->porPagina($request));
+
+        return VagaResource::collection($vagas);
     }
 
     /**
      * Vagas do usuário autenticado — usado pelo painel do empregador.
-     * O filtro é feito aqui, no servidor: o navegador nunca recebe as
+     * O filtro é feito no servidor: o navegador nunca recebe as
      * vagas de outras empresas para depois descartá-las.
      */
     public function minhas(Request $request)
     {
-        return Vaga::where('id_usuario', $request->user()->id)
+        $vagas = $request->user()->vagas()
+            ->withCount('candidaturas')
             ->orderByDesc('data_publicacao')
-            ->get();
+            ->paginate($this->porPagina($request));
+
+        return VagaResource::collection($vagas);
     }
 
     public function show(Vaga $vaga)
     {
-        return $vaga;
+        return new VagaResource($vaga->load('usuario'));
     }
 
     /**
-     * Publicação de vaga.
-     *
-     * Só o título e o texto são obrigatórios; o responsável é o usuário
-     * do token — nunca um id enviado pelo cliente, que poderia ser forjado.
+     * O responsável é o usuário do token — nunca um id enviado pelo cliente.
      */
-    public function store(Request $request)
+    public function store(VagaRequest $request)
     {
-        $dados = $request->validate([
-            'titulo' => 'required|string|max:255',
-            'texto'  => 'required|string',
-            'tema'   => 'nullable|string|max:100',
-            'cep'    => 'nullable|string|max:10',
-            'cidade' => 'nullable|string|max:100',
-        ]);
+        $vaga = $request->user()->vagas()->create($request->validated());
 
-        $dados['id_usuario'] = $request->user()->id;
-
-        return response()->json(Vaga::create($dados), 201);
+        return (new VagaResource($vaga->refresh()))->response()->setStatusCode(201);
     }
 
-    public function update(Request $request, Vaga $vaga)
+    public function update(VagaRequest $request, Vaga $vaga)
     {
-        abort_unless($vaga->id_usuario === $request->user()->id, 403, 'Esta vaga não é sua.');
+        Gate::authorize('update', $vaga);
 
-        $dados = $request->validate([
-            'titulo' => 'sometimes|required|string|max:255',
-            'texto'  => 'sometimes|required|string',
-            'tema'   => 'nullable|string|max:100',
-            'cep'    => 'nullable|string|max:10',
-            'cidade' => 'nullable|string|max:100',
-        ]);
+        $vaga->update($request->validated());
 
-        $vaga->update($dados);
-
-        return $vaga;
+        return new VagaResource($vaga);
     }
 
-    /**
-     * Exclusão restrita ao dono da vaga.
-     */
-    public function destroy(Request $request, Vaga $vaga)
+    public function destroy(Vaga $vaga)
     {
-        abort_unless($vaga->id_usuario === $request->user()->id, 403, 'Esta vaga não é sua.');
+        Gate::authorize('delete', $vaga);
 
         $vaga->delete();
 

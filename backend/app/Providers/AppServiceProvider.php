@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +25,26 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Em desenvolvimento, falha alto em N+1, atributos inexistentes e mass assignment ignorado.
+        Model::shouldBeStrict(! $this->app->isProduction());
+
+        // Recurso único sai sem o envelope {"data": ...}; listas paginadas mantêm data/links/meta.
+        JsonResource::withoutWrapping();
+
+        // Parâmetros de rota numéricos: "/vaga/minhas" nunca é confundido com "/vaga/{vaga}".
+        Route::pattern('usuario', '[0-9]+');
+        Route::pattern('vaga', '[0-9]+');
+        Route::pattern('candidatura', '[0-9]+');
+        Route::pattern('noticia', '[0-9]+');
+        Route::pattern('projeto', '[0-9]+');
+        Route::pattern('chamado', '[0-9]+');
+        Route::pattern('curriculo', '[0-9]+');
+
+        RateLimiter::for('login', fn (Request $request) => [
+            Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()),
+            Limit::perMinute(20)->by($request->ip()),
+        ]);
+
+        RateLimiter::for('cadastro', fn (Request $request) => Limit::perMinute(6)->by($request->ip()));
     }
 }

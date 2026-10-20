@@ -3,36 +3,57 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CurriculoRequest;
+use App\Http\Resources\CurriculoResource;
 use App\Models\Curriculo;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class CurriculoController extends Controller
 {
-    public function index()
+    /**
+     * Empresas consultam o banco de currículos; os demais veem só os próprios.
+     */
+    public function index(Request $request)
     {
-        return Curriculo::all();
-    }
+        $usuario = $request->user();
 
-    public function store(CurriculoRequest $request)
-    {
-        return Curriculo::create($request->validated());
+        $curriculos = Curriculo::with('usuario')
+            ->when(! $usuario->empresa, fn ($query) => $query->where('id_usuario', $usuario->id))
+            ->orderByDesc('id')
+            ->paginate($this->porPagina($request));
+
+        return CurriculoResource::collection($curriculos);
     }
 
     public function show(Curriculo $curriculo)
     {
-        return $curriculo;
+        Gate::authorize('view', $curriculo);
+
+        return new CurriculoResource($curriculo->load('usuario'));
+    }
+
+    public function store(CurriculoRequest $request)
+    {
+        $curriculo = $request->user()->curriculos()->create($request->validated());
+
+        return (new CurriculoResource($curriculo))->response()->setStatusCode(201);
     }
 
     public function update(CurriculoRequest $request, Curriculo $curriculo)
     {
+        Gate::authorize('update', $curriculo);
+
         $curriculo->update($request->validated());
 
-        return $curriculo;
+        return new CurriculoResource($curriculo);
     }
 
     public function destroy(Curriculo $curriculo)
     {
+        Gate::authorize('delete', $curriculo);
+
         $curriculo->delete();
 
-        return response()->json();
+        return response()->noContent();
     }
 }

@@ -1,66 +1,47 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CandidaturaController;
-use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\ChamadoController;
+use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VagaController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
 
 /* =========================================
-   AUTENTICAÇÃO E USUÁRIO LOGADO
+   PÚBLICAS
 ========================================= */
 
-// Rota para fazer login e gerar o token
-Route::post('/login', [UsuarioController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/usuario', [UsuarioController::class, 'store'])->middleware('throttle:cadastro');
 
-// Rota para pegar os dados do usuário que já está logado
-Route::get('/usuario/me', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
-
+// Conteúdo de vitrine pode ser lido sem login.
+Route::apiResource('vaga', VagaController::class)->only(['index', 'show']);
+Route::apiResource('noticia', NoticiaController::class)->only(['index', 'show'])->parameters(['noticia' => 'noticia']);
+Route::apiResource('projeto', ProjetoController::class)->only(['index', 'show']);
 
 /* =========================================
-   ROTAS DE USUÁRIO (CRUD)
+   AUTENTICADAS (token Sanctum)
 ========================================= */
-Route::get('/usuario', [UsuarioController::class, 'index']);
-Route::post('/usuario', [UsuarioController::class, 'store']);
-Route::get('/usuario/{usuario}', [UsuarioController::class, 'show']);
-Route::put('/usuario/{usuario}', [UsuarioController::class, 'update']);
-Route::delete('/usuario/{usuario}', [UsuarioController::class, 'destroy']);
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-/* =========================================
-   ROTAS GET (Listagem)
-========================================= */
-Route::get('/vaga', [VagaController::class, 'index']);
-Route::get('/noticia', [NoticiaController::class, 'index']);
-Route::get('/projeto', [ProjetoController::class, 'index']);
-Route::get('/chamado', [ChamadoController::class, 'index']);
-Route::get('/curriculo', [CurriculoController::class, 'index']); // <- Corrigido
-Route::get('/candidatura', [CandidaturaController::class, 'index']);
+    // Dados do próprio usuário: não existe rota para alterar ou excluir outra conta.
+    Route::get('/usuario/me', [UsuarioController::class, 'me']);
+    Route::match(['put', 'patch'], '/usuario/me', [UsuarioController::class, 'update']);
+    Route::delete('/usuario/me', [UsuarioController::class, 'destroy']);
+    Route::get('/usuario/{usuario}', [UsuarioController::class, 'show']);
 
+    Route::get('/vaga/minhas', [VagaController::class, 'minhas']);
+    Route::get('/vaga/{vaga}/candidaturas', [CandidaturaController::class, 'porVaga']);
+    Route::apiResource('vaga', VagaController::class)->except(['index', 'show']);
 
-/* =========================================
-   ROTAS POST (Criação)
-========================================= */
-Route::post('/vaga', [VagaController::class, 'store']);
-Route::post('/noticia', [NoticiaController::class, 'store']);
-Route::post('/projeto', [ProjetoController::class, 'store']);
-Route::post('/chamado', [ChamadoController::class, 'store']);
-Route::post('/curriculo', [CurriculoController::class, 'store']);
-Route::post('/candidatura', [CandidaturaController::class, 'store']);
-
-
-/* =========================================
-   ROTAS DELETE (Exclusão)
-========================================= */
-Route::delete('/vaga/{vaga}', [VagaController::class, 'destroy']);
-Route::delete('/noticia/{noticia}', [NoticiaController::class, 'destroy']);
-Route::delete('/projeto/{projeto}', [ProjetoController::class, 'destroy']);
-Route::delete('/chamado/{chamado}', [ChamadoController::class, 'destroy']);
-Route::delete('/curriculo/{curriculo}', [CurriculoController::class, 'destroy']);
-Route::delete('/candidatura/{candidatura}', [CandidaturaController::class, 'destroy']);
+    Route::apiResource('candidatura', CandidaturaController::class)->except(['show']);
+    Route::apiResource('noticia', NoticiaController::class)->except(['index', 'show'])->parameters(['noticia' => 'noticia']);
+    Route::apiResource('projeto', ProjetoController::class)->except(['index', 'show']);
+    Route::apiResource('chamado', ChamadoController::class);
+    Route::apiResource('curriculo', CurriculoController::class);
+});

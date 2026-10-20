@@ -3,9 +3,12 @@
 namespace Database\Factories;
 
 use App\Models\Noticia;
+use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 
+/**
+ * @extends Factory<Noticia>
+ */
 class NoticiaFactory extends Factory
 {
     protected $model = Noticia::class;
@@ -13,12 +16,11 @@ class NoticiaFactory extends Factory
     public function definition(): array
     {
         return [
-            'id_usuario' => $this->faker->word(),
-            'titulo' => $this->faker->word(),
-            'tema' => $this->faker->word(),
-            'texto' => $this->faker->word(),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'id_usuario' => Usuario::factory(),
+            'titulo' => fake()->sentence(6),
+            'tema' => fake()->randomElement(['Reciclagem', 'Mercado', 'Pesquisa', 'Educação']),
+            'texto' => fake()->paragraphs(3, true),
+            'data_publicacao' => now(),
         ];
     }
 }
