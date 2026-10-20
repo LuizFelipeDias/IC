@@ -127,3 +127,33 @@ describe('denúncias', function () {
         $this->postJson('/api/denuncia', ['tipo' => 'projeto', 'id' => $projeto->id, 'motivo' => 'spam'])->assertNotFound();
     });
 });
+
+describe('reações em notícias', function () {
+    it('cada usuário tem uma reação por notícia, que pode ser trocada ou removida', function () {
+        $noticia = Noticia::factory()->create();
+        Sanctum::actingAs($usuario = Usuario::factory()->create());
+
+        $this->putJson("/api/noticia/{$noticia->id}/reacao", ['tipo_reacao' => 'curtir', 'comentarios' => 'Ótimo!'])
+            ->assertCreated();
+        $this->putJson("/api/noticia/{$noticia->id}/reacao", ['tipo_reacao' => 'util'])
+            ->assertOk()
+            ->assertJsonPath('tipo_reacao', 'util');
+
+        $this->getJson("/api/noticia/{$noticia->id}/reacoes")
+            ->assertOk()
+            ->assertJsonPath('totais.util', 1)
+            ->assertJsonCount(1, 'reacoes.data');
+
+        $this->deleteJson("/api/noticia/{$noticia->id}/reacao")->assertNoContent();
+        expect($noticia->reacoes()->count())->toBe(0);
+    });
+
+    it('não aceita reação em notícia não publicada nem tipo desconhecido', function () {
+        $pendente = Noticia::factory()->emRevisao()->create();
+        $publicada = Noticia::factory()->create();
+        Sanctum::actingAs(Usuario::factory()->create());
+
+        $this->putJson("/api/noticia/{$pendente->id}/reacao", ['tipo_reacao' => 'curtir'])->assertNotFound();
+        $this->putJson("/api/noticia/{$publicada->id}/reacao", ['tipo_reacao' => 'odiar'])->assertUnprocessable();
+    });
+});

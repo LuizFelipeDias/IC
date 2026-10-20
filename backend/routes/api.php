@@ -7,6 +7,7 @@ use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\DenunciaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProjetoController;
+use App\Http\Controllers\ReacaoNoticiaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VagaController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,7 @@ Route::post('/usuario', [UsuarioController::class, 'store'])->middleware('thrott
 // Conteúdo de vitrine pode ser lido sem login.
 Route::apiResource('vaga', VagaController::class)->only(['index', 'show']);
 Route::apiResource('noticia', NoticiaController::class)->only(['index', 'show'])->parameters(['noticia' => 'noticia']);
+Route::get('/noticia/{noticia}/reacoes', [ReacaoNoticiaController::class, 'index']);
 Route::apiResource('projeto', ProjetoController::class)->only(['index', 'show']);
 
 /* =========================================
@@ -54,6 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/noticia', [NoticiaController::class, 'store'])->middleware('perfil:publicador');
     Route::match(['put', 'patch'], '/noticia/{noticia}', [NoticiaController::class, 'update']);
     Route::delete('/noticia/{noticia}', [NoticiaController::class, 'destroy']);
+    Route::put('/noticia/{noticia}/reacao', [ReacaoNoticiaController::class, 'salvar']);
+    Route::delete('/noticia/{noticia}/reacao', [ReacaoNoticiaController::class, 'destroy']);
 
     // Projetos: qualquer usuário submete ao repositório; só aparecem após aprovação.
     Route::get('/projeto/minhas', [ProjetoController::class, 'minhas']);
