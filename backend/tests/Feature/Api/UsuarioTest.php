@@ -48,6 +48,16 @@ it('atualiza os próprios dados e exige a senha atual para trocar a senha', func
         ->assertOk();
 });
 
+it('não permite trocar o próprio perfil para empresa depois do cadastro', function () {
+    Sanctum::actingAs($usuario = Usuario::factory()->create());
+
+    $this->patchJson('/api/usuario/me', ['empresa' => true])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('empresa');
+
+    expect($usuario->fresh()->empresa)->toBeFalse();
+});
+
 it('exclui a própria conta', function () {
     Sanctum::actingAs($usuario = Usuario::factory()->create());
 

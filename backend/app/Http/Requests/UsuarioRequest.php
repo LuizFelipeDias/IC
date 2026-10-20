@@ -29,8 +29,9 @@ class UsuarioRequest extends FormRequest
             'senha' => [$obrigatorio, 'string', Password::min(8)->mixedCase()->numbers()->symbols()],
             // Trocar a senha exige confirmar a atual.
             'senha_atual' => [Rule::requiredIf(! $cadastro && $this->filled('senha')), 'nullable', 'current_password:sanctum'],
-            'estudante' => ['sometimes', 'boolean'],
-            'empresa' => ['sometimes', 'boolean'],
+            // O perfil é escolhido no cadastro; mudá-lo depois liberaria o banco de currículos.
+            'estudante' => [$cadastro ? 'sometimes' : 'prohibited', 'boolean'],
+            'empresa' => [$cadastro ? 'sometimes' : 'prohibited', 'boolean'],
             'cpf' => ['nullable', 'string', 'max:14', Rule::unique('usuario', 'cpf')->ignore($idAtual)],
             'sexo' => ['nullable', 'boolean'],
             'profissao' => ['nullable', 'string', 'max:255'],
