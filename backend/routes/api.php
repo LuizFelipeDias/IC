@@ -7,6 +7,7 @@ use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\DenunciaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProjetoController;
+use App\Http\Controllers\RastreioController;
 use App\Http\Controllers\ReacaoNoticiaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VagaController;
@@ -24,6 +25,9 @@ Route::apiResource('vaga', VagaController::class)->only(['index', 'show']);
 Route::apiResource('noticia', NoticiaController::class)->only(['index', 'show'])->parameters(['noticia' => 'noticia']);
 Route::get('/noticia/{noticia}/reacoes', [ReacaoNoticiaController::class, 'index']);
 Route::apiResource('projeto', ProjetoController::class)->only(['index', 'show']);
+
+// Rastreabilidade: página aberta pelo QR Code do lote de filamento.
+Route::get('/rastreio/{lote:codigo}', RastreioController::class)->middleware('throttle:60,1');
 
 /* =========================================
    AUTENTICADAS (token Sanctum)
