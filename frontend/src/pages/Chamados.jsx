@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, CircleDot, ClipboardList, Hourglass, Inbox, Plus, Search, XCircle } from "lucide-react";
-import { Aviso, CabecalhoPagina, Campo, Carregando, Chip, Dialogo, errosPorCampo, Vazio } from "../components/ui";
+import { Aviso, Campo, Carregando, Chip, Dialogo, errosPorCampo, Vazio } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { api, ApiError, lista } from "../services/api";
 import { formatarData, formatarDia, STATUS_CHAMADO } from "../utils/formatar";
@@ -266,21 +266,44 @@ export default function Chamados() {
 
     const contagem = (s) => (chamados ?? []).filter((c) => c.status === s).length;
     const atual = visiveis.find((c) => c.id === selecionado) ?? visiveis[0];
+    const ativos = (chamados ?? []).length - contagem("Cancelado");
+    const taxa = ativos ? Math.round((contagem("Resolvido") / ativos) * 100) : 0;
     const substituir = (novo) => setChamados((itens) => itens.map((c) => (c.id === novo.id ? novo : c)));
 
     return (
         <div className="container">
-            <CabecalhoPagina
-                sobrelinha={pode("solicitante") ? "Pedidos da sua instituição" : ehPrestador ? "Demandas de escolas e empresas" : "Acompanhamento"}
-                titulo="Chamados"
-                descricao={pode("solicitante") ? "Peça treinamento, modelagem, digitalização ou impressão. Laboratórios e makers voluntários respondem." : "Escolha um chamado aberto, defina onde vai atender e aceite."}
-            >
-                {pode("solicitante") && (
-                    <button type="button" className="botao" onClick={() => setNovoAberto(true)}>
-                        <Plus size={16} aria-hidden="true" /> Novo chamado
-                    </button>
-                )}
-            </CabecalhoPagina>
+            <section className="chamados-topo">
+                <div className="chamados-topo__texto">
+                    <span className="sobrelinha">{pode("solicitante") ? "Pedidos da sua instituição" : ehPrestador ? "Demandas de escolas e empresas" : "Acompanhamento"}</span>
+                    <h1>
+                        Chamados <span>{pode("solicitante") ? "que sua escola precisa" : ehPrestador ? "esperando por você" : "da rede"}</span>
+                    </h1>
+                    <p>
+                        {pode("solicitante")
+                            ? "Peça treinamento, modelagem, digitalização ou impressão. Laboratórios e makers voluntários respondem."
+                            : "Escolha um chamado aberto, defina onde vai atender e aceite."}
+                    </p>
+                    {pode("solicitante") && (
+                        <button type="button" className="botao botao--grande" onClick={() => setNovoAberto(true)}>
+                            <Plus size={18} aria-hidden="true" /> Novo chamado
+                        </button>
+                    )}
+                </div>
+
+                <aside className="resumo-chamados" aria-label="Taxa de atendimento">
+                    <div className="resumo-chamados__anel" style={{ "--progresso": `${taxa}%` }}>
+                        <strong>{chamados ? `${taxa}%` : "—"}</strong>
+                        <span>atendidos</span>
+                    </div>
+                    <div>
+                        <span className="resumo-chamados__rotulo">Taxa de atendimento</span>
+                        <p>
+                            {chamados ? `${contagem("Resolvido")} de ${ativos} pedidos válidos já foram resolvidos.` : "Calculando..."}
+                        </p>
+                        <span className="resumo-chamados__total">{chamados?.length ?? 0} chamados no total</span>
+                    </div>
+                </aside>
+            </section>
 
             <div className="indicadores">
                 {[
@@ -289,12 +312,14 @@ export default function Chamados() {
                     ["Resolvidos", contagem("Resolvido"), "sucesso", CheckCircle2],
                     ["Cancelados", contagem("Cancelado"), "neutro", XCircle],
                 ].map(([rotulo, valor, tom, Icone]) => (
-                    <div key={rotulo} className={`cartao indicador indicador--${tom}`}>
-                        <span className="indicador__icone"><Icone size={20} aria-hidden="true" /></span>
-                        <div className="estatistica">
-                            <span className="estatistica__valor">{chamados ? valor : "—"}</span>
-                            <span className="estatistica__rotulo">{rotulo}</span>
-                        </div>
+                    <div key={rotulo} className={`indicador indicador--${tom}`}>
+                        <span className="indicador__rotulo">
+                            <Icone size={16} aria-hidden="true" /> {rotulo}
+                        </span>
+                        <span className="indicador__valor">{chamados ? valor : "—"}</span>
+                        <span className="indicador__barra" aria-hidden="true">
+                            <span style={{ width: `${chamados?.length ? (valor / chamados.length) * 100 : 0}%` }} />
+                        </span>
                     </div>
                 ))}
             </div>

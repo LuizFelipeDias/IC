@@ -1,34 +1,150 @@
 /* Chamados — tela mestre-detalhe de atendimento (indicadores, tabela e painel lateral) */
 
+/* Topo editorial (Squarespace): título grande, texto curto, muito respiro;
+   cartão de resumo escuro com anel de progresso (Mockfit). */
+.chamados-topo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    gap: var(--esp-12);
+    align-items: end;
+    padding: var(--esp-16) 0 var(--esp-10);
+}
+
+.chamados-topo h1 {
+    margin-top: var(--esp-3);
+    font-family: var(--fonte-display);
+    font-size: clamp(2.5rem, 5vw, 4.25rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.045em;
+}
+
+.chamados-topo h1 span {
+    display: block;
+    font-family: var(--fonte-editorial);
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--cor-texto-suave);
+}
+
+.chamados-topo__texto p {
+    max-width: 52ch;
+    margin: var(--esp-5) 0 var(--esp-6);
+    font-size: var(--texto-lg);
+    color: var(--cor-texto-suave);
+}
+
+.resumo-chamados {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-5);
+    padding: var(--esp-6);
+    border-radius: var(--raio-xl);
+    background: var(--cor-tinta);
+    color: #c9c8d6;
+    box-shadow: var(--sombra-3);
+}
+
+.resumo-chamados__anel {
+    display: grid;
+    flex-shrink: 0;
+    place-content: center;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background:
+        radial-gradient(closest-side, var(--cor-tinta) 78%, transparent 79%),
+        conic-gradient(#3ddc97 var(--progresso), rgba(255, 255, 255, 0.1) 0);
+    text-align: center;
+}
+
+.resumo-chamados__anel strong {
+    font-family: var(--fonte-display);
+    font-size: var(--texto-2xl);
+    line-height: 1;
+    color: #fff;
+}
+
+.resumo-chamados__anel span {
+    font-size: var(--texto-xs);
+}
+
+.resumo-chamados__rotulo {
+    font-size: var(--texto-xs);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9d9cb0;
+}
+
+.resumo-chamados p {
+    margin: var(--esp-2) 0;
+    font-size: var(--texto-sm);
+    color: #fff;
+}
+
+.resumo-chamados__total {
+    font-size: var(--texto-xs);
+}
+
+/* Faixa de indicadores: um único cartão dividido, com barra de proporção */
 .indicadores {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--esp-4);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    background: var(--cor-superficie);
 }
 
 .indicador {
     display: flex;
+    flex-direction: column;
+    gap: var(--esp-2);
+    padding: var(--esp-5) var(--esp-6);
+}
+
+.indicador + .indicador {
+    border-left: 1px solid var(--cor-borda);
+}
+
+.indicador__rotulo {
+    display: flex;
     align-items: center;
-    gap: var(--esp-4);
-    padding: var(--esp-5);
+    gap: var(--esp-2);
+    font-size: var(--texto-sm);
+    font-weight: 600;
 }
 
-.indicador__icone {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    flex-shrink: 0;
-    border-radius: var(--raio-md);
+.indicador__valor {
+    font-family: var(--fonte-display);
+    font-size: var(--texto-3xl);
+    font-weight: 700;
+    line-height: 1.1;
 }
 
-.indicador--info .indicador__icone { background: var(--cor-info-suave); color: var(--cor-info); }
-.indicador--alerta .indicador__icone { background: var(--cor-alerta-suave); color: var(--cor-alerta); }
-.indicador--sucesso .indicador__icone { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
-.indicador--neutro .indicador__icone { background: rgba(12, 11, 20, 0.06); color: var(--cor-texto-suave); }
+.indicador__barra {
+    height: 6px;
+    overflow: hidden;
+    border-radius: var(--raio-pilula);
+    background: rgba(12, 11, 20, 0.06);
+}
 
-.indicador .estatistica__valor {
-    font-size: var(--texto-2xl);
+.indicador__barra span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: currentColor;
+    transition: width 0.4s ease;
+}
+
+.indicador--info { color: var(--cor-info); }
+.indicador--alerta { color: var(--cor-alerta); }
+.indicador--sucesso { color: var(--cor-sucesso); }
+.indicador--neutro { color: var(--cor-texto-fraco); }
+
+.indicador .indicador__valor {
+    color: var(--cor-texto);
 }
 
 .barra-ferramentas {
@@ -173,6 +289,11 @@
 }
 
 @media (max-width: 1100px) {
+    .chamados-topo {
+        grid-template-columns: 1fr;
+        gap: var(--esp-8);
+    }
+
     .mestre-detalhe {
         grid-template-columns: 1fr;
     }
@@ -185,5 +306,13 @@
 @media (max-width: 760px) {
     .indicadores {
         grid-template-columns: 1fr 1fr;
+    }
+
+    .indicador:nth-child(3) {
+        border-left: 0;
+    }
+
+    .indicador:nth-child(n + 3) {
+        border-top: 1px solid var(--cor-borda);
     }
 }
