@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\PapelUsuario;
 use App\Enums\TipoUsuario;
 use App\Models\Usuario;
+use App\Support\Documento;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -28,12 +29,14 @@ class UsuarioFactory extends Factory
             'tipo_usuario' => TipoUsuario::PessoaFisica,
             'estudante' => true,
             'empresa' => false,
-            'cpf' => fake()->unique()->numerify('###.###.###-##'),
+            'cpf' => Documento::gerarCpf(),
             'sexo' => fake()->boolean(),
             'profissao' => fake()->jobTitle(),
             'cnpj' => null,
             'codigo_inep' => null,
             'prestador_servico' => false,
+            'verificacao_status' => null,
+            'motivo_verificacao' => null,
         ];
     }
 
@@ -59,6 +62,12 @@ class UsuarioFactory extends Factory
         return $this->pessoaJuridica(TipoUsuario::Laboratorio);
     }
 
+    /** Instituição recém-cadastrada, aguardando a conferência do moderador. */
+    public function pendente(): static
+    {
+        return $this->state(fn () => ['verificacao_status' => 'pendente', 'verificado_em' => null]);
+    }
+
     public function moderador(): static
     {
         return $this->state(fn () => ['papel' => PapelUsuario::Moderador]);
@@ -73,8 +82,10 @@ class UsuarioFactory extends Factory
             'cpf' => null,
             'sexo' => null,
             'profissao' => null,
-            'cnpj' => fake()->unique()->numerify('##.###.###/0001-##'),
+            'cnpj' => Documento::gerarCnpj(),
             'prestador_servico' => false,
+            'verificacao_status' => 'verificado',
+            'verificado_em' => now(),
         ]);
     }
 }

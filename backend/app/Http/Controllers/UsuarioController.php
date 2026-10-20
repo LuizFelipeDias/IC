@@ -15,7 +15,11 @@ class UsuarioController extends Controller
      */
     public function store(UsuarioRequest $request)
     {
-        $usuario = Usuario::create($request->safe()->except('senha_atual'))->refresh();
+        $usuario = new Usuario($request->safe()->except('senha_atual'));
+        // Instituições aguardam a conferência do CNPJ/INEP por um moderador.
+        $usuario->verificacao_status = $usuario->tipo_usuario->ehPessoaJuridica() ? 'pendente' : null;
+        $usuario->save();
+        $usuario->refresh();
 
         return response()->json([
             'message' => 'Cadastro realizado com sucesso.',
@@ -40,7 +44,14 @@ class UsuarioController extends Controller
     public function update(UsuarioRequest $request)
     {
         $usuario = $request->user();
-        $usuario->update($request->safe()->except('senha_atual'));
+        $usuario->fill($request->safe()->except('senha_atual'));
+
+        // Trocar o documento de uma instituição exige nova conferência.
+        if ($usuario->tipo_usuario->ehPessoaJuridica() && $usuario->isDirty(['cnpj', 'codigo_inep'])) {
+            $usuario->forceFill(['verificacao_status' => 'pendente', 'verificado_em' => null]);
+        }
+
+        $usuario->save();
 
         return new UsuarioPrivadoResource($usuario);
     }

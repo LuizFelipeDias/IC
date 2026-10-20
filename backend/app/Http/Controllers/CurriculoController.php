@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Perfil;
 use App\Http\Requests\CurriculoRequest;
 use App\Http\Resources\CurriculoResource;
 use App\Models\Curriculo;
@@ -11,14 +12,14 @@ use Illuminate\Support\Facades\Gate;
 class CurriculoController extends Controller
 {
     /**
-     * Empresas consultam o banco de currículos; os demais veem só os próprios.
+     * Instituições verificadas consultam o banco de currículos; os demais veem só os próprios.
      */
     public function index(Request $request)
     {
         $usuario = $request->user();
 
         $curriculos = Curriculo::with('usuario')
-            ->when(! $usuario->empresa, fn ($query) => $query->where('id_usuario', $usuario->id))
+            ->when(! $usuario->temPerfil(Perfil::Contratante), fn ($query) => $query->where('id_usuario', $usuario->id))
             ->orderByDesc('id')
             ->paginate($this->porPagina($request));
 

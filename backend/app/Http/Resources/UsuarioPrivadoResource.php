@@ -27,6 +27,8 @@ class UsuarioPrivadoResource extends JsonResource
             'prestador_servico' => $this->prestador_servico,
             'papel' => $this->papel->value,
             'codigo_inep' => $this->codigo_inep,
+            'verificacao_status' => $this->verificacao_status,
+            'motivo_verificacao' => $this->motivo_verificacao,
             'perfis' => $this->perfis(),
             'pontos_total' => $this->pontos_total,
             'cpf' => $this->cpf,

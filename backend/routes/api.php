@@ -12,6 +12,7 @@ use App\Http\Controllers\RastreioController;
 use App\Http\Controllers\ReacaoNoticiaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VagaController;
+use App\Http\Controllers\VerificacaoInstituicaoController;
 use Illuminate\Support\Facades\Route;
 
 /* =========================================
@@ -78,6 +79,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/projeto/{projeto}/moderacao', [ProjetoController::class, 'moderar']);
         Route::get('/denuncia', [DenunciaController::class, 'index']);
         Route::post('/denuncia/{denuncia}/resolver', [DenunciaController::class, 'resolver']);
+
+        // Conferência de empresas, escolas e laboratórios.
+        Route::get('/moderacao/instituicoes', [VerificacaoInstituicaoController::class, 'index']);
+        Route::get('/moderacao/instituicoes/{usuario}/cnpj', [VerificacaoInstituicaoController::class, 'consultarCnpj']);
+        Route::post('/moderacao/instituicoes/{usuario}/verificacao', [VerificacaoInstituicaoController::class, 'decidir']);
     });
     // Chamados: escolas/empresas abrem; laboratórios e makers/voluntários atendem.
     Route::middleware('perfil:solicitante,prestador,moderador')->group(function () {

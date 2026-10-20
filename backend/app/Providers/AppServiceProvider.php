@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Contracts\ConsultaCnpj;
 use App\Models\Chamado;
 use App\Models\Noticia;
 use App\Models\Projeto;
+use App\Services\BrasilApiConsultaCnpj;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -21,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ConsultaCnpj::class, BrasilApiConsultaCnpj::class);
     }
 
     /**

@@ -11,11 +11,11 @@ function cadastroPessoaJuridica(string $tipo, array $extra = []): array
         'telefone' => '(42) 3220-0000',
         'senha' => 'Senha@123',
         'tipo_usuario' => $tipo,
-        'cnpj' => '12.345.678/0001-90',
+        'cnpj' => '11.222.333/0001-81',
     ], $extra);
 }
 
-it('cadastra escola exigindo o código INEP e deriva os booleanos do banco', function () {
+it('cadastra escola exigindo o código INEP; ela aguarda verificação sem perfis institucionais', function () {
     $this->postJson('/api/usuario', cadastroPessoaJuridica('escola'))
         ->assertUnprocessable()
         ->assertJsonValidationErrors('codigo_inep');
@@ -24,17 +24,20 @@ it('cadastra escola exigindo o código INEP e deriva os booleanos do banco', fun
         ->assertCreated()
         ->assertJsonPath('usuario.tipo_usuario', 'escola')
         ->assertJsonPath('usuario.empresa', true)
-        ->assertJsonPath('usuario.perfis.solicitante', true)
+        ->assertJsonPath('usuario.verificacao_status', 'pendente')
+        ->assertJsonPath('usuario.perfis.solicitante', false)
         ->assertJsonPath('usuario.perfis.prestador', false);
 });
 
-it('laboratório é prestador e contratante, mas não solicita chamados', function () {
-    $this->postJson('/api/usuario', cadastroPessoaJuridica('laboratorio'))
-        ->assertCreated()
-        ->assertJsonPath('usuario.perfis.prestador', true)
-        ->assertJsonPath('usuario.perfis.contratante', true)
-        ->assertJsonPath('usuario.perfis.solicitante', false)
-        ->assertJsonPath('usuario.perfis.candidato', false);
+it('laboratório verificado é prestador, receptor e contratante, mas não solicita chamados', function () {
+    Sanctum::actingAs(Usuario::factory()->laboratorio()->create());
+
+    $this->getJson('/api/usuario/me')
+        ->assertJsonPath('perfis.prestador', true)
+        ->assertJsonPath('perfis.receptor', true)
+        ->assertJsonPath('perfis.contratante', true)
+        ->assertJsonPath('perfis.solicitante', false)
+        ->assertJsonPath('perfis.candidato', false);
 });
 
 it('só pessoa física pode se declarar maker/voluntário', function () {
@@ -44,7 +47,7 @@ it('só pessoa física pode se declarar maker/voluntário', function () {
 
     $this->postJson('/api/usuario', [
         'nome' => 'Maker', 'email' => 'maker@example.com', 'telefone' => '(42) 99999-0000', 'senha' => 'Senha@123',
-        'tipo_usuario' => 'pessoa_fisica', 'cpf' => '111.222.333-44', 'sexo' => true, 'profissao' => 'Maker',
+        'tipo_usuario' => 'pessoa_fisica', 'cpf' => '529.982.247-25', 'sexo' => true, 'profissao' => 'Maker',
         'prestador_servico' => true,
     ])
         ->assertCreated()

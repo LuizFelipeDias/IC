@@ -60,12 +60,19 @@ class Usuario extends Authenticatable
             'tipo_usuario' => TipoUsuario::class,
             'papel' => PapelUsuario::class,
             'prestador_servico' => 'boolean',
+            'verificado_em' => 'datetime',
         ];
     }
 
     public function ehPessoaFisica(): bool
     {
         return $this->tipo_usuario === TipoUsuario::PessoaFisica;
+    }
+
+    /** Empresa, escola ou laboratório com CNPJ/INEP conferido por um moderador. */
+    public function instituicaoVerificada(): bool
+    {
+        return $this->tipo_usuario->ehPessoaJuridica() && $this->verificacao_status === 'verificado';
     }
 
     public function ehModerador(): bool
@@ -78,13 +85,16 @@ class Usuario extends Authenticatable
      */
     public function temPerfil(Perfil $perfil): bool
     {
+        $verificada = $this->instituicaoVerificada();
+        $laboratorio = $this->tipo_usuario === TipoUsuario::Laboratorio;
+
         return match ($perfil) {
-            Perfil::Solicitante => in_array($this->tipo_usuario, [TipoUsuario::Escola, TipoUsuario::Empresa], true),
-            Perfil::Prestador => $this->tipo_usuario === TipoUsuario::Laboratorio
-                || ($this->ehPessoaFisica() && $this->prestador_servico),
-            Perfil::Contratante => $this->tipo_usuario->ehPessoaJuridica(),
+            Perfil::Solicitante => $verificada && in_array($this->tipo_usuario, [TipoUsuario::Escola, TipoUsuario::Empresa], true),
+            Perfil::Prestador => ($verificada && $laboratorio) || ($this->ehPessoaFisica() && $this->prestador_servico),
+            Perfil::Contratante => $verificada,
             Perfil::Candidato => $this->ehPessoaFisica(),
-            Perfil::Publicador => $this->tipo_usuario->ehPessoaJuridica() || $this->ehModerador(),
+            Perfil::Publicador => $verificada || $this->ehModerador(),
+            Perfil::Receptor => $verificada && $laboratorio,
             Perfil::Moderador => $this->ehModerador(),
         };
     }

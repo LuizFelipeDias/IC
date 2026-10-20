@@ -13,7 +13,7 @@ function dadosCadastro(array $sobrescrever = []): array
         'senha' => 'Senha@123',
         'estudante' => true,
         'empresa' => false,
-        'cpf' => '123.456.789-00',
+        'cpf' => '529.982.247-25',
         'sexo' => false,
         'profissao' => 'Estudante de Engenharia',
     ], $sobrescrever);
