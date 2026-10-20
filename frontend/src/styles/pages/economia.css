@@ -1,0 +1,206 @@
+/* Doações, coletas, lotes e rastreio — módulo de economia circular */
+
+.grade-doacoes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--esp-5);
+}
+
+.cartao-doacao {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cartao-doacao__foto {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--cor-eco-suave), #f4f1ff);
+    color: var(--cor-eco);
+}
+
+.cartao-doacao__foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cartao-doacao__corpo {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--esp-3);
+    padding: var(--esp-5);
+}
+
+.cartao-doacao__corpo h3 {
+    font-size: var(--texto-md);
+}
+
+.cartao-doacao__peso {
+    font-family: var(--fonte-display);
+    font-size: var(--texto-2xl);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.cartao-doacao__rodape {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--esp-3);
+    margin-top: auto;
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.coleta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--esp-4);
+    align-items: center;
+    padding: var(--esp-5);
+}
+
+.coleta + .coleta {
+    border-top: 1px solid var(--cor-borda);
+}
+
+.coleta__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--esp-2);
+}
+
+/* Rastreio / lote */
+.passaporte {
+    position: relative;
+    overflow: hidden;
+    padding: var(--esp-16) 0 var(--esp-12);
+    background: var(--cor-tinta);
+    color: #fff;
+}
+
+.passaporte::after {
+    content: "";
+    position: absolute;
+    right: -200px;
+    top: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(closest-side, rgba(15, 143, 85, 0.45), transparent);
+    pointer-events: none;
+}
+
+.passaporte__grade {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--esp-10);
+    align-items: center;
+}
+
+.passaporte h1 {
+    margin-top: var(--esp-3);
+    font-family: var(--fonte-display);
+    font-size: var(--texto-4xl);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+}
+
+.passaporte .sobrelinha {
+    color: #a9a7bb;
+}
+
+.passaporte__codigo {
+    font-family: var(--fonte-mono);
+    font-size: var(--texto-sm);
+    color: #c9c8d6;
+}
+
+.qr {
+    justify-self: start;
+    display: inline-block;
+    padding: var(--esp-3);
+    border-radius: var(--raio-lg);
+    background: #fff;
+}
+
+.qr img {
+    width: 168px;
+    height: 168px;
+}
+
+.numeros-lote {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--esp-4);
+    margin-top: calc(-1 * var(--esp-8));
+    position: relative;
+    z-index: 2;
+}
+
+.numeros-lote .cartao {
+    padding: var(--esp-5);
+}
+
+.dupla {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: var(--esp-6);
+    align-items: start;
+    margin-top: var(--esp-8);
+}
+
+.laudo dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--esp-4);
+    margin: var(--esp-5) 0;
+}
+
+.laudo dt {
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.laudo dd {
+    font-family: var(--fonte-display);
+    font-size: var(--texto-xl);
+    font-weight: 700;
+}
+
+.busca-codigo {
+    display: flex;
+    gap: var(--esp-3);
+    max-width: 640px;
+    margin-top: var(--esp-8);
+}
+
+.busca-codigo .entrada {
+    font-family: var(--fonte-mono);
+    text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+    .passaporte__grade,
+    .dupla {
+        grid-template-columns: 1fr;
+    }
+
+    .numeros-lote {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .coleta {
+        grid-template-columns: 1fr;
+    }
+
+    .coleta__acoes {
+        justify-content: flex-start;
+    }
+}

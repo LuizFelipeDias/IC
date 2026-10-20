@@ -1,3 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* EcoHub 3D — folha principal. Estilos de página ficam em styles/pages e são importados por cada página. */
+@import "./tokens.css";
+@import "./base.css";
+@import "./componentes.css";
+@import "./layout.css";

@@ -1,173 +1,89 @@
-function Company() {
-    return (
-        <div className="content-stretch flex items-center relative shrink-0 w-[100px]" data-name="Company">
-            <div className="flex flex-[1_0_0] flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] min-h-px min-w-px not-italic relative text-[24px] text-black text-center tracking-[-0.48px]">
-                <p className="leading-[1.45]">3D HUB</p>
-            </div>
-        </div>
-    );
-}
+import React from "react";
+import { Link } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
+import Marca from "./Marca";
 
-function Text() {
-    return (
-        <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-name="Text">
-            <Company />
-            <div className="flex flex-col font-['Inter:Medium',sans-serif] font-medium justify-center leading-[0] min-w-full not-italic relative shrink-0 text-[16px] text-[rgba(0,0,0,0.55)] tracking-[-0.08px] w-[min-content]">
-                <p className="leading-[1.45]">Descriptive line about what your company does.</p>
-            </div>
-        </div>
-    );
-}
-
-function SocialLink() {
-    return (
-        <button className="block relative shrink-0 size-[24px]" data-name="Social link 1">
-            <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                <defs>
-                    <clipPath id="clip0_37_59">
-                        <rect fill="white" height="24" width="24" />
-                    </clipPath>
-                </defs>
-            </svg>
-        </button>
-    );
-}
-
-function SocialLink1() {
-    return (
-        <button className="block relative shrink-0 size-[24px]" data-name="Social link 2">
-            <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-                <defs>
-                    <clipPath id="clip0_37_53">
-                        <rect fill="white" height="24" width="24" />
-                    </clipPath>
-                </defs>
-            </svg>
-        </button>
-    );
-}
-
-function SocialLink2() {
-    return (
-        <button className="block relative shrink-0 size-[24px]" data-name="Social link 3">
-            <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-            </svg>
-        </button>
-    );
-}
-
-function SocialLinks() {
-    return (
-        <nav className="content-stretch cursor-pointer flex gap-[24px] items-center relative shrink-0" data-name="Social links">
-            <SocialLink />
-            <SocialLink1 />
-            <SocialLink2 />
-        </nav>
-    );
-}
-
-function Content() {
-    return (
-        <div className="content-stretch flex flex-[1_0_0] flex-col gap-[56px] items-start min-h-px min-w-px relative" data-name="Content">
-            <Text />
-            <SocialLinks />
-        </div>
-    );
-}
-
-function Header() {
-    return (
-        <div className="content-stretch flex items-start pb-[16px] relative shrink-0 w-full" data-name="Header">
-            <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-black tracking-[-0.08px] whitespace-nowrap">
-                <p className="leading-[1.45]">Ferramentas</p>
-            </div>
-        </div>
-    );
-}
-
-function Column() {
-    return (
-        <nav className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-[130px]" data-name="Column 1">
-            <Header />
-            <div className="flex flex-col font-['Inter:Medium',sans-serif] font-medium justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-[rgba(0,0,0,0.55)] tracking-[-0.08px] w-full">
-                <p className="leading-[1.45]">Integrações</p>
-            </div>
-        </nav>
-    );
-}
-
-function Header1() {
-    return (
-        <div className="content-stretch flex items-start pb-[16px] relative shrink-0 w-full" data-name="Header">
-            <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-black tracking-[-0.08px] whitespace-nowrap">
-                <p className="leading-[1.45]">Saiba Mais</p>
-            </div>
-        </div>
-    );
-}
-
-function Column1() {
-    return (
-        <nav className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-[130px]" data-name="Column 2">
-            <Header1 />
-            <div className="flex flex-col font-['Inter:Medium',sans-serif] font-medium justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-[rgba(0,0,0,0.55)] tracking-[-0.08px] w-full">
-                <p className="leading-[1.45]">Casos de Estudos</p>
-            </div>
-        </nav>
-    );
-}
-
-function Header2() {
-    return (
-        <div className="content-stretch flex items-start pb-[16px] relative shrink-0 w-full" data-name="Header">
-            <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-black tracking-[-0.08px] whitespace-nowrap">
-                <p className="leading-[1.45]">Suporte</p>
-            </div>
-        </div>
-    );
-}
-
-function Column2() {
-    return (
-        <nav className="content-stretch flex flex-col gap-[8px] items-start justify-center relative shrink-0 w-[130px]" data-name="Column 3">
-            <Header2 />
-            <div className="flex flex-col font-['Inter:Medium',sans-serif] font-medium justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-[rgba(0,0,0,0.55)] tracking-[-0.08px] w-full">
-                <p className="leading-[1.45]">Contato</p>
-            </div>
-            <div className="flex flex-col font-['Inter:Medium',sans-serif] font-medium justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-[rgba(0,0,0,0.55)] tracking-[-0.08px] w-full">
-                <p className="leading-[1.45]">Suporte</p>
-            </div>
-            <div className="flex flex-col font-['Inter:Medium',sans-serif] font-medium justify-center leading-[0] not-italic relative shrink-0 text-[16px] text-[rgba(0,0,0,0.55)] tracking-[-0.08px] w-full">
-                <p className="leading-[1.45]">Legal</p>
-            </div>
-        </nav>
-    );
-}
-
-function Nav() {
-    return (
-        <div className="content-stretch flex gap-[40px] items-start relative shrink-0" data-name="Nav">
-            <Column />
-            <Column1 />
-            <Column2 />
-        </div>
-    );
-}
-
-function Container() {
-    return (
-        <div className="content-stretch flex flex-[1_0_0] gap-[120px] items-start min-h-px min-w-px py-[80px] relative" data-name="Container">
-            <div aria-hidden="true" className="absolute border-[rgba(0,0,0,0.1)] border-solid border-t inset-0 pointer-events-none" />
-            <Content />
-            <Nav />
-        </div>
-    );
-}
+const COLUNAS = [
+    {
+        titulo: "Plataforma",
+        links: [
+            { para: "/projetos", rotulo: "Repositório de projetos" },
+            { para: "/noticias", rotulo: "Notícias" },
+            { para: "/doacoes", rotulo: "Mural de doações" },
+            { para: "/rastreio", rotulo: "Rastrear filamento" },
+        ],
+    },
+    {
+        titulo: "Participe",
+        links: [
+            { para: "/cadastro/usuario", rotulo: "Criar conta" },
+            { para: "/chamados", rotulo: "Chamados de escolas" },
+            { para: "/vagas", rotulo: "Vagas" },
+            { para: "/ranking", rotulo: "Ranking de impacto" },
+        ],
+    },
+    {
+        titulo: "Projeto",
+        links: [
+            { href: "https://www.uepg.br", rotulo: "UEPG" },
+            { href: "https://github.com/LuizFelipeDias/IC", rotulo: "Código-fonte" },
+            { href: "https://github.com/LuizFelipeDias/IC/blob/main/docs/DIAGNOSTICO_E_ROADMAP.md", rotulo: "Relatório técnico" },
+        ],
+    },
+];
 
 export default function Footer() {
     return (
-        <footer className="content-stretch flex items-center justify-center pb-[120px] px-[64px] relative size-full" data-name="Footer 1">
-            <Container />
+        <footer className="rodape">
+            <div className="container">
+                <div className="rodape__chamada">
+                    <h2 className="rodape__titulo">
+                        Do resíduo à <span>nova peça</span>.
+                    </h2>
+                    <Link to="/doacoes" className="botao botao--grande">
+                        Doar resíduos <ArrowUpRight size={18} aria-hidden="true" />
+                    </Link>
+                </div>
+
+                <div className="rodape__grade">
+                    <div className="rodape__sobre">
+                        <Marca className="rodape__marca" />
+                        <p>
+                            Plataforma de economia circular para o ecossistema da impressão 3D: conecta makers, laboratórios,
+                            escolas públicas e empresas, e rastreia o filamento reciclado da doação ao laudo.
+                        </p>
+                        <div className="rodape__ciclo" aria-label="Ciclo do material">
+                            {["Doação", "Coleta", "Reciclagem", "Filamento", "Nova peça"].map((etapa) => (
+                                <span key={etapa}>{etapa}</span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {COLUNAS.map((coluna) => (
+                        <nav key={coluna.titulo} aria-label={coluna.titulo}>
+                            <h3>{coluna.titulo}</h3>
+                            <ul>
+                                {coluna.links.map((link) => (
+                                    <li key={link.rotulo}>
+                                        {link.para ? (
+                                            <Link to={link.para}>{link.rotulo}</Link>
+                                        ) : (
+                                            <a href={link.href} target="_blank" rel="noreferrer">
+                                                {link.rotulo}
+                                            </a>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </nav>
+                    ))}
+                </div>
+
+                <div className="rodape__base">
+                    <span>© {new Date().getFullYear()} EcoHub 3D · PIBITI — Universidade Estadual de Ponta Grossa</span>
+                    <span>Feito para a economia circular da manufatura aditiva</span>
+                </div>
+            </div>
         </footer>
     );
 }

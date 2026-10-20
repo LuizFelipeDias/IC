@@ -1,323 +1,273 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
-import Footer from "../components/Footer.jsx";
-import Navbar from "../components/Nav.jsx";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+    ArrowRight, BadgeCheck, Boxes, Briefcase, CircleCheck, ClipboardList, Factory, FlaskConical, Gift, Newspaper, Printer, QrCode, Recycle, Truck,
+} from "lucide-react";
+import { Aviso } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { api, lista } from "../services/api";
+import { AREAS_PROJETO, tempoRelativo, TIPOS_USUARIO } from "../utils/formatar";
+import "../styles/pages/home.css";
 
-// "perfis": só aparece para quem tem um deles (mesma regra da API).
-const GRID_ITEMS = [
-    { title: "CHAMADOS", link: "VEJA MAIS >", path: "/chamados", perfis: ["solicitante", "prestador", "moderador"] },
-    { title: "VAGAS", link: "VEJA MAIS >", path: "/vaga" },
-    { title: "CURRÍCULO", link: "VEJA MAIS >", path: "/cadastro/curriculo", perfis: ["candidato"] },
-    { title: "PROJETOS", link: "VEJA MAIS >", path: "/projetos" },
-    { title: "NOTÍCIAS", link: "VEJA MAIS >", path: "/noticias" },
+const CICLO = [
+    { icone: Gift, titulo: "Doação", texto: "Makers cadastram sobras, carretéis e peças com falha." },
+    { icone: Truck, titulo: "Coleta", texto: "Laboratórios solicitam e agendam a retirada." },
+    { icone: Recycle, titulo: "Reciclagem", texto: "O material é triturado, seco e extrudado." },
+    { icone: FlaskConical, titulo: "Laudo", texto: "Ensaios garantem diâmetro, resistência e temperatura." },
+    { icone: Printer, titulo: "Nova peça", texto: "Filamento rastreável volta a imprimir projetos." },
 ];
 
-function FeatureGrid() {
-    const navigate = useNavigate();
-    const { pode } = useAuth();
-    const itens = GRID_ITEMS.filter((item) => !item.perfis || pode(...item.perfis));
-
-    return (
-        <div className="w-full bg-white">
-            <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row flex-wrap">
-                {itens.map((item, index) => (
-                    <div
-                        key={index}
-                        onClick={() => navigate(item.path)}
-                        className="flex-1 min-w-[200px] h-[250px] flex flex-col items-center justify-center transition-all duration-300 hover:bg-gray-50 group cursor-pointer"
-                    >
-                        <h3 className="font-['Open_Sans',sans-serif] font-bold text-[24px] tracking-tight text-black mt-4 group-hover:text-[#3800df] transition-colors">
-                            {item.title}
-                        </h3>
-                        <div className="mt-12 flex flex-col items-center gap-4">
-                            <span className="font-['Open_Sans',sans-serif] font-medium text-[11px] text-[#3800df] cursor-pointer hover:opacity-70 uppercase tracking-[0.3em] transition-all">
-                                {item.link}
-                            </span>
-                            <div className="w-10 h-[2px] bg-[#3800df] group-hover:w-16 transition-all duration-500" />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-const SLIDES = [
-    { id: 1, nome: "PRODUTO ALPHA", desc: "Descrição do primeiro produto incrível", cor: "#f3f4f6" },
-    { id: 2, nome: "PRODUTO BETA", desc: "Este aqui tem funcionalidades únicas", cor: "#e5e7eb" },
-    { id: 3, nome: "PRODUTO GAMMA", desc: "A melhor escolha para sua biblioteca", cor: "#d1d5db" },
+const MODULOS = [
+    { para: "/chamados", icone: ClipboardList, titulo: "Chamados", texto: "Escolas e empresas pedem apoio; laboratórios e makers atendem.", perfis: ["solicitante", "prestador", "moderador"] },
+    { para: "/doacoes", icone: Gift, titulo: "Doações", texto: "Mural de resíduos de impressão à espera de reciclagem." },
+    { para: "/projetos", icone: Boxes, titulo: "Projetos", texto: "Repositório de modelos STL/3MF com licença e curadoria." },
+    { para: "/vagas", icone: Briefcase, titulo: "Vagas", texto: "Oportunidades em manufatura aditiva e banco de currículos." },
+    { para: "/noticias", icone: Newspaper, titulo: "Notícias", texto: "Pesquisa, mercado e educação em impressão 3D." },
+    { para: "/lotes", icone: Factory, titulo: "Lotes e laudos", texto: "Produza filamento reciclado e emita laudos de qualidade.", perfis: ["receptor"] },
+    { para: "/rastreio", icone: QrCode, titulo: "Rastreio", texto: "Leia o QR Code do carretel e veja a origem do material." },
 ];
 
-function Carrossel() {
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [scrollSnaps, setScrollSnaps] = useState([]);
+const total = (resposta) => resposta?.meta?.total ?? lista(resposta).length;
 
-    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [
-        Autoplay({ delay: 4000, stopOnInteraction: false }),
-    ]);
-
-    const scrollTo = useCallback(
-        (index) => emblaApi && emblaApi.scrollTo(index),
-        [emblaApi]
-    );
-
-    const onSelect = useCallback(() => {
-        if (!emblaApi) return;
-        setSelectedIndex(emblaApi.selectedScrollSnap());
-    }, [emblaApi]);
+export default function Home() {
+    const { usuario, pode } = useAuth();
+    const [numeros, setNumeros] = useState(null);
+    const [noticias, setNoticias] = useState([]);
+    const [projetos, setProjetos] = useState([]);
+    const [ranking, setRanking] = useState([]);
 
     useEffect(() => {
-        if (!emblaApi) return;
-        setScrollSnaps(emblaApi.scrollSnapList());
-        emblaApi.on("select", onSelect);
-        emblaApi.on("reInit", onSelect);
-    }, [emblaApi, onSelect]);
+        let ativo = true;
+        Promise.allSettled([
+            api("/projeto?per_page=3"),
+            api("/noticia?per_page=4"),
+            api("/doacao?per_page=1"),
+            api("/vaga?per_page=1"),
+            api("/ranking"),
+        ]).then(([p, n, d, v, r]) => {
+            if (!ativo) return;
+            const valor = (resultado) => (resultado.status === "fulfilled" ? resultado.value : null);
+            setProjetos(lista(valor(p)));
+            setNoticias(lista(valor(n)));
+            setRanking(lista(valor(r)).slice(0, 5));
+            setNumeros({ projetos: total(valor(p)), noticias: total(valor(n)), doacoes: total(valor(d)), vagas: total(valor(v)) });
+        });
+        return () => {
+            ativo = false;
+        };
+    }, []);
+
+    const modulos = MODULOS.filter((m) => !m.perfis || pode(...m.perfis));
+    // Pessoas pelo primeiro nome; instituições pelo nome completo.
+    const primeiroNome = usuario?.tipo_usuario === "pessoa_fisica" ? usuario.nome.split(" ")[0] : usuario?.nome;
 
     return (
-        <section className="relative w-full h-[500px] overflow-hidden bg-white">
-            <div className="w-full h-full overflow-hidden" ref={emblaRef}>
-                <div className="flex h-full w-full">
-                    {SLIDES.map((slide) => (
-                        <div key={slide.id} className="relative flex-[0_0_100%] min-w-0 h-full w-full">
-                            <div className="absolute inset-0 w-full h-full" style={{ backgroundColor: slide.cor }} />
-                            <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
-                                <h2 className="text-[48px] font-bold text-black uppercase mb-4 tracking-tighter">
-                                    {slide.nome}
-                                </h2>
-                                <p className="text-[20px] text-gray-500 max-w-[450px]">
-                                    {slide.desc}
-                                </p>
-                            </div>
+        <>
+            <section className="hero">
+                <div className="container hero__grade">
+                    <div>
+                        <span className="hero__selo">
+                            <b>Novo</b> Rastreabilidade por QR Code em cada carretel
+                        </span>
+                        <h1>
+                            Do resíduo à <span>nova peça</span>.
+                        </h1>
+                        <p className="hero__texto">
+                            {primeiroNome ? `Olá, ${primeiroNome}. ` : ""}
+                            A EcoHub 3D conecta makers, laboratórios, escolas públicas e empresas para que nenhum grama de plástico de
+                            impressão 3D termine no aterro.
+                        </p>
+                        <div className="hero__acoes">
+                            {pode("solicitante") ? (
+                                <Link to="/chamados" className="botao botao--grande">
+                                    Abrir chamado <ArrowRight size={18} aria-hidden="true" />
+                                </Link>
+                            ) : (
+                                <Link to="/doacoes" className="botao botao--grande">
+                                    Doar resíduos <ArrowRight size={18} aria-hidden="true" />
+                                </Link>
+                            )}
+                            <Link to="/projetos" className="botao botao--grande botao--secundario">
+                                Explorar projetos
+                            </Link>
+                        </div>
+                    </div>
+
+                    <aside className="hero__cartao" aria-label="Exemplo de lote rastreado">
+                        <div className="hero__cartao-topo">
+                            <span>Lote de filamento reciclado</span>
+                            <code>01JECH…0001</code>
+                        </div>
+                        <h2>PLA natural · 1,75 mm</h2>
+                        <ol className="hero__passos">
+                            {["Sobras doadas por um makerspace", "Coletado pelo Laboratório de Polímeros", "Triturado e extrudado a 195 °C", "Laudo aprovado: 47 MPa de tração"].map((passo) => (
+                                <li key={passo}>
+                                    <CircleCheck size={18} aria-hidden="true" /> {passo}
+                                </li>
+                            ))}
+                        </ol>
+                        <Link to="/rastreio/01JECHB3DDEMNTE00000000001" className="botao botao--bloco" style={{ marginTop: "var(--esp-5)" }}>
+                            <QrCode size={16} aria-hidden="true" /> Ver rastreio completo
+                        </Link>
+                    </aside>
+                </div>
+            </section>
+
+            <section className="container numeros" aria-label="A plataforma em números">
+                <div className="numeros__grade">
+                    {[
+                        ["projetos", "projetos publicados"],
+                        ["doacoes", "doações à espera de coleta"],
+                        ["vagas", "vagas abertas"],
+                        ["noticias", "notícias publicadas"],
+                    ].map(([chave, rotulo]) => (
+                        <div className="estatistica" key={chave}>
+                            <span className="estatistica__valor">{numeros ? numeros[chave] : "—"}</span>
+                            <span className="estatistica__rotulo">{rotulo}</span>
                         </div>
                     ))}
                 </div>
-            </div>
+            </section>
 
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-3 z-30">
-                {scrollSnaps.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => scrollTo(index)}
-                        className={`transition-all duration-300 rounded-full h-2 border-none cursor-pointer ${
-                            index === selectedIndex ? "w-10 bg-[#1b85db]" : "w-2 bg-gray-400"
-                        }`}
-                    />
-                ))}
-            </div>
-        </section>
-    );
-}
+            <div className="container">
+                {usuario?.verificacao_status === "pendente" && (
+                    <div style={{ marginTop: "var(--esp-10)" }}>
+                        <Aviso tom="alerta">
+                            <strong>Cadastro em análise.</strong> A equipe está conferindo o CNPJ de {usuario.nome}. Assim que for aprovado,
+                            você poderá publicar vagas e notícias{usuario.tipo_usuario === "laboratorio" ? ", receber resíduos e atender chamados" : " e abrir chamados"}.
+                        </Aviso>
+                    </div>
+                )}
+                {usuario?.verificacao_status === "rejeitado" && (
+                    <div style={{ marginTop: "var(--esp-10)" }}>
+                        <Aviso tom="perigo">
+                            <strong>Verificação recusada.</strong> {usuario.motivo_verificacao} Corrija o documento no seu perfil para uma nova análise.
+                        </Aviso>
+                    </div>
+                )}
 
-const PaginacaoDash = ({ total, atual, setPagina, itensPorPagina }) => {
-    const totalPaginas = Math.ceil(total / itensPorPagina) || 1;
-    return (
-        <div className="flex gap-1.5 h-[4px]">
-            {Array.from({ length: totalPaginas }, (_, i) => (
-                <button
-                    key={i}
-                    onClick={() => setPagina(i)}
-                    className={`h-[4px] transition-all duration-300 border-none cursor-pointer ${
-                        atual === i ? "w-12 bg-[#3800df]" : "w-8 bg-[#e9ecef]"
-                    }`}
-                />
-            ))}
-        </div>
-    );
-};
-
-export default function Home() {
-    const [vagas, setVagas] = useState([]);
-    const [projetos, setProjetos] = useState([]);
-    const [noticias, setNoticias] = useState([]);
-
-    const [inputBusca, setInputBusca] = useState("");
-    const [filtroAtivo, setFiltroAtivo] = useState("");
-
-    useEffect(() => {
-        const buscarDados = async () => {
-            const [resVagas, resProjetos, resNoticias] = await Promise.allSettled([
-                api('/vaga?per_page=50'),
-                api('/projeto?per_page=50'),
-                api('/noticia?per_page=50')
-            ]);
-
-            if (resVagas.status === 'fulfilled') setVagas(lista(resVagas.value));
-            if (resProjetos.status === 'fulfilled') setProjetos(lista(resProjetos.value));
-            if (resNoticias.status === 'fulfilled') setNoticias(lista(resNoticias.value));
-
-            [resVagas, resProjetos, resNoticias]
-                .filter((r) => r.status === 'rejected')
-                .forEach((r) => console.error("Erro ao carregar dados da API:", r.reason));
-        };
-
-        buscarDados().catch(console.error);
-    }, []);
-
-    const handleFiltrar = (e) => {
-        e.preventDefault();
-        setFiltroAtivo(inputBusca.trim().toLowerCase());
-    };
-
-    const aplicarFiltro = (lista) => {
-        if (!filtroAtivo) return lista;
-        return lista.filter(item => {
-            const nome = (item.titulo || item.nome || "").toLowerCase();
-            const desc = (item.descricao || item.desc || "").toLowerCase();
-            return nome.includes(filtroAtivo) || desc.includes(filtroAtivo);
-        });
-    };
-
-    const SECOES_DATA = [
-        {
-            titulo: "Vagas",
-            path: "/vaga",
-            items: aplicarFiltro(vagas).map((v, i) => ({
-                id: v.id || `v-${i}`,
-                nome: v.titulo || v.nome || "Oportunidade Tech",
-                desc: v.descricao || v.desc || "Detalhes da vaga disponível.",
-            })),
-        },
-        {
-            titulo: "Projetos",
-            path: "/projetos",
-            items: aplicarFiltro(projetos).map((p, i) => ({
-                id: p.id || `p-${i}`,
-                nome: p.titulo || p.nome || "Projeto Ativo",
-                desc: p.descricao || p.desc || "Confira os detalhes deste projeto.",
-            })),
-        },
-        {
-            titulo: "Notícias",
-            path: "/noticias",
-            items: aplicarFiltro(noticias).map((n, i) => ({
-                id: n.id || `n-${i}`,
-                nome: n.titulo || n.nome || "Atualização de Mercado",
-                desc: n.descricao || n.desc || "Saiba as novidades recentes.",
-            })),
-        },
-    ];
-
-    return (
-        <main className="w-full bg-white">
-            <Navbar />
-            <style
-                dangerouslySetInnerHTML={{
-                    __html: `
-                        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Raleway:wght@400;500;600&display=swap');
-                    `,
-                }}
-            />
-            <Carrossel />
-            <FeatureGrid />
-
-            <div className="w-full bg-white flex flex-col items-center pt-20 px-10 font-['Inter',sans-serif] overflow-hidden">
-                <div className="w-full max-w-[1280px]">
-                    <h1 className="text-black text-[24px] font-black tracking-[1.2em] uppercase text-center mb-16">
-                        Bem Vindo
-                    </h1>
-
-                    <form onSubmit={handleFiltrar} className="flex justify-center items-center gap-6 mb-20 w-full px-4">
-                        <div className="relative w-full max-w-[750px]">
-                            <label className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] text-[#858585] font-bold uppercase tracking-widest z-10 border-x border-gray-100">
-                                PESQUISAR
-                            </label>
-                            <input
-                                type="text"
-                                value={inputBusca}
-                                onChange={(e) => setInputBusca(e.target.value)}
-                                placeholder="Digite para filtrar..."
-                                className="w-full h-[65px] border-[1.5px] border-[#d1d1d1] px-6 outline-none focus:border-[#3800df] text-[14px] font-medium"
-                            />
+                <section className="secao" aria-labelledby="titulo-ciclo">
+                    <div className="secao__titulo">
+                        <div>
+                            <span className="sobrelinha">Como funciona</span>
+                            <h2 id="titulo-ciclo">Um ciclo fechado, do carretel ao laudo.</h2>
                         </div>
-                        <button
-                            type="submit"
-                            className="h-[65px] px-20 bg-[#3800df] text-white text-[14px] font-black uppercase tracking-[0.3em] hover:brightness-110 transition-all shadow-lg active:scale-95 cursor-pointer"
-                        >
-                            FILTRO
-                        </button>
-                    </form>
+                        <p>Cada etapa fica registrada. Quem compra ou usa o filamento reciclado vê de onde ele veio e como foi testado.</p>
+                    </div>
+                    <ol className="ciclo">
+                        {CICLO.map(({ icone: Icone, titulo, texto }) => (
+                            <li className="ciclo__etapa" key={titulo}>
+                                <span className="ciclo__icone">
+                                    <Icone size={22} aria-hidden="true" />
+                                </span>
+                                <h3>{titulo}</h3>
+                                <p>{texto}</p>
+                            </li>
+                        ))}
+                    </ol>
+                </section>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 px-4 pb-20">
-                        {SECOES_DATA.map((secao) => (
-                            <ColunaLista key={secao.titulo} secao={secao} />
+                <section className="secao" aria-labelledby="titulo-modulos">
+                    <div className="secao__titulo">
+                        <div>
+                            <span className="sobrelinha">Para {usuario ? TIPOS_USUARIO[usuario.tipo_usuario]?.toLowerCase() : "você"}</span>
+                            <h2 id="titulo-modulos">Tudo o que você pode fazer aqui.</h2>
+                        </div>
+                    </div>
+                    <div className="modulos">
+                        {modulos.map(({ para, icone: Icone, titulo, texto }) => (
+                            <Link key={para} to={para} className="cartao cartao--interativo modulo">
+                                <span className="modulo__icone">
+                                    <Icone size={22} aria-hidden="true" />
+                                </span>
+                                <h3>{titulo}</h3>
+                                <p>{texto}</p>
+                                <span className="modulo__seta">
+                                    Acessar <ArrowRight size={16} aria-hidden="true" />
+                                </span>
+                            </Link>
                         ))}
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <Footer />
-        </main>
-    );
-}
-
-function ColunaLista({ secao }) {
-    const navigate = useNavigate();
-    const [pagina, setPagina] = useState(0);
-    const itensPorPagina = 12;
-
-    const itemsSeguros = secao.items || [];
-    const itensExibidos = itemsSeguros.slice(
-        pagina * itensPorPagina,
-        (pagina + 1) * itensPorPagina
-    );
-
-    return (
-        <div className="flex flex-col">
-            <div className="flex items-center justify-between mb-8 border-b-[2.5px] border-[#1b85db] pb-1 px-2">
-                <h3 className="text-[#1b85db] text-[16px] font-black uppercase tracking-[0.2em]">
-                    {secao.titulo}
-                </h3>
-                <PaginacaoDash
-                    total={itemsSeguros.length}
-                    atual={pagina}
-                    setPagina={setPagina}
-                    itensPorPagina={itensPorPagina}
-                />
-            </div>
-
-            <div className="flex flex-col gap-8 mb-4 px-2 min-h-[400px]">
-                {itemsSeguros.length === 0 ? (
-                    <p className="text-[12px] text-gray-400 italic">Nenhum registro encontrado...</p>
-                ) : (
-                    itensExibidos.map((item) => (
-                        <div
-                            key={item.id}
-                            className="flex items-center gap-4 group cursor-pointer transition-opacity hover:opacity-70"
-                        >
-                            <div className="size-[70px] bg-[#ced4da] flex-shrink-0" />
-                            <div className="flex flex-col text-left">
-                                <h4 className="text-[12px] font-bold text-black uppercase leading-tight font-['Open_Sans',serif] group-hover:text-[#3800df] transition-colors">
-                                    {item.nome}
-                                </h4>
-                                <p className="text-[11px] text-[#8a8a8a] font-medium mt-1 leading-snug font-['Raleway',sans-serif]">
-                                    {item.desc}
-                                </p>
+                <section className="secao destaques">
+                    <div>
+                        <div className="secao__titulo">
+                            <div>
+                                <span className="sobrelinha">Do jornal</span>
+                                <h2>Últimas notícias</h2>
                             </div>
+                            <Link to="/noticias" className="modulo__seta">
+                                Ver todas <ArrowRight size={16} aria-hidden="true" />
+                            </Link>
                         </div>
-                    ))
-                )}
-            </div>
+                        <ul className="lista-destaque">
+                            {noticias.map((noticia) => (
+                                <li key={noticia.id}>
+                                    <Link to={`/noticias/${noticia.id}`}>
+                                        <span className="sobrelinha">
+                                            {noticia.tema} · {tempoRelativo(noticia.data_publicacao)}
+                                        </span>
+                                        <h3>{noticia.titulo}</h3>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
 
-            <div className="mt-5 border-t-[2.5px] border-[#1b85db] pt-3 px-2">
-                <div className="flex items-center justify-between">
-                    <button
-                        onClick={() => navigate(secao.path)}
-                        className="text-[13px] font-black text-black uppercase tracking-[0.3em] hover:text-[#3800df] transition-all cursor-pointer bg-transparent border-none p-0"
-                    >
-                        VEJA MAIS
-                    </button>
-                    <PaginacaoDash
-                        total={itemsSeguros.length}
-                        atual={pagina}
-                        setPagina={setPagina}
-                        itensPorPagina={itensPorPagina}
-                    />
-                </div>
+                    <div>
+                        <div className="secao__titulo">
+                            <div>
+                                <span className="sobrelinha">Ranking de impacto</span>
+                                <h2>Quem mais recicla</h2>
+                            </div>
+                            <Link to="/ranking" className="modulo__seta">
+                                Ranking completo <ArrowRight size={16} aria-hidden="true" />
+                            </Link>
+                        </div>
+                        <ol className="cartao ranking">
+                            {ranking.length === 0 && <li className="texto-suave">Ninguém pontuou ainda.</li>}
+                            {ranking.map((item) => (
+                                <li key={item.id}>
+                                    <span className="ranking__posicao">{item.posicao}</span>
+                                    <span>
+                                        <strong>{item.nome}</strong>
+                                        <br />
+                                        <span className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>
+                                            {TIPOS_USUARIO[item.tipo]} {item.selos.length > 0 && `· ${item.selos.map((s) => s.nome).join(", ")}`}
+                                        </span>
+                                    </span>
+                                    <span className="ranking__pontos">{item.pontos} pts</span>
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
+                </section>
+
+                <section className="secao">
+                    <div className="secao__titulo">
+                        <div>
+                            <span className="sobrelinha">Repositório</span>
+                            <h2>Projetos em destaque</h2>
+                        </div>
+                        <Link to="/projetos" className="modulo__seta">
+                            Ver repositório <ArrowRight size={16} aria-hidden="true" />
+                        </Link>
+                    </div>
+                    <div className="modulos">
+                        {projetos.map((projeto) => (
+                            <Link key={projeto.id} to={`/projetos/${projeto.id}`} className="cartao cartao--interativo modulo">
+                                <span className="modulo__icone">
+                                    <BadgeCheck size={22} aria-hidden="true" />
+                                </span>
+                                <span className="sobrelinha">{AREAS_PROJETO[projeto.area] ?? "Projeto"}</span>
+                                <h3>{projeto.titulo}</h3>
+                                <p>{projeto.texto.slice(0, 110)}…</p>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
             </div>
-        </div>
+        </>
     );
 }

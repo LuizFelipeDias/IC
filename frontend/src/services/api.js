@@ -31,7 +31,9 @@ export class ApiError extends Error {
 
 export async function api(path, { method = "GET", body, auth = true } = {}) {
     const headers = { Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    // FormData (envio de arquivos) define o próprio Content-Type com o boundary.
+    const multipart = body instanceof FormData;
+    if (body !== undefined && !multipart) headers["Content-Type"] = "application/json";
 
     const token = auth ? tokenStorage.get() : null;
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -41,7 +43,7 @@ export async function api(path, { method = "GET", body, auth = true } = {}) {
         response = await fetch(`${API_URL}${path}`, {
             method,
             headers,
-            body: body !== undefined ? JSON.stringify(body) : undefined,
+            body: body === undefined || multipart ? body : JSON.stringify(body),
         });
     } catch {
         throw new ApiError("Erro de conexão com o servidor.", 0);
@@ -65,3 +67,16 @@ export async function api(path, { method = "GET", body, auth = true } = {}) {
 
 // A API devolve listas paginadas ({ data: [...], links, meta }).
 export const lista = (resposta) => (Array.isArray(resposta) ? resposta : resposta?.data ?? []);
+
+/** Monta a query string ignorando filtros vazios. */
+export const query = (params) => {
+    const busca = new URLSearchParams(Object.entries(params).filter(([, valor]) => valor !== "" && valor != null));
+    const texto = busca.toString();
+    return texto ? `?${texto}` : "";
+};
+
+/** Pede o link temporário assinado de um anexo e abre o download. */
+export async function baixarAnexo(idAnexo) {
+    const { url } = await api(`/anexo/${idAnexo}/link`);
+    window.open(url, "_blank", "noopener");
+}

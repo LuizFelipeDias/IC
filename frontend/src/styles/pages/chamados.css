@@ -1,0 +1,189 @@
+/* Chamados — tela mestre-detalhe de atendimento (indicadores, tabela e painel lateral) */
+
+.indicadores {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--esp-4);
+}
+
+.indicador {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-4);
+    padding: var(--esp-5);
+}
+
+.indicador__icone {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: var(--raio-md);
+}
+
+.indicador--info .indicador__icone { background: var(--cor-info-suave); color: var(--cor-info); }
+.indicador--alerta .indicador__icone { background: var(--cor-alerta-suave); color: var(--cor-alerta); }
+.indicador--sucesso .indicador__icone { background: var(--cor-sucesso-suave); color: var(--cor-sucesso); }
+.indicador--neutro .indicador__icone { background: rgba(12, 11, 20, 0.06); color: var(--cor-texto-suave); }
+
+.indicador .estatistica__valor {
+    font-size: var(--texto-2xl);
+}
+
+.barra-ferramentas {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    flex-wrap: wrap;
+    margin: var(--esp-8) 0 var(--esp-4);
+}
+
+.barra-ferramentas .busca {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.barra-ferramentas .busca svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cor-texto-fraco);
+}
+
+.barra-ferramentas .busca .entrada {
+    padding-left: 40px;
+}
+
+.barra-ferramentas select.entrada {
+    width: auto;
+    min-width: 180px;
+}
+
+.mestre-detalhe {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    gap: var(--esp-6);
+    align-items: start;
+}
+
+.mestre-detalhe .tabela tbody tr {
+    cursor: pointer;
+}
+
+.celula-titulo strong {
+    display: block;
+}
+
+.celula-titulo span {
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.codigo {
+    font-family: var(--fonte-mono);
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.painel {
+    position: sticky;
+    top: calc(var(--altura-nav) + var(--esp-4));
+    overflow: hidden;
+}
+
+.painel__cabecalho {
+    padding: var(--esp-6);
+    border-bottom: 1px solid var(--cor-borda);
+    background: var(--cor-superficie-2);
+}
+
+.painel__cabecalho h2 {
+    margin-top: var(--esp-3);
+    font-size: var(--texto-xl);
+}
+
+.painel__corpo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-6);
+    padding: var(--esp-6);
+}
+
+.painel__secao h3 {
+    margin-bottom: var(--esp-3);
+    font-size: var(--texto-xs);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cor-texto-suave);
+}
+
+.ficha-grade {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--esp-4);
+    font-size: var(--texto-sm);
+}
+
+.ficha-grade dt {
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.ficha-grade dd {
+    font-weight: 600;
+}
+
+.painel__rodape {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-3);
+    padding: var(--esp-5) var(--esp-6);
+    border-top: 1px solid var(--cor-borda);
+    background: var(--cor-superficie-2);
+}
+
+.opcoes-local {
+    display: grid;
+    gap: var(--esp-2);
+}
+
+.opcoes-local label {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    padding: var(--esp-3) var(--esp-4);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    background: var(--cor-superficie);
+    font-size: var(--texto-sm);
+    cursor: pointer;
+}
+
+.opcoes-local label:has(input:checked) {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 1px var(--cor-primaria);
+}
+
+.opcoes-local input {
+    accent-color: var(--cor-primaria);
+}
+
+@media (max-width: 1100px) {
+    .mestre-detalhe {
+        grid-template-columns: 1fr;
+    }
+
+    .painel {
+        position: static;
+    }
+}
+
+@media (max-width: 760px) {
+    .indicadores {
+        grid-template-columns: 1fr 1fr;
+    }
+}

@@ -1,118 +1,129 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { LogOut, Menu, QrCode, ShieldCheck, Star, X } from "lucide-react";
+import Marca from "./Marca";
 import { useAuth } from "../contexts/AuthContext";
+import { iniciais, TIPOS_USUARIO } from "../utils/formatar";
+
+// "perfis": o link só aparece para quem tem um deles (mesma regra da API).
+const LINKS = [
+    { para: "/home", rotulo: "Início" },
+    { para: "/chamados", rotulo: "Chamados", perfis: ["solicitante", "prestador", "moderador"] },
+    { para: "/vagas", rotulo: "Vagas" },
+    { para: "/projetos", rotulo: "Projetos" },
+    { para: "/noticias", rotulo: "Notícias" },
+    { para: "/doacoes", rotulo: "Doações" },
+    { para: "/lotes", rotulo: "Lotes", perfis: ["receptor"] },
+    { para: "/moderacao", rotulo: "Moderação", perfis: ["moderador"] },
+];
+
+const STATUS_VERIFICACAO = {
+    pendente: "Cadastro em análise",
+    verificado: "Instituição verificada",
+    rejeitado: "Verificação recusada",
+};
 
 export default function Nav() {
-    const { usuario, sair } = useAuth();
+    const { usuario, sair, pode } = useAuth();
     const navigate = useNavigate();
+    const local = useLocation();
+    const [menuAberto, setMenuAberto] = useState(false);
+    const [linksAbertos, setLinksAbertos] = useState(false);
+    const refMenu = useRef(null);
 
-    const nomeUsuario = usuario?.nome ? usuario.nome.split(" ")[0] : "PROFILE";
+    useEffect(() => {
+        setMenuAberto(false);
+        setLinksAbertos(false);
+    }, [local.pathname]);
 
-    // Logout revoga o token no servidor antes de voltar ao login.
-    const handleExit = async () => {
+    useEffect(() => {
+        const fecharFora = (evento) => refMenu.current && !refMenu.current.contains(evento.target) && setMenuAberto(false);
+        document.addEventListener("mousedown", fecharFora);
+        return () => document.removeEventListener("mousedown", fecharFora);
+    }, []);
+
+    const encerrar = async () => {
         await sair();
         navigate("/", { replace: true });
     };
 
+    const links = LINKS.filter((link) => !link.perfis || pode(...link.perfis));
+
     return (
-        <div style={{ width: "100%" }}>
-            <style>
-                {`
-          .nav-bg {
-            background-color: white; 
-            height: 67px;              
-            width: 100%;
-            display: flex;
-            align-items: center;       
-            justify-content: space-between; 
-            padding: 0 48px;           
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-          }
+        <header className="nav">
+            <nav className="container nav__interno" aria-label="Principal">
+                <Link to="/home" aria-label="EcoHub 3D — início">
+                    <Marca />
+                </Link>
 
-          .logo {
-            font-size: 25px;
-            font-weight: 800;
-            color: #000;
-            margin: 0;
-            cursor: pointer;
-          }
+                <div className={`nav__links ${linksAbertos ? "aberto" : ""}`}>
+                    {links.map((link) => (
+                        <NavLink key={link.para} to={link.para} className={({ isActive }) => `nav__link ${isActive ? "ativo" : ""}`}>
+                            {link.rotulo}
+                        </NavLink>
+                    ))}
+                </div>
 
-          .nav-group {
-            display: flex;
-            align-items: center;       
-            gap: 40px;                 
-          }
+                <div className="nav__acoes">
+                    <Link to="/rastreio" className="botao botao--fantasma botao--pequeno" title="Rastrear lote por QR Code">
+                        <QrCode size={16} aria-hidden="true" />
+                        <span className="sr-only">Rastrear lote</span>
+                    </Link>
 
-          .nav-link {
-            font-size: 14px;
-            font-weight: 700;
-            color: #000;
-            text-decoration: none;
-            text-transform: uppercase;
-            cursor: pointer;
-            position: relative;
-          }
+                    {usuario && (
+                        <div className="nav__usuario" ref={refMenu}>
+                            <button type="button" className="nav__usuario-botao" aria-expanded={menuAberto} onClick={() => setMenuAberto((aberto) => !aberto)}>
+                                <span className="avatar">{iniciais(usuario.nome)}</span>
+                                <span className="nav__usuario-nome">{usuario.tipo_usuario === "pessoa_fisica" ? usuario.nome.split(" ")[0] : usuario.nome}</span>
+                            </button>
 
-          .nav-link:not(.btn-exit)::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            bottom: -5px;
-            left: 0;
-            background-color: #e31c1c;
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-          }
+                            {menuAberto && (
+                                <div className="menu-suspenso">
+                                    <div className="menu-suspenso__cabecalho">
+                                        <strong>{usuario.nome}</strong>
+                                        <div className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>
+                                            {TIPOS_USUARIO[usuario.tipo_usuario]}
+                                            {usuario.prestador_servico && " · maker/voluntário"}
+                                        </div>
+                                        {usuario.verificacao_status && (
+                                            <div className="linha" style={{ marginTop: "var(--esp-2)", gap: "var(--esp-1)", fontSize: "var(--texto-xs)" }}>
+                                                <ShieldCheck size={14} aria-hidden="true" /> {STATUS_VERIFICACAO[usuario.verificacao_status]}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Link to="/ranking" className="menu-suspenso__item">
+                                        <Star size={16} aria-hidden="true" /> {usuario.pontos_total ?? 0} pontos · ranking
+                                    </Link>
+                                    {pode("candidato") && (
+                                        <Link to="/curriculo" className="menu-suspenso__item">
+                                            Meu currículo
+                                        </Link>
+                                    )}
+                                    <button type="button" className="menu-suspenso__item" onClick={encerrar}>
+                                        <LogOut size={16} aria-hidden="true" /> Sair
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-          .nav-link:hover::after {
-            transform: scaleX(1);
-          }
+                    {!usuario && (
+                        <Link to="/" className="botao botao--pequeno">
+                            Entrar
+                        </Link>
+                    )}
 
-          .btn-exit {
-            border: 1px solid #ff0066;
-            color: #ff0066;
-            padding: 8px 20px;
-            border-radius: 6px;
-            background: transparent;
-            font-weight: 700;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .btn-exit:hover {
-            background-color: #ff0066;
-            color: #fff;
-          }
-
-          @media (max-width: 900px) {
-            .hide-tablet { display: none; }
-            .nav-bg { padding: 0 20px; }
-            .nav-group { gap: 20px; }
-          }
-        `}
-            </style>
-
-            <nav className="nav-bg">
-                <h1 className="logo" onClick={() => navigate("/home")}>3D HUB</h1>
-
-                <div className="nav-group">
-                    <span className="nav-link hide-tablet">
-                        NOTIFICATIONS
-                    </span>
-                    <span className="nav-link">MENU</span>
-
-                    {/* Aqui o nome do usuário será exibido corretamente */}
-                    <span className="nav-link">{nomeUsuario}</span>
-
-                    <button type="button" className="nav-link btn-exit" onClick={handleExit}>
-                        EXIT
+                    <button
+                        type="button"
+                        className="botao botao--fantasma botao--pequeno nav__hamburguer"
+                        aria-label={linksAbertos ? "Fechar menu" : "Abrir menu"}
+                        aria-expanded={linksAbertos}
+                        onClick={() => setLinksAbertos((aberto) => !aberto)}
+                    >
+                        {linksAbertos ? <X size={18} /> : <Menu size={18} />}
                     </button>
                 </div>
             </nav>
-        </div>
+        </header>
     );
 }

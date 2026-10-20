@@ -1,0 +1,97 @@
+/* Vagas e currículos */
+
+.vagas {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: var(--esp-6);
+    align-items: start;
+}
+
+.vagas__lista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-3);
+}
+
+.vaga-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-2);
+    width: 100%;
+    padding: var(--esp-5);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    background: var(--cor-superficie);
+    text-align: left;
+    transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+.vaga-item:hover {
+    border-color: var(--cor-borda-forte);
+}
+
+.vaga-item[aria-pressed="true"] {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 1px var(--cor-primaria), var(--sombra-2);
+}
+
+.vaga-item h3 {
+    font-size: var(--texto-lg);
+}
+
+.vaga-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--esp-2) var(--esp-4);
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.vaga-item__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vaga-detalhe {
+    position: sticky;
+    top: calc(var(--altura-nav) + var(--esp-4));
+    padding: var(--esp-8);
+}
+
+.vaga-detalhe h2 {
+    margin-top: var(--esp-3);
+    font-family: var(--fonte-display);
+    font-size: var(--texto-2xl);
+}
+
+.vaga-detalhe__texto {
+    margin-top: var(--esp-6);
+    padding-top: var(--esp-6);
+    border-top: 1px solid var(--cor-borda);
+    white-space: pre-line;
+    line-height: 1.75;
+}
+
+.curriculo-cartao {
+    display: flex;
+    flex-direction: column;
+    gap: var(--esp-3);
+    padding: var(--esp-6);
+}
+
+.grade-curriculos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--esp-4);
+}
+
+@media (max-width: 960px) {
+    .vagas {
+        grid-template-columns: 1fr;
+    }
+
+    .vaga-detalhe {
+        position: static;
+    }
+}

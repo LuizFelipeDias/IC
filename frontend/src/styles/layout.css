@@ -1,0 +1,297 @@
+/* ==========================================================================
+   Estrutura: barra de navegação, conteúdo e rodapé
+   ========================================================================== */
+
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app__conteudo {
+    flex: 1;
+    padding-bottom: var(--esp-20);
+}
+
+/* ---------- Barra de navegação ---------- */
+.nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid rgba(228, 228, 232, 0.8);
+    background: rgba(246, 246, 243, 0.85);
+    backdrop-filter: saturate(160%) blur(12px);
+}
+
+.nav__interno {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-6);
+    height: var(--altura-nav);
+}
+
+.marca {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    font-family: var(--fonte-display);
+    font-size: var(--texto-lg);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.marca__simbolo {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, #6a3dff 55%, var(--cor-eco) 100%);
+    color: #fff;
+}
+
+.marca__3d {
+    color: var(--cor-primaria);
+}
+
+.nav__links {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-1);
+    margin-left: var(--esp-4);
+}
+
+.nav__link {
+    padding: var(--esp-2) var(--esp-3);
+    border-radius: var(--raio-pilula);
+    font-size: var(--texto-sm);
+    font-weight: 500;
+    color: var(--cor-texto-suave);
+    transition: background var(--transicao), color var(--transicao);
+}
+
+.nav__link:hover {
+    color: var(--cor-texto);
+    background: rgba(12, 11, 20, 0.05);
+}
+
+.nav__link.ativo {
+    color: var(--cor-texto);
+    background: var(--cor-superficie);
+    box-shadow: var(--sombra-1);
+}
+
+.nav__acoes {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    margin-left: auto;
+}
+
+.nav__usuario {
+    position: relative;
+}
+
+.nav__usuario-botao {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-2);
+    padding: 4px 10px 4px 4px;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-pilula);
+    background: var(--cor-superficie);
+    font-size: var(--texto-sm);
+    font-weight: 600;
+}
+
+.nav__usuario-nome {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menu-suspenso {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 260px;
+    padding: var(--esp-2);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    background: var(--cor-superficie);
+    box-shadow: var(--sombra-2);
+}
+
+.menu-suspenso__cabecalho {
+    padding: var(--esp-3);
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: var(--esp-2);
+}
+
+.menu-suspenso__item {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    width: 100%;
+    padding: var(--esp-2) var(--esp-3);
+    border: 0;
+    border-radius: var(--raio-md);
+    background: none;
+    font-size: var(--texto-sm);
+    text-align: left;
+}
+
+.menu-suspenso__item:hover {
+    background: var(--cor-superficie-2);
+}
+
+.nav__hamburguer {
+    display: none;
+}
+
+@media (max-width: 960px) {
+    .nav__links {
+        position: absolute;
+        top: var(--altura-nav);
+        left: 0;
+        right: 0;
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        margin: 0;
+        padding: var(--esp-4) var(--esp-6) var(--esp-6);
+        border-bottom: 1px solid var(--cor-borda);
+        background: var(--cor-fundo);
+    }
+
+    .nav__links.aberto {
+        display: flex;
+    }
+
+    .nav__hamburguer {
+        display: inline-flex;
+    }
+}
+
+/* ---------- Rodapé ---------- */
+.rodape {
+    position: relative;
+    overflow: hidden;
+    padding-top: var(--esp-20);
+    background: var(--cor-tinta);
+    color: #c9c8d6;
+}
+
+.rodape::before {
+    content: "";
+    position: absolute;
+    top: -240px;
+    right: -160px;
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 0, 223, 0.45) 0%, rgba(56, 0, 223, 0) 70%);
+    pointer-events: none;
+}
+
+.rodape__chamada {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--esp-8);
+    flex-wrap: wrap;
+    padding-bottom: var(--esp-12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rodape__titulo {
+    max-width: 18ch;
+    font-family: var(--fonte-display);
+    font-size: var(--texto-4xl);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: #fff;
+}
+
+.rodape__titulo span {
+    background: linear-gradient(90deg, #9b7dff, #3ddc97);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.rodape__grade {
+    display: grid;
+    grid-template-columns: 1.6fr repeat(3, 1fr);
+    gap: var(--esp-10);
+    padding-block: var(--esp-12);
+}
+
+.rodape__grade h3 {
+    margin-bottom: var(--esp-4);
+    font-size: var(--texto-xs);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8b8a9c;
+}
+
+.rodape__grade li + li {
+    margin-top: var(--esp-3);
+}
+
+.rodape__grade a {
+    font-size: var(--texto-sm);
+    transition: color var(--transicao);
+}
+
+.rodape__grade a:hover {
+    color: #fff;
+}
+
+.rodape__sobre p {
+    max-width: 38ch;
+    margin-top: var(--esp-4);
+    font-size: var(--texto-sm);
+    line-height: 1.7;
+}
+
+.rodape__marca {
+    color: #fff;
+}
+
+.rodape__ciclo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--esp-2);
+    margin-top: var(--esp-6);
+}
+
+.rodape__ciclo span {
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--raio-pilula);
+    font-size: var(--texto-xs);
+}
+
+.rodape__base {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--esp-4);
+    flex-wrap: wrap;
+    padding-block: var(--esp-6);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: var(--texto-xs);
+    color: #8b8a9c;
+}
+
+@media (max-width: 860px) {
+    .rodape__grade {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .rodape__sobre {
+        grid-column: 1 / -1;
+    }
+}

@@ -1,343 +1,196 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Building2, FlaskConical, School, UserRound } from "lucide-react";
+import PainelMarca from "../../components/PainelMarca";
+import { Aviso, Campo, errosPorCampo } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, ApiError } from "../../services/api";
-import { MenuItem, Select, Collapse } from "@mui/material";
+import "../../styles/pages/auth.css";
 
-// --- FUNÇÕES DE MÁSCARA ---
-const maskTelefone = (value) => {
-    return value
-        .replace(/\D/g, "")
-        .replace(/^(\d{2})(\d)/g, "($1) $2")
-        .replace(/(\d)(\d{4})$/, "$1-$2")
-        .slice(0, 15);
-};
+const TIPOS = [
+    { valor: "pessoa_fisica", rotulo: "Pessoa física", icone: UserRound, ajuda: "Estudantes, profissionais e makers: candidatam-se a vagas, doam resíduos e podem atender chamados." },
+    { valor: "empresa", rotulo: "Empresa", icone: Building2, ajuda: "Publica vagas e notícias, abre chamados e consulta o banco de currículos." },
+    { valor: "escola", rotulo: "Escola", icone: School, ajuda: "Escolas públicas abrem chamados de treinamento, modelagem, scanner 3D e impressão." },
+    { valor: "laboratorio", rotulo: "Laboratório", icone: FlaskConical, ajuda: "Recebe resíduos, produz filamento reciclado com laudo, atende chamados e publica vagas." },
+];
 
-const maskCPF = (value) => {
-    return value
+const mascaraTelefone = (valor) =>
+    valor.replace(/\D/g, "").slice(0, 11).replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d)(\d{4})$/, "$1-$2");
+const mascaraCpf = (valor) =>
+    valor.replace(/\D/g, "").slice(0, 11).replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+const mascaraCnpj = (valor) =>
+    valor
         .replace(/\D/g, "")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})$/, "$1-$2")
-        .slice(0, 14);
-};
-
-const maskCNPJ = (value) => {
-    return value
-        .replace(/\D/g, "")
+        .slice(0, 14)
         .replace(/^(\d{2})(\d)/, "$1.$2")
         .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
         .replace(/\.(\d{3})(\d)/, ".$1/$2")
-        .replace(/(\d{4})(\d)/, "$1-$2")
-        .slice(0, 18);
-};
+        .replace(/(\d{4})(\d)/, "$1-$2");
 
-// --- COMPONENTE DE INPUT CUSTOMIZADO ---
-const CustomInput = ({ label, placeholder, type = "text", value, onChange }) => (
-    <div className="input-group relative w-full">
-        <label>{label}</label>
-        <input
-            type={type}
-            placeholder={placeholder}
-            value={value}
-            onChange={onChange}
-            required
-        />
-    </div>
-);
-
-// Tipos de usuário aceitos pela API (tipo_usuario) e o que cada um faz na plataforma.
-const TIPOS_PERFIL = [
-    { valor: "pessoa_fisica", rotulo: "Pessoa física", titulo: <>Área do<br />Profissional</>, ajuda: "Estudantes, profissionais e makers: candidatam-se a vagas e podem atender chamados." },
-    { valor: "empresa", rotulo: "Empresa", titulo: <>Área da<br />Empresa</>, ajuda: "Publica vagas e notícias e abre chamados." },
-    { valor: "escola", rotulo: "Escola", titulo: <>Área da<br />Escola</>, ajuda: "Escolas públicas abrem chamados de treinamento, modelagem e impressão." },
-    { valor: "laboratorio", rotulo: "Laboratório", titulo: <>Área do<br />Laboratório</>, ajuda: "Laboratórios recebem resíduos, atendem chamados e publicam vagas e notícias." },
-];
+const VAZIO = { nome: "", email: "", telefone: "", senha: "", confirmarSenha: "", cpf: "", sexo: "", profissao: "", cnpj: "", codigo_inep: "", prestador_servico: false };
 
 export default function CadastroUsuario() {
-    const { entrar } = useAuth();
-
-    // 1. Dados Básicos
-    const [nome, setNome] = useState("");
-    const [telefone, setTelefone] = useState("");
-    const [email, setEmail] = useState("");
-    const [confirmarEmail, setConfirmarEmail] = useState("");
-    const [senha, setSenha] = useState("");
-    const [confirmarSenha, setConfirmarSenha] = useState("");
-
-    // 2. Tipo de usuário (define as permissões na plataforma)
-    const [tipoPerfil, setTipoPerfil] = useState("pessoa_fisica");
-    const pessoaFisica = tipoPerfil === "pessoa_fisica";
-
-    // 3. Dados Estudante
-    const [cpf, setCPF] = useState("");
-    const [profissao, setProfissao] = useState("");
-    const [sexo, setSexo] = useState("");
-
-    const [prestador, setPrestador] = useState(false);
-
-    // 4. Dados de pessoa jurídica (empresa, escola, laboratório)
-    const [cnpj, setCnpj] = useState("");
-    const [codigoInep, setCodigoInep] = useState("");
-
-    // 5. Status da requisição e validações
-    const [loading, setLoading] = useState(false);
-    const [mensagem, setMensagem] = useState("");
-    const [erro, setErro] = useState(false);
-
-    // Inicializamos o hook de navegação
     const navigate = useNavigate();
+    const { entrar } = useAuth();
+    const [tipo, setTipo] = useState("pessoa_fisica");
+    const [form, setForm] = useState(VAZIO);
+    const [erros, setErros] = useState({});
+    const [mensagem, setMensagem] = useState("");
+    const [enviando, setEnviando] = useState(false);
 
-    // 6. Função de Envio (POST)
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const pessoaFisica = tipo === "pessoa_fisica";
+    const tipoAtual = TIPOS.find((t) => t.valor === tipo);
 
-        if (loading) return;
+    const alterar = (campo, mascara) => (evento) => {
+        const valor = evento.target.type === "checkbox" ? evento.target.checked : evento.target.value;
+        setForm((atual) => ({ ...atual, [campo]: mascara ? mascara(valor) : valor }));
+    };
+
+    const enviar = async (evento) => {
+        evento.preventDefault();
+        setErros({});
         setMensagem("");
-        setErro(false);
 
-        // Validação de E-mail
-        if (email !== confirmarEmail) {
-            setErro(true);
-            setMensagem("Os e-mails não coincidem.");
+        if (form.senha !== form.confirmarSenha) {
+            setErros({ confirmarSenha: "As senhas não coincidem." });
             return;
         }
 
-        // Validação de Senha
-        if (senha !== confirmarSenha) {
-            setErro(true);
-            setMensagem("As senhas não coincidem.");
-            return;
-        }
-
-        const regexSenhaForte = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-        if (!regexSenhaForte.test(senha)) {
-            setErro(true);
-            setMensagem("Mínimo 8 caracteres: maiúsculas, minúsculas, números e símbolo (@$!%*?&).");
-            return;
-        }
-
-        setLoading(true);
-
-        const payload = {
-            nome, email, telefone, senha,
-            tipo_usuario: tipoPerfil,
+        const corpo = {
+            nome: form.nome,
+            email: form.email,
+            telefone: form.telefone,
+            senha: form.senha,
+            tipo_usuario: tipo,
             ...(pessoaFisica
-                ? { cpf, profissao, sexo: sexo === "" ? null : sexo === "Feminino", prestador_servico: prestador }
-                : { cnpj }),
-            ...(tipoPerfil === "escola" && { codigo_inep: codigoInep })
+                ? { cpf: form.cpf, profissao: form.profissao, sexo: form.sexo === "" ? null : form.sexo === "feminino", prestador_servico: form.prestador_servico }
+                : { cnpj: form.cnpj }),
+            ...(tipo === "escola" && { codigo_inep: form.codigo_inep }),
         };
 
+        setEnviando(true);
         try {
-            const data = await api('/usuario', { method: 'POST', body: payload, auth: false });
-
-            // Sucesso no Cadastro!
-            setMensagem("Cadastro realizado com sucesso!");
-            setErro(false);
-
-            // 1. Limpa os campos por segurança
-            setNome(""); setTelefone(""); setEmail(""); setConfirmarEmail(""); setSenha(""); setConfirmarSenha(""); setCPF(""); setCnpj(""); setCodigoInep(""); setProfissao(""); setSexo(""); setPrestador(false);
-
-            // 2. O backend devolve o token: auto-login
-            if (data?.token) {
-                entrar(data.token);
+            const dados = await api("/usuario", { method: "POST", body: corpo, auth: false });
+            entrar(dados.token);
+            navigate("/home", { replace: true });
+        } catch (e) {
+            if (e instanceof ApiError && e.status === 422) {
+                setErros(errosPorCampo(e));
+            } else {
+                setMensagem(e.message);
             }
-
-            // 3. Redireciona imediatamente para a home
-            navigate('/home');
-
-        } catch (error) {
-            setErro(true);
-            setMensagem(error instanceof ApiError ? error.message : "Erro ao realizar cadastro. Verifique os dados.");
         } finally {
-            setLoading(false);
+            setEnviando(false);
         }
     };
 
+    const entrada = (campo, props = {}) => (
+        <input id={campo} className="entrada" value={form[campo]} onChange={alterar(campo, props.mascara)} aria-invalid={Boolean(erros[campo])} {...{ ...props, mascara: undefined }} />
+    );
+
     return (
-        <div className="flex flex-col min-h-screen bg-white font-['Poppins',sans-serif] overflow-hidden">
-            <style
-                dangerouslySetInnerHTML={{
-                    __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
-        
-        .input-group label {
-          position: absolute;
-          top: -9px;
-          left: 10px;
-          background: white;
-          padding: 0 4px;
-          font-size: 11px;
-          color: #858585;
-          z-index: 10;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .input-group input {
-          width: 100%;
-          height: 42px;
-          border: 1.5px solid #d1d1d1;
-          padding: 0 15px;
-          outline: none;
-          font-family: 'Inter', sans-serif;
-          font-size: 14px;
-          font-weight: 500;
-          color: #333;
-          transition: border-color 0.3s;
-        }
-        .input-group input::placeholder {
-          font-family: 'Inter', sans-serif;
-          font-weight: 400;
-          color: #a3a3a3;
-        }
-        .input-group input:focus {
-          border-color: #3800df;
-        }
-        .btn-base {
-          width: 100%;
-          height: 42px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          text-transform: uppercase;
-          cursor: pointer;
-        }
-      `,
-                }}
+        <div className="auth">
+            <PainelMarca
+                titulo={
+                    <>
+                        Faça parte da <em>economia circular</em> da impressão 3D.
+                    </>
+                }
+                descricao="Escolha seu perfil: cada um libera ações diferentes. Empresas, escolas e laboratórios passam por uma verificação rápida do CNPJ antes de publicar."
             />
 
-            <section className="flex flex-col md:flex-row flex-1 border-b border-gray-100 min-h-screen">
+            <section className="auth__formulario">
+                <form className="auth__cartao auth__cartao--largo" onSubmit={enviar} noValidate>
+                    <span className="sobrelinha">Cadastro</span>
+                    <h1>Crie sua conta</h1>
+                    <p>{tipoAtual.ajuda}</p>
 
-                {/* ÁREA DO FORMULÁRIO */}
-                <div className="flex-[1.2] flex items-center justify-center p-4 md:p-6 lg:p-8">
-                    <form
-                        onSubmit={handleSubmit}
-                        className="w-full max-w-[550px] flex flex-col gap-3"
-                    >
-                        <div className="text-center mb-0">
-                            <h2 className="text-2xl font-bold text-black tracking-tight">CRIE SUA CONTA</h2>
-                            <p className="text-[#858585] text-[13px] mt-1">Preencha os dados abaixo para se cadastrar.</p>
+                    <div className="auth__campos">
+                        <div className="tipo-perfil" role="radiogroup" aria-label="Tipo de perfil">
+                            {TIPOS.map(({ valor, rotulo, icone: Icone }) => (
+                                <button key={valor} type="button" role="radio" aria-checked={tipo === valor} onClick={() => setTipo(valor)}>
+                                    <Icone size={20} aria-hidden="true" />
+                                    {rotulo}
+                                </button>
+                            ))}
                         </div>
 
-                        {/* SELETOR DE PERFIL */}
-                        <div className="w-full flex flex-col gap-1 mb-1 mt-1">
-                            <label className="text-[11px] font-bold text-[#3800df] uppercase tracking-wider pl-2">
-                                TIPO DE PERFIL
-                            </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 w-full border-[1.5px] border-[#d1d1d1] p-1 bg-[#f9f9f9] gap-1" role="radiogroup" aria-label="Tipo de perfil">
-                                {TIPOS_PERFIL.map((tipo) => (
-                                    <button
-                                        key={tipo.valor}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={tipoPerfil === tipo.valor}
-                                        onClick={() => setTipoPerfil(tipo.valor)}
-                                        className={`h-[34px] flex items-center justify-center font-bold text-[11px] uppercase tracking-wider transition-all duration-300 ${
-                                            tipoPerfil === tipo.valor
-                                                ? "bg-[#3800df] text-white shadow-sm"
-                                                : "text-[#858585] hover:text-black hover:bg-gray-100"
-                                        }`}
-                                    >
-                                        {tipo.rotulo}
-                                    </button>
-                                ))}
-                            </div>
-                            <p className="text-[11px] text-[#858585] pl-2">{TIPOS_PERFIL.find((t) => t.valor === tipoPerfil).ajuda}</p>
-                        </div>
-
-                        {/* GRID DOS CAMPOS */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
-                            <CustomInput label="NOME COMPLETO" placeholder="Digite seu nome..." value={nome} onChange={(e) => setNome(e.target.value)} />
-                            <CustomInput label="TELEFONE" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(maskTelefone(e.target.value))} />
-
-                            {/* E-MAILS DIVIDIDOS LADO A LADO */}
-                            <CustomInput label="EMAIL" placeholder="seu@email.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                            <CustomInput label="CONFIRME O EMAIL" placeholder="seu@email.com" type="email" value={confirmarEmail} onChange={(e) => setConfirmarEmail(e.target.value)} />
-
-                            {/* RENDERIZAÇÃO CONDICIONAL - ESTUDANTE */}
-                            <Collapse in={pessoaFisica} className="md:col-span-2" unmountOnExit>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 pt-1">
-                                    <CustomInput label="CPF" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCPF(maskCPF(e.target.value))} />
-                                    <CustomInput label="PROFISSÃO" placeholder="Sua área de atuação" value={profissao} onChange={(e) => setProfissao(e.target.value)} />
-
-                                    <div className="input-group relative w-full md:col-span-1">
-                                        <label>SEXO</label>
-                                        <Select
-                                            value={sexo}
-                                            onChange={(e) => setSexo(e.target.value)}
-                                            displayEmpty
-                                            variant="outlined"
-                                            className="w-full h-[42px] outline-none text-[14px] font-['Inter'] font-medium"
-                                            sx={{
-                                                "& .MuiOutlinedInput-notchedOutline": { border: "1.5px solid #d1d1d1", borderRadius: "0" },
-                                                "&:hover .MuiOutlinedInput-notchedOutline": { border: "1.5px solid #3800df" },
-                                                "&.Mui-focused .MuiOutlinedInput-notchedOutline": { border: "1.5px solid #3800df" },
-                                                borderRadius: "0",
-                                                fontFamily: "Inter, sans-serif"
-                                            }}
-                                        >
-                                            <MenuItem value="" disabled sx={{ fontFamily: "Inter", color: "#a3a3a3" }}>Selecione</MenuItem>
-                                            <MenuItem value="Masculino" sx={{ fontFamily: "Inter" }}>Masculino</MenuItem>
-                                            <MenuItem value="Feminino" sx={{ fontFamily: "Inter" }}>Feminino</MenuItem>
-                                        </Select>
-                                    </div>
-
-                                    <label className="flex items-center gap-2 text-[12px] font-bold text-[#555] cursor-pointer md:col-span-2">
-                                        <input type="checkbox" checked={prestador} onChange={(e) => setPrestador(e.target.checked)} className="w-4 h-4 accent-[#3800df]" />
-                                        Quero atender chamados de escolas como maker/voluntário
-                                    </label>
-                                </div>
-                            </Collapse>
-
-                            {/* RENDERIZAÇÃO CONDICIONAL - EMPRESA */}
-                            <Collapse in={!pessoaFisica} className="md:col-span-2" unmountOnExit>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 pt-1">
-                                    <CustomInput label="CNPJ" placeholder="00.000.000/0000-00" value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} />
-                                    {tipoPerfil === "escola" && (
-                                        <CustomInput label="CÓDIGO INEP" placeholder="8 dígitos" value={codigoInep} onChange={(e) => setCodigoInep(e.target.value.replace(/\D/g, "").slice(0, 8))} />
-                                    )}
-                                </div>
-                            </Collapse>
-
-                            <CustomInput label="SENHA" placeholder="••••••••" type="password" value={senha} onChange={(e) => setSenha(e.target.value)} />
-                            <CustomInput label="CONFIRME A SENHA" placeholder="••••••••" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} />
-                        </div>
-
-                        {/* MENSAGENS DE SUCESSO OU ERRO */}
-                        {mensagem && (
-                            <div className={`p-2 text-center font-bold text-xs ${erro ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                                {mensagem}
-                            </div>
+                        {!pessoaFisica && (
+                            <Aviso tom="info">
+                                Após o cadastro, a equipe confere o CNPJ{tipo === "escola" && " e o código INEP"}. Até lá, você navega normalmente, mas ainda não publica nem abre chamados.
+                            </Aviso>
                         )}
+                        {mensagem && <Aviso tom="perigo">{mensagem}</Aviso>}
 
-                        {/* BOTÕES */}
-                        <div className="w-full flex flex-col gap-2 mt-1 text-center">
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="btn-base bg-[#3800df] text-white hover:bg-[#2e00b8] transition-colors rounded-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? "ENVIANDO..." : "CADASTRAR"}
-                            </button>
+                        <div className="formulario-grade">
+                            <div className="inteiro">
+                                <Campo id="nome" rotulo={pessoaFisica ? "Nome completo" : "Nome da instituição"} erro={erros.nome}>
+                                    {entrada("nome", { autoComplete: pessoaFisica ? "name" : "organization" })}
+                                </Campo>
+                            </div>
+                            <Campo id="email" rotulo="E-mail" erro={erros.email}>
+                                {entrada("email", { type: "email", autoComplete: "email" })}
+                            </Campo>
+                            <Campo id="telefone" rotulo="Telefone" erro={erros.telefone}>
+                                {entrada("telefone", { mascara: mascaraTelefone, inputMode: "tel", placeholder: "(42) 99999-0000" })}
+                            </Campo>
 
-                            <p className="text-[12px] font-bold text-[#8a8a8a] uppercase tracking-widest mt-1">
-                                Já tem uma conta?{" "}
-                                <Link to="/" className="text-[#007aff] cursor-pointer hover:underline transition-all">
-                                    Voltar para login
-                                </Link>
-                            </p>
+                            {pessoaFisica ? (
+                                <>
+                                    <Campo id="cpf" rotulo="CPF" erro={erros.cpf}>
+                                        {entrada("cpf", { mascara: mascaraCpf, inputMode: "numeric", placeholder: "000.000.000-00" })}
+                                    </Campo>
+                                    <Campo id="sexo" rotulo="Sexo" erro={erros.sexo}>
+                                        <select id="sexo" className="entrada" value={form.sexo} onChange={alterar("sexo")} aria-invalid={Boolean(erros.sexo)}>
+                                            <option value="">Selecione</option>
+                                            <option value="feminino">Feminino</option>
+                                            <option value="masculino">Masculino</option>
+                                        </select>
+                                    </Campo>
+                                    <div className="inteiro">
+                                        <Campo id="profissao" rotulo="Profissão ou área de atuação" erro={erros.profissao}>
+                                            {entrada("profissao", { placeholder: "Ex.: estudante de Engenharia, técnico em impressão 3D" })}
+                                        </Campo>
+                                    </div>
+                                    <label className="caixa-selecao inteiro">
+                                        <input type="checkbox" checked={form.prestador_servico} onChange={alterar("prestador_servico")} />
+                                        <span>
+                                            <strong>Quero atender chamados como maker/voluntário.</strong>
+                                            <br />
+                                            <span className="texto-suave">Você verá os pedidos de escolas e empresas e poderá aceitá-los.</span>
+                                        </span>
+                                    </label>
+                                </>
+                            ) : (
+                                <>
+                                    <Campo id="cnpj" rotulo="CNPJ" erro={erros.cnpj}>
+                                        {entrada("cnpj", { mascara: mascaraCnpj, inputMode: "numeric", placeholder: "00.000.000/0000-00" })}
+                                    </Campo>
+                                    {tipo === "escola" && (
+                                        <Campo id="codigo_inep" rotulo="Código INEP" erro={erros.codigo_inep} ajuda="8 dígitos, no Censo Escolar.">
+                                            {entrada("codigo_inep", { mascara: (v) => v.replace(/\D/g, "").slice(0, 8), inputMode: "numeric" })}
+                                        </Campo>
+                                    )}
+                                </>
+                            )}
+
+                            <Campo id="senha" rotulo="Senha" erro={erros.senha} ajuda="Mínimo de 8 caracteres, com maiúscula, minúscula, número e símbolo.">
+                                {entrada("senha", { type: "password", autoComplete: "new-password" })}
+                            </Campo>
+                            <Campo id="confirmarSenha" rotulo="Confirme a senha" erro={erros.confirmarSenha}>
+                                {entrada("confirmarSenha", { type: "password", autoComplete: "new-password" })}
+                            </Campo>
                         </div>
-                    </form>
-                </div>
 
-                {/* ÁREA CINZA DINÂMICA (Fixa na Direita) */}
-                <div className="hidden md:flex flex-1 bg-[#e0e0e0] items-center justify-center text-center p-10">
-                    <h1 className="text-[45px] lg:text-[65px] font-bold text-black select-none tracking-tight leading-tight transition-all duration-300 ease-in-out">
-                        {TIPOS_PERFIL.find((t) => t.valor === tipoPerfil).titulo}
-                    </h1>
-                </div>
+                        <button type="submit" className="botao botao--grande botao--bloco" disabled={enviando}>
+                            {enviando ? "Criando conta..." : "Criar conta"} <ArrowRight size={18} aria-hidden="true" />
+                        </button>
+                    </div>
+
+                    <p className="auth__rodape">
+                        Já tem conta? <Link to="/">Entrar</Link>
+                    </p>
+                </form>
             </section>
         </div>
     );
