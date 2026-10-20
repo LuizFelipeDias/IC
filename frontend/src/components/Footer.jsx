@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUp, ArrowUpRight, Github, MapPin, MessageCircle } from "lucide-react";
 import Marca from "./Marca";
 
 const COLUNAS = [
@@ -32,30 +32,51 @@ const COLUNAS = [
     },
 ];
 
+const voltarAoTopo = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+/* Rodapé em três faixas: chamada para ação, colunas de links e barra legal. */
 export default function Footer() {
     return (
         <footer className="rodape">
             <div className="container">
-                <div className="rodape__chamada">
-                    <h2 className="rodape__titulo">
-                        Do resíduo à <span>nova peça</span>.
-                    </h2>
-                    <Link to="/doacoes" className="botao botao--grande">
-                        Doar resíduos <ArrowUpRight size={18} aria-hidden="true" />
-                    </Link>
-                </div>
+                <section className="rodape__chamada">
+                    <div>
+                        <span className="rodape__sobrelinha">Economia circular da impressão 3D</span>
+                        <h2 className="rodape__titulo">
+                            Do resíduo à <span>nova peça</span>.
+                        </h2>
+                    </div>
+                    <div className="rodape__acoes">
+                        <Link to="/doacoes" className="botao botao--grande">
+                            Doar resíduos <ArrowUpRight size={18} aria-hidden="true" />
+                        </Link>
+                        <Link to="/rastreio" className="botao botao--grande rodape__botao-claro">
+                            Rastrear um lote
+                        </Link>
+                    </div>
+                </section>
 
                 <div className="rodape__grade">
                     <div className="rodape__sobre">
-                        <Marca className="rodape__marca" />
+                        <Marca />
                         <p>
-                            Plataforma de economia circular para o ecossistema da impressão 3D: conecta makers, laboratórios,
-                            escolas públicas e empresas, e rastreia o filamento reciclado da doação ao laudo.
+                            Conecta makers, laboratórios, escolas públicas e empresas, e rastreia o filamento reciclado da doação ao laudo.
                         </p>
-                        <div className="rodape__ciclo" aria-label="Ciclo do material">
-                            {["Doação", "Coleta", "Reciclagem", "Filamento", "Nova peça"].map((etapa) => (
-                                <span key={etapa}>{etapa}</span>
-                            ))}
+                        <ul className="rodape__contato">
+                            <li>
+                                <MapPin size={16} aria-hidden="true" /> UEPG · Ponta Grossa, PR
+                            </li>
+                            <li>
+                                <MessageCircle size={16} aria-hidden="true" /> <a href="https://github.com/LuizFelipeDias/IC/issues" target="_blank" rel="noreferrer">Fale com a equipe</a>
+                            </li>
+                        </ul>
+                        <div className="rodape__sociais">
+                            <a href="https://github.com/LuizFelipeDias/IC" target="_blank" rel="noreferrer" aria-label="Repositório no GitHub">
+                                <Github size={18} aria-hidden="true" />
+                            </a>
+                            <a href="https://github.com/LuizFelipeDias/IC/issues" target="_blank" rel="noreferrer" aria-label="Abrir uma issue">
+                                <MessageCircle size={18} aria-hidden="true" />
+                            </a>
                         </div>
                     </div>
 
@@ -81,7 +102,12 @@ export default function Footer() {
 
                 <div className="rodape__base">
                     <span>© {new Date().getFullYear()} EcoHub 3D · PIBITI — Universidade Estadual de Ponta Grossa</span>
-                    <span>Feito para a economia circular da manufatura aditiva</span>
+                    <div className="rodape__legal">
+                        <span>Dados tratados conforme a LGPD</span>
+                        <button type="button" onClick={voltarAoTopo}>
+                            Voltar ao topo <ArrowUp size={14} aria-hidden="true" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </footer>
