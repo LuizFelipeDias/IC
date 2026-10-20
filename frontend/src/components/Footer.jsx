@@ -1,8 +1,15 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowUp, ArrowUpRight, Github, MapPin, MessageCircle } from "lucide-react";
+import { Github, MessageCircle } from "lucide-react";
 import Marca from "./Marca";
 
+/*
+ * Rodapé clonado do frame "footer" 113:7361 do arquivo Figma
+ * "Footers — a collection of sleek and versatile footer designs":
+ * fundo #122031, marca à esquerda, três colunas de links (385/615/845 px),
+ * botão laranja "Get In Touch" à direita e, embaixo, redes em círculos,
+ * contato sob um traço azul e o copyright alinhado à direita.
+ */
 const COLUNAS = [
     {
         titulo: "Plataforma",
@@ -11,15 +18,14 @@ const COLUNAS = [
             { para: "/noticias", rotulo: "Notícias" },
             { para: "/doacoes", rotulo: "Mural de doações" },
             { para: "/rastreio", rotulo: "Rastrear filamento" },
+            { para: "/ranking", rotulo: "Ranking de impacto" },
         ],
     },
     {
         titulo: "Participe",
         links: [
-            { para: "/cadastro/usuario", rotulo: "Criar conta" },
             { para: "/chamados", rotulo: "Chamados de escolas" },
             { para: "/vagas", rotulo: "Vagas" },
-            { para: "/ranking", rotulo: "Ranking de impacto" },
         ],
     },
     {
@@ -32,57 +38,20 @@ const COLUNAS = [
     },
 ];
 
-const voltarAoTopo = () => window.scrollTo({ top: 0, behavior: "smooth" });
+const ISSUES = "https://github.com/LuizFelipeDias/IC/issues";
 
-/* Rodapé em três faixas: chamada para ação, colunas de links e barra legal. */
 export default function Footer() {
     return (
         <footer className="rodape">
-            <div className="container">
-                <section className="rodape__chamada">
-                    <div>
-                        <span className="rodape__sobrelinha">Economia circular da impressão 3D</span>
-                        <h2 className="rodape__titulo">
-                            Do resíduo à <span>nova peça</span>.
-                        </h2>
-                    </div>
-                    <div className="rodape__acoes">
-                        <Link to="/doacoes" className="botao botao--grande">
-                            Doar resíduos <ArrowUpRight size={18} aria-hidden="true" />
-                        </Link>
-                        <Link to="/rastreio" className="botao botao--grande rodape__botao-claro">
-                            Rastrear um lote
-                        </Link>
-                    </div>
-                </section>
-
-                <div className="rodape__grade">
-                    <div className="rodape__sobre">
+            <div className="rodape__interno">
+                <div className="rodape__topo">
+                    <Link to="/home" className="rodape__marca" aria-label="EcoHub 3D — início">
                         <Marca />
-                        <p>
-                            Conecta makers, laboratórios, escolas públicas e empresas, e rastreia o filamento reciclado da doação ao laudo.
-                        </p>
-                        <ul className="rodape__contato">
-                            <li>
-                                <MapPin size={16} aria-hidden="true" /> UEPG · Ponta Grossa, PR
-                            </li>
-                            <li>
-                                <MessageCircle size={16} aria-hidden="true" /> <a href="https://github.com/LuizFelipeDias/IC/issues" target="_blank" rel="noreferrer">Fale com a equipe</a>
-                            </li>
-                        </ul>
-                        <div className="rodape__sociais">
-                            <a href="https://github.com/LuizFelipeDias/IC" target="_blank" rel="noreferrer" aria-label="Repositório no GitHub">
-                                <Github size={18} aria-hidden="true" />
-                            </a>
-                            <a href="https://github.com/LuizFelipeDias/IC/issues" target="_blank" rel="noreferrer" aria-label="Abrir uma issue">
-                                <MessageCircle size={18} aria-hidden="true" />
-                            </a>
-                        </div>
-                    </div>
+                    </Link>
 
                     {COLUNAS.map((coluna) => (
-                        <nav key={coluna.titulo} aria-label={coluna.titulo}>
-                            <h3>{coluna.titulo}</h3>
+                        <nav key={coluna.titulo} className="rodape__coluna" aria-label={coluna.titulo}>
+                            <h2>{coluna.titulo}</h2>
                             <ul>
                                 {coluna.links.map((link) => (
                                     <li key={link.rotulo}>
@@ -98,16 +67,34 @@ export default function Footer() {
                             </ul>
                         </nav>
                     ))}
+
+                    <a href={ISSUES} target="_blank" rel="noreferrer" className="rodape__contato-botao">
+                        Fale com a equipe
+                    </a>
                 </div>
 
                 <div className="rodape__base">
-                    <span>© {new Date().getFullYear()} EcoHub 3D · PIBITI — Universidade Estadual de Ponta Grossa</span>
-                    <div className="rodape__legal">
-                        <span>Dados tratados conforme a LGPD</span>
-                        <button type="button" onClick={voltarAoTopo}>
-                            Voltar ao topo <ArrowUp size={14} aria-hidden="true" />
-                        </button>
+                    <div className="rodape__redes">
+                        <a href="https://github.com/LuizFelipeDias/IC" target="_blank" rel="noreferrer" aria-label="Repositório no GitHub">
+                            <Github size={16} aria-hidden="true" />
+                        </a>
+                        <a href={ISSUES} target="_blank" rel="noreferrer" aria-label="Abrir uma issue">
+                            <MessageCircle size={16} aria-hidden="true" />
+                        </a>
                     </div>
+
+                    <div className="rodape__contato">
+                        <span>UEPG · Ponta Grossa, PR</span>
+                        <a href="https://github.com/LuizFelipeDias/IC" target="_blank" rel="noreferrer">
+                            github.com/LuizFelipeDias/IC
+                        </a>
+                    </div>
+
+                    <p className="rodape__direitos">
+                        © {new Date().getFullYear()} — EcoHub 3D
+                        <br />
+                        PIBITI · Universidade Estadual de Ponta Grossa
+                    </p>
                 </div>
             </div>
         </footer>

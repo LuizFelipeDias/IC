@@ -65,7 +65,7 @@ export default function Nav() {
                 </div>
 
                 <div className="nav__acoes">
-                    <Link to="/rastreio" className="botao botao--fantasma botao--pequeno" title="Rastrear lote por QR Code">
+                    <Link to="/rastreio" className="nav__circulo" title="Rastrear lote por QR Code">
                         <QrCode size={16} aria-hidden="true" />
                         <span className="sr-only">Rastrear lote</span>
                     </Link>
@@ -108,19 +108,19 @@ export default function Nav() {
                     )}
 
                     {!usuario && (
-                        <Link to="/" className="botao botao--pequeno">
+                        <Link to="/" className="nav__botao">
                             Entrar
                         </Link>
                     )}
 
                     <button
                         type="button"
-                        className="botao botao--fantasma botao--pequeno nav__hamburguer"
+                        className="nav__circulo nav__hamburguer"
                         aria-label={linksAbertos ? "Fechar menu" : "Abrir menu"}
                         aria-expanded={linksAbertos}
                         onClick={() => setLinksAbertos((aberto) => !aberto)}
                     >
-                        {linksAbertos ? <X size={18} /> : <Menu size={18} />}
+                        {linksAbertos ? <X size={16} /> : <Menu size={16} />}
                     </button>
                 </div>
             </nav>
