@@ -1,32 +1,34 @@
 # EcoHub 3D — Relatório técnico: diagnóstico, banco de dados, permissões e roadmap
 
-> **Versão 2 (outubro/2026).** Substitui a versão 1, que está no histórico do Git (commit `c64fded`).
-> **Artefatos analisados:** repositório (branch `claude/ecstatic-noether-5miksl`), *Requisitos Plataforma Eco Hub 3d — Adapta One (outubro/2026)* e o script DDL PostgreSQL do banco em uso (`script.sql`).
+> **Versão 3 (outubro/2026).** Substitui a versão 2 (commit `7936a2c`); as versões anteriores estão no histórico do Git.
+> **Artefatos analisados:** repositório (branch `Claude-Branch`), *Requisitos Plataforma Eco Hub 3d — Adapta One (outubro/2026)* e o script DDL PostgreSQL do banco em uso (`script.sql`).
 > **Como foi verificado:**
-> - O DDL foi carregado num PostgreSQL 16 e comparado com o esquema gerado pelas migrations (diff de `information_schema` e `pg_constraint`): **idêntico em 103 itens** (colunas, tipos, defaults, identity, constraints, FKs e triggers).
+> - O DDL foi carregado num PostgreSQL 16 e comparado com o esquema gerado pelas migrations (diff de `information_schema` e `pg_constraint`): **idêntico em 103 itens**.
 > - As migrations novas rodaram sobre uma **cópia do banco legado com dados**, sem perda de registros.
-> - A suíte de testes (**73 testes de API**, 281 asserções) passa em **PostgreSQL e SQLite**; o frontend tem 12 testes Vitest.
-> - Os fluxos de cada perfil foram percorridos num navegador real (Chromium headless).
+> - A suíte de **100 testes de API** (447 asserções) passa em **PostgreSQL e SQLite**; o frontend tem 12 testes Vitest.
+> - As 22 telas foram percorridas com cada perfil num navegador real (Chromium headless), em 1440 px e 390 px.
+> - Os diagramas UML, o modelo de dados e o mapa de telas estão no Figma e exportados em [`docs/diagramas/`](diagramas/).
 
 ---
 
 ## Sumário executivo
 
-| Indicador | Commit inicial (`2ba4c42`) | Agora |
-| :--- | :--- | :--- |
-| Rotas de API protegidas por autenticação | 1 de 25 | 44 de 55 (as 11 públicas são login, cadastro, leitura de vagas/notícias/projetos/reações, ranking e rastreio) |
-| Controle de acesso por perfil | Inexistente (só triggers no banco) | Middleware `perfil` + 6 Policies (sobre 2 bases abstratas) + CHECKs/triggers no banco |
-| Esquema versionado em migrations | 2 tabelas de infraestrutura | 18 migrations; esquema legado reproduzido 1:1 e evoluído sem perda de dados |
-| Testes automatizados | 0 | 73 (API, PostgreSQL e SQLite) + 12 (frontend) + CI |
-| Módulos dos requisitos com backend | ~1,5 de 6 | 4,5 de 6 (ver §2.3) |
-| Funcionalidades sugeridas com base de dados | 0 | Rastreabilidade (QR), laudos, gamificação e moderação |
+| Indicador | Commit inicial (`2ba4c42`) | Versão 2 | Agora (v3) |
+| :--- | :--- | :--- | :--- |
+| Rotas de API | 25 (1 protegida) | 55 (44 protegidas) | **83** (70 protegidas; as públicas são login, cadastro, leituras de conteúdo publicado, polímeros, ranking, rastreio e o download assinado) |
+| Controle de acesso | Inexistente | Middleware + 6 Policies + banco | Middleware `perfil` + **13 Policies** + CHECKs/triggers + **verificação de instituições** |
+| Migrations | 2 | 18 | **21** |
+| Testes automatizados | 0 | 73 + 12 | **100** (API, PostgreSQL e SQLite) + 12 (frontend) + CI |
+| Módulos dos requisitos com API e tela | ~1,5 de 6 | 2 de 6 | **5 de 6** (falta o Hub de conexão, §2.3) |
+| Uploads | — | Inexistente | STL, 3MF, imagens e PDF de laudo validados pelo **conteúdo**, disco privado, hash, antivírus em fila e URL assinada |
+| Idioma da API | inglês | inglês | **português** (validação, autenticação e erros) |
+| Frontend | páginas estáticas | 3 telas integradas | **22 telas** integradas, design system próprio em CSS puro |
 
-**Riscos que continuam abertos** (detalhados em §7):
-- não há upload de arquivos STL/3MF nem dos PDFs de laudo;
-- as mensagens de validação estão em inglês;
-- doações, coletas e lotes já têm tabelas, mas ainda não têm endpoints de cadastro;
-- empresas não são verificadas (qualquer um pode se declarar empresa);
-- usuários legados sem e-mail não conseguem fazer login.
+**Riscos que continuam abertos** (detalhados em §1.4 e §7):
+- usuários legados sem e-mail não conseguem fazer login;
+- o antivírus vem desligado por padrão (`ANTIVIRUS_DRIVER=nenhum`); em produção é preciso subir o ClamAV e um *worker* de fila;
+- não existe ainda o módulo 6 (Hub de conexão), nem mapa (PostGIS), marketplace ou painel de impacto;
+- API sem versionamento (`/api/v1`) nem OpenAPI.
 
 ---
 
@@ -40,8 +42,8 @@
 | Integridade de dados | 🟢 | CHECKs, FKs com `ON DELETE` definido, UNIQUEs e triggers no PostgreSQL; validação espelhada nos FormRequests. |
 | Testabilidade | 🟢 | Factories com estados por perfil (`escola()`, `laboratorio()`, `prestador()`, `moderador()`), CI em dois bancos. |
 | Consistência de API | 🟡 | Resources, paginação e 204/422/403/409 padronizados; ainda sem versionamento (`/api/v1`) nem documentação OpenAPI. |
-| Frontend | 🟡 | Login, cadastro, home, vagas e chamados integrados à API; notícias, projetos e currículo ainda usam dados fixos. |
-| Cobertura dos requisitos | 🟡 | Ver §2.3. |
+| Frontend | 🟢 | 22 telas integradas à API, design system em CSS puro (tokens, componentes, layout), guardas de rota por perfil, *lazy loading*. |
+| Cobertura dos requisitos | 🟢 | 5 de 6 módulos com banco, API e tela; ver §2.3. |
 
 ### 1.2 Funções, rotas e regras de negócio operacionais
 
@@ -95,6 +97,32 @@ O contato (e-mail e telefone) do solicitante e do prestador aparece só para os 
 | :--- | :--- | :--- |
 | `GET /api/rastreio/{codigo}` | público, 60/min | Página do **QR Code**: polímero, dados técnicos, laboratório, origem agregada (doações, peso reciclado, tipos, cidades), linha do tempo e laudos, **sem dados pessoais**. Código ULID não enumerável. |
 | `GET /api/ranking?tipo=` | público | Top 20 por pontos, com selos e sem contato. |
+| `GET /api/polimeros` | público | Catálogo (PLA, PETG, ABS, PET, TPU, PP) com faixa de extrusão; cache de 1 h guardado como *array*. |
+| `GET/POST/PUT/DELETE /api/doacao` · `/doacao/minhas` · `POST /doacao/{id}/fotos` | autenticado | Qualquer usuário doa resíduo ou filamento (tipo, polímero, peso, cor, cidade/UF). Só o doador edita ou exclui, e só enquanto está "disponível". Fotos re-codificadas em WebP. |
+| `POST /api/doacao/{id}/coletas` | **receptor** (laboratório verificado) | Solicita a coleta (modalidade coleta ou entrega). Índice único parcial: uma solicitação ativa por doação. |
+| `POST /api/coleta/{id}/aceitar` · `/recusar` | doador | Aceita (com data opcional; a doação passa a "reservada") ou recusa com motivo. |
+| `POST /api/coleta/{id}/agendar` · `/concluir` | doador ou laboratório (agendar) · laboratório (concluir) | Agenda; conclui com o **peso real recebido**, marca a doação como "coletada" e concede **30 pontos** ao laboratório e **15** ao doador. |
+| `POST /api/coleta/{id}/cancelar` | qualquer das partes | Cancela e devolve a doação ao mural. |
+| `GET/POST /api/lote` · `PATCH /lote/{id}` | receptor | Cria o lote a partir de coletas **próprias, concluídas, do mesmo polímero e com saldo**; código ULID para o QR. Transições controladas: em processamento → aguardando laudo; aprovado → distribuído. |
+| `POST /api/lote/{id}/eventos` | receptor | Linha do tempo (triturado, extrudado, enviado, utilizado). |
+| `POST /api/lote/{id}/laudos` | receptor | Laudo com medidas (diâmetro, ovalidade, tração, alongamento, temperatura, umidade) e **PDF obrigatório**; o resultado define o status do lote (aprovado/reprovado). Lote distribuído não recebe laudo (409). |
+
+#### Uploads e anexos
+| Rota | Acesso | Regra |
+| :--- | :--- | :--- |
+| `POST /api/projeto/{id}/anexos` | autor ou moderador, 30/min | Até 5 modelos (STL/3MF) e 8 imagens por projeto. O conteúdo é conferido (§7.2), o volume e as dimensões são extraídos e gravados em `metadados`. Se o autor não é moderador, o projeto volta para revisão. |
+| `GET /api/anexo/{id}/link` | quem pode ver o dono do anexo | Gera uma URL **assinada e temporária** (10 min). |
+| `GET /api/anexo/{id}/arquivo` | assinatura válida | Entrega o arquivo do disco privado com o nome original. |
+| `DELETE /api/anexo/{id}` | quem enviou ou moderador | Remove o registro e o arquivo. |
+
+#### Verificação de instituições
+| Rota | Acesso | Regra |
+| :--- | :--- | :--- |
+| `POST /api/usuario` (PJ) | público | Empresa, escola e laboratório nascem com `verificacao_status = pendente`: entram e navegam, mas **não ganham nenhum perfil institucional** (solicitante, contratante, publicador, receptor; prestador para laboratório). CPF e CNPJ têm os dígitos verificadores conferidos. |
+| `PATCH /api/usuario/me` | autenticado | Trocar CNPJ ou INEP volta a conta para "pendente". |
+| `GET /api/moderacao/instituicoes` | **moderador** | Fila de verificação (filtro por status). |
+| `GET /api/moderacao/instituicoes/{id}/cnpj` | moderador | Consulta a Receita pela BrasilAPI (razão social, situação, CNAE); 502 se o serviço estiver fora. |
+| `POST /api/moderacao/instituicoes/{id}/verificacao` | moderador | Verifica ou rejeita (motivo obrigatório); registra quem decidiu e quando. |
 
 ### 1.3 Padrões de código em uso
 
@@ -111,17 +139,16 @@ O contato (e-mail e telefone) do solicitante e do prestador aparece só para os 
 
 ### 1.4 Dívidas técnicas e inconsistências que permanecem
 
+Resolvidas nesta versão: uploads, endpoints da economia circular, mensagens em português, verificação de instituições, telas com dados fixos e a mistura de MUI/Emotion/Tailwind.
+
 | Severidade | Dívida | Encaminhamento |
 | :---: | :--- | :--- |
-| Alta | Sem upload de STL/3MF e de PDFs de laudo (§7.2). | Próximo commit planejado (§6.2). |
-| Alta | Doações, coletas, lotes e laudos não têm endpoints de escrita; o rastreio já lê. | §6.2. |
-| Média | Mensagens de validação em inglês. | `laravel-lang/lang` ou `lang/pt_BR/validation.php`. |
-| Média | Telas de Notícias, Projetos, Currículo e Visualização usam dados fixos. | Ligar à API já existente (`/noticia`, `/projeto`, `/curriculo`). |
-| Média | Qualquer pessoa pode se cadastrar como empresa ou laboratório e ganhar os perfis correspondentes. | Verificação de CNPJ/INEP (consulta à Receita/INEP ou aprovação por moderador) antes de liberar os perfis. |
 | Média | Usuários legados com `email` nulo não conseguem logar. | `SELECT id, nome FROM usuario WHERE email IS NULL;` e completar manualmente. |
-| Baixa | Convenção mista de nomes de tabela (`usuario`/`curriculo` no singular, demais no plural). | Mantida para não quebrar o banco em uso; renomear só numa janela de manutenção. |
-| Baixa | MUI e Emotion convivem com Tailwind; alguns `<style dangerouslySetInnerHTML>` restantes. | Trocar por Tailwind + lucide-react/Radix. |
+| Média | Antivírus desligado por padrão; sem *worker*, o job `VerificarAnexo` não roda. | Produção: `ANTIVIRUS_DRIVER=clamav` e `php artisan queue:work` (Supervisor ou Horizon). |
+| Média | Polímeros aceitos e capacidade por laboratório ainda não são cadastrados. | Tabela `laboratorio_polimeros` e filtro no mural de doações. |
+| Baixa | Convenção mista de nomes de tabela (`usuario`/`curriculo` no singular, demais no plural). | Mantida para não quebrar o banco em uso. |
 | Baixa | API sem versionamento e sem OpenAPI. | `dedoc/scramble` + prefixo `/api/v1` quando houver cliente externo (app mobile). |
+| Baixa | Estado de servidor com `useState`/`useEffect` em cada página. | TanStack Query quando houver cache e revalidação entre telas. |
 
 ---
 
@@ -187,12 +214,14 @@ erDiagram
 
 | Módulo | Banco | API | Tela | O que falta |
 | :--- | :---: | :---: | :---: | :--- |
-| 1. Doação de makers | ✅ | ❌ | ❌ | CRUD de doações com fotos e geolocalização do CEP. |
-| 2. Receptores e reciclagem | ✅ | 🟡 (rastreio) | ❌ | Polímeros aceitos e capacidade por laboratório (`laboratorio_polimeros`), fluxo de solicitação e agendamento, criação de lotes e eventos. |
-| 3. Repositório de projetos | 🟡 | 🟡 | ❌ | Arquivos STL/3MF com validação, instruções de impressão (`jsonb`), visualizador 3D. |
-| 4. Pedidos de escolas | ✅ | ✅ | ✅ | Índice de vulnerabilidade (INSE/IDEB pelo INEP) para priorizar, sugestão automática de prestadores. |
-| 5. Banco de currículos | 🟡 | ✅ | 🟡 | Especialidades estruturadas, portfólio de peças, busca por filtros. |
+| 1. Doação de makers | ✅ | ✅ | ✅ | Geolocalização pelo CEP e mapa. |
+| 2. Receptores e reciclagem | ✅ | ✅ | ✅ | Polímeros aceitos e capacidade por laboratório (`laboratorio_polimeros`). |
+| 3. Repositório de projetos | ✅ | ✅ | ✅ | Instruções de impressão estruturadas (`jsonb`) e visualizador 3D (three.js). |
+| 4. Pedidos de escolas | ✅ | ✅ | ✅ | Índice de vulnerabilidade (INSE/IDEB) para priorizar e sugestão automática de prestadores. |
+| 5. Banco de currículos | 🟡 | ✅ | ✅ | Especialidades estruturadas, portfólio de peças, busca por filtros. |
 | 6. Hub de conexão | ❌ | ❌ | ❌ | `anuncios` (demanda/oferta), `anuncio_interesses`, mensagens e notificações. |
+
+Funcionalidades sugeridas já entregues: **rastreabilidade por QR**, **controle de qualidade com laudo**, **gamificação** (pontos, selos, ranking), **curadoria** (moderação e denúncias) e **verificação de instituições**.
 
 **Funcionalidades sugeridas ainda sem tabela:**
 - marketplace: `impressoras`, `orcamentos`, `pedidos_servico`, `avaliacoes`;
@@ -212,22 +241,24 @@ As colunas detalhadas estão na versão 1 deste relatório.
 
 | Elemento | Situação | Qualidade |
 | :--- | :--- | :---: |
-| **Controllers** (12) | Finos: validam, autorizam (`Gate::authorize`) e delegam. As regras transversais ficam nos Services. `ChamadoController::aceitar` trata concorrência com lock pessimista. | 🟢 |
-| **Models** (18) | Relacionamentos completos, enums com cast, `$attributes` com os defaults do banco, trait `Moderavel`, *scopes* (`visiveisPara`, `publicados`). `Model::shouldBeStrict()` em desenvolvimento. | 🟢 |
-| **Requests** (7) | Espelham as constraints do banco (CPF/CNPJ/INEP condicionais, enums, `after_or_equal:today`). `CandidaturaController` e `CurriculoController` ainda validam inline em parte. | 🟢 |
-| **Migrations** (18) | Linha de base idempotente que reproduz o DDL; evoluções com `down()` testado (rollback/migrate); CHECKs só no PostgreSQL. | 🟢 |
-| **Rotas** | API agrupada por perfil; web só com `/` e `/up`. Falta versionamento `/api/v1`. | 🟡 |
-| **Resources** (9) | Perfil público e privado separados; contato condicionado ao envolvimento; rastreio sem dados pessoais. | 🟢 |
+| **Controllers** (19) | Finos: validam, autorizam (`Gate::authorize`) e delegam. Transições de estado (chamado, coleta, lote) em transação; `aceitar` com lock pessimista. | 🟢 |
+| **Models** (18 + `AnexoDocumento` polimórfico) | Relacionamentos completos, enums com cast, `$attributes` com os defaults do banco, trait `Moderavel`, *scopes*, *morph map* curto. `Model::shouldBeStrict()` em desenvolvimento. | 🟢 |
+| **Requests** (10) e **Rules** (4) | Espelham as constraints do banco; `Cpf`, `Cnpj`, `ModeloImpressao3d` e `LaudoPdf` validam conteúdo, não só extensão; `LoteRequest::after()` confere posse, status, polímero e saldo das coletas. | 🟢 |
+| **Migrations** (21) | Linha de base idempotente que reproduz o DDL; evoluções com `down()` testado; CHECKs só no PostgreSQL e com `NOT VALID` onde há legado. | 🟢 |
+| **Rotas** | 83 rotas agrupadas por perfil; padrões globais para `{id}` e padrão ULID no rastreio; *rate limiters* nomeados (`uploads`, login, cadastro). Falta `/api/v1`. | 🟡 |
+| **Resources** (13), **Policies** (13), **Services** (6), **Contracts** (2), **Jobs** (1) | Público × privado; contato só após aceite; `ConsultaCnpj` e `AntivirusScanner` como interfaces com implementação trocável por configuração. | 🟢 |
+| **Idioma** | `lang/pt_BR` (validation, auth, passwords, pagination) + `pt_BR.json`; 401/404 em português. | 🟢 |
 
-### 3.2 Frontend (React 19 + Vite + Tailwind)
+### 3.2 Frontend (React 19 + Vite + CSS puro)
 
 | Aspecto | Situação | Próximo passo |
 | :--- | :--- | :--- |
-| Componentização | `Nav`, `Footer`, `RequirePerfil`; páginas novas (`Chamados`, `CadastroVaga`) com subcomponentes locais. Páginas antigas ainda monolíticas (300–600 linhas). | Extrair `shared/ui` (Button, Input, Select, Badge, Card, EmptyState). |
-| Estado | `AuthContext` com usuário, perfis e `pode()`; estado de servidor com `useState`/`useEffect`. | TanStack Query para cache e revalidação. |
-| Consumo da API | Cliente único `services/api.js` (token, 401 encerra a sessão, 422 por campo, erro de rede). Sem URL fixa no código. | Gerar o cliente a partir do OpenAPI. |
-| Tailwind | Cor de marca como *token* (`brand`); páginas novas sem CSS injetado. | Remover MUI/Emotion e os `<style>` restantes. |
-| Páginas e rotas | Rotas em minúsculas, *lazy loading* (bundle inicial de 243 kB), 404 → login, guardas por perfil. | Rotas de detalhe com `:id` (`/noticias/:id`). |
+| Componentização | `components/ui.jsx` (Campo, Chip, Aviso, Vazio, Carregando, Diálogo, CabeçalhoPágina), `Nav`, `Footer`, `AppLayout`, `RegistroLayout`, `RequirePerfil`, `Curadoria`, `QrCode`. Páginas por módulo em `pages/<Modulo>/`. | Mover para `features/` quando houver mais de ~30 telas (§5.2). |
+| Estilo | Design system em **CSS puro**: `tokens.css` (cores, fontes, espaços, raios, sombras), `base.css`, `componentes.css`, `layout.css` e um arquivo por página. Sem Tailwind, MUI ou Emotion. Dependências de execução: `react`, `react-router-dom`, `lucide-react`, `qrcode`. | — |
+| Estado | `AuthContext` com usuário, perfis e `pode()`; estado de servidor local em cada página. | TanStack Query. |
+| Consumo da API | Cliente único `services/api.js`: token, 401 encerra a sessão, 422 por campo, `FormData` para uploads, `query()` e `baixarAnexo()` (link assinado). | Gerar o cliente a partir do OpenAPI. |
+| Rotas | Rotas em minúsculas com `:id`, *lazy loading* (bundle inicial de 259 kB, 84 kB gzip), endereços antigos redirecionados, rastreio público fora do login. | — |
+| Referências visuais | Login e cadastro: *Register Page for Web*; Home: *Modern Product Launch*; Notícias: *New York Times News Portal*; Projetos: *Personal Portfolio*; Chamados: *Squarespace* + *Mockfit*; Nav e rodapé: *Web Footer Templates*. | Ver nota sobre arquivos da Comunidade no README (§ Telas). |
 
 ---
 
@@ -242,11 +273,12 @@ As colunas detalhadas estão na versão 1 deste relatório.
 
 | Perfil | Quem tem | O que libera |
 | :--- | :--- | :--- |
-| `solicitante` | escola, empresa ("Escola" ou "CNPJ") | criar e acompanhar chamados |
-| `prestador` | laboratório; pessoa física com `prestador_servico` | ver chamados abertos, **escolher o local de atendimento**, aceitar e concluir |
-| `contratante` | empresa, escola, laboratório ("CNPJ/Instituição") | publicar vagas e gerir candidatos |
+| `solicitante` | escola ou empresa **verificada** ("Escola" ou "CNPJ") | criar e acompanhar chamados |
+| `prestador` | laboratório verificado; pessoa física com `prestador_servico` | ver chamados abertos, **escolher o local de atendimento**, aceitar e concluir |
+| `contratante` | empresa, escola ou laboratório **verificados** ("CNPJ/Instituição") | publicar vagas e gerir candidatos |
 | `candidato` | pessoa física | candidatar-se a vagas |
-| `publicador` | pessoa jurídica ou moderador | publicar notícias (sujeitas a moderação) |
+| `publicador` | pessoa jurídica **verificada** ou moderador | publicar notícias (sujeitas a moderação) |
+| `receptor` | laboratório **verificado** | solicitar coletas, criar lotes, registrar eventos e emitir laudos |
 | `moderador` | `papel` moderador ou admin | aprovar e rejeitar conteúdo, resolver denúncias, ver todos os chamados |
 
 ### 4.2 Matriz de permissões
@@ -265,7 +297,12 @@ As colunas detalhadas estão na versão 1 deste relatório.
 | Editar ou excluir notícia/projeto | autor | autor | autor | autor | autor | ✅ | |
 | Moderar e resolver denúncias | | | | | | ✅ (exceto o próprio) | |
 | Consultar banco de currículos | o próprio | o próprio | ✅ | o próprio | o próprio | o próprio | |
+| Doar resíduo e acompanhar coletas | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Solicitar coleta, criar lote, emitir laudo | | | | | ✅ | | |
+| Verificar instituições | | | | | | ✅ | |
 | Rastreio por QR Code e ranking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+> Em todas as colunas de instituição, as ações só valem depois que um moderador **verifica** o CNPJ/INEP. Enquanto a conta está pendente ou rejeitada, ela age como visitante autenticado (lê, doa, envia projeto e denuncia).
 
 ### 4.3 Onde cada regra é aplicada (defesa em camadas)
 
@@ -287,18 +324,24 @@ As colunas detalhadas estão na versão 1 deste relatório.
 
 ```
 backend/app/
-├── Enums/                 # valores de domínio (TipoUsuario, Perfil, StatusChamado...) — espelhados por CHECK
+├── Contracts/             # interfaces de fronteira: AntivirusScanner, ConsultaCnpj
+├── Enums/                 # valores de domínio (TipoUsuario, Perfil, StatusColeta...) — espelhados por CHECK
 ├── Http/
-│   ├── Controllers/       # finos; um por recurso (+ RastreioController, RankingController invocáveis)
+│   ├── Controllers/       # finos; um por recurso (+ Rastreio, Ranking, VerificacaoInstituicao)
 │   ├── Middleware/
 │   │   └── GarantePerfil.php   # RBAC por rota: ->middleware('perfil:solicitante,prestador')
 │   ├── Requests/          # validação espelhando as constraints do banco
 │   └── Resources/         # contrato JSON (público × privado)
+├── Jobs/                  # VerificarAnexo (antivírus em fila)
 ├── Models/
 │   └── Concerns/          # traits de domínio (Moderavel)
 ├── Policies/              # regras por registro (dono, status, moderação)
-├── Services/              # regras transversais (ModeracaoService, GamificacaoService)
-└── Providers/             # rate limiters, morph map, padrões de rota
+├── Rules/                 # Cpf, Cnpj, ModeloImpressao3d, LaudoPdf
+├── Services/              # ModeracaoService, GamificacaoService, BrasilApiConsultaCnpj
+│   └── Anexos/            # ArmazenamentoAnexos, ClamAvScanner, SemAntivirus
+├── Support/               # utilitários puros: Documento (CPF/CNPJ), Arquivos/ (Modelo3d, Pdf, MetricasMalha)
+└── Providers/             # rate limiters, morph map, padrões de rota, bindings dos Contracts
+lang/pt_BR/                # validation, auth, passwords, pagination (+ pt_BR.json)
 ```
 
 **Próximo passo de escala**, quando os módulos 1, 2 e 6 entrarem (com mais de ~20 controllers):
@@ -364,26 +407,35 @@ frontend/src/
 | 18 | `ce5ce75 ci: executa os testes do backend também em PostgreSQL 16` | CI em dois bancos |
 | 19 | `705ab1f perf(db): indexa as colunas de chave estrangeira...` | Índices |
 
+### 6.1b Executados na branch `Claude-Branch` (versão 3)
+
+| # | Commit | O que entrega |
+| :-: | :--- | :--- |
+| 20 | `7936a2c docs: relatório técnico v2...` | Relatório v2 |
+| 21 | `4a2dd75 docs: reescreve o README...` | README acadêmico |
+| 22 | `0ef6da7 feat(i18n): mensagens de validação e de erro da API em português` | pt-BR |
+| 23 | `3589387 feat(auth): valida dígitos verificadores de CPF e CNPJ...` | Documentos válidos |
+| 24 | `f5edb9c feat(auth): verificação de empresas, escolas e laboratórios por moderadores` | Verificação |
+| 25 | `fe00524 feat(uploads): modelos STL/3MF, imagens e PDFs com validação por conteúdo` | Uploads seguros |
+| 26 | `fc90819 feat(economia-circular): doações, coletas, lotes de filamento e laudos` | Módulos 1 e 2 |
+| 27 | `88efcb3 chore(seed): dados de demonstração realistas em português` | Seed |
+| 28 | `c9338dc fix(cache): catálogo de polímeros em cache como array` | Correção + teste de regressão |
+| 29 | `0ab1d59 feat(frontend): repaginação completa com design system em CSS puro` | 22 telas |
+| 30–33 | `1b3594d` · `7155033` · `3b5e407` · `21d8f6a` | Login/cadastro, portfólio de projetos, nav/rodapé, painel de chamados |
+| 34 | `5e4a95c docs: diagramas UML, banco de dados e mapa de telas feitos no Figma` | Diagramas |
+
 ### 6.2 Próximos commits sugeridos (na ordem)
 
-1. `feat(i18n): traduz mensagens de validação para pt-BR`
-2. `feat(uploads): adiciona regras de validação de STL, 3MF e PDF por assinatura de arquivo`
-3. `feat(uploads): armazena anexos em disco privado com hash e URL temporária`
-4. `feat(jobs): verifica anexos com ClamAV e extrai volume e dimensões de modelos 3D`
-5. `feat(doacoes): CRUD de doações com fotos e geolocalização por CEP`
-6. `feat(db): adiciona polímeros aceitos e capacidade por laboratório`
-7. `feat(coletas): fluxo de solicitação, aceite, agendamento e conclusão de coleta`
-8. `feat(lotes): cria lotes a partir de coletas e registra eventos da linha do tempo`
-9. `feat(laudos): emissão de laudo com PDF e liberação do lote`
-10. `feat(frontend): página pública de rastreio com leitura de QR Code`
-11. `feat(gamificacao): pontua coletas concluídas e doações entregues`
-12. `feat(frontend): integra notícias, projetos e currículo à API`
-13. `feat(auth): verificação de CNPJ/INEP antes de liberar perfis institucionais`
-14. `feat(db): adiciona PostGIS e consulta por raio para o mapa interativo`
-15. `feat(hub): mural de demandas e ofertas com manifestação de interesse`
-16. `feat(marketplace): perfis de impressoras, orçamento automático e avaliações`
-17. `feat(impacto): agrega métricas diárias e expõe o painel socioambiental`
-18. `refactor(api): versiona rotas em /api/v1 e publica OpenAPI com Scramble`
+1. `feat(db): adiciona polímeros aceitos e capacidade por laboratório`
+2. `feat(doacoes): geolocalização por CEP (ViaCEP) e distância até o laboratório`
+3. `feat(db): adiciona PostGIS e consulta por raio para o mapa interativo`
+4. `feat(hub): mural de demandas e ofertas com manifestação de interesse`
+5. `feat(notificacoes): avisos de aceite, coleta agendada e laudo emitido`
+6. `feat(projetos): visualizador 3D (three.js) sob demanda`
+7. `feat(marketplace): perfis de impressoras, orçamento automático e avaliações`
+8. `feat(impacto): agrega métricas diárias e expõe o painel socioambiental`
+9. `refactor(api): versiona rotas em /api/v1 e publica OpenAPI com Scramble`
+10. `ci: Larastan, composer/npm audit e Playwright contra o seed`
 
 ---
 
@@ -394,27 +446,26 @@ frontend/src/
 | Tema | Situação | Recomendação |
 | :--- | :--- | :--- |
 | Proteção de rotas | ✅ Token Sanctum (120 min) + perfil + Policy; logout revoga; 401 encerra a sessão no front. | Migrar o SPA para cookie HttpOnly (Sanctum *stateful*) e manter os tokens para mobile e API pública com *abilities*. |
-| Escalada de privilégio | ✅ `tipo_usuario` e `papel` imutáveis via API; CHECKs no banco. | Verificar CNPJ/INEP (§1.4). |
-| Força bruta e abuso | ✅ Rate limit no login (5/min por e-mail+IP, 20/min por IP), cadastro (6/min) e rastreio (60/min). | Rate limit por usuário nas escritas. |
+| Escalada de privilégio | ✅ `tipo_usuario` e `papel` imutáveis via API; CHECKs no banco; perfis institucionais só após verificação do CNPJ/INEP por moderador (com consulta à Receita). | Revisar periodicamente contas com CNPJ baixado. |
+| Força bruta e abuso | ✅ Rate limit no login (5/min por e-mail+IP, 20/min por IP), cadastro (6/min), rastreio (60/min) e uploads (30/min por usuário). | Rate limit por usuário nas demais escritas. |
 | Injeção de SQL | ✅ Só Eloquent e *bindings*; filtros por enum ou `whereLike` com parâmetro; nenhuma interpolação de entrada em SQL. | Manter *whitelist* para ordenação dinâmica. |
 | XSS | ✅ React escapa por padrão; textos guardados como texto puro. | Ao introduzir Markdown, usar `react-markdown` sem HTML cru; cabeçalhos CSP e `nosniff` no servidor. |
 | Exposição de dados | ✅ Resources separam público e privado; contato só para envolvidos; rastreio sem doadores. | Política LGPD (termo de aceite, exportação e exclusão de dados). |
 | Integridade sob concorrência | ✅ Aceite de chamado com `lockForUpdate`; UNIQUEs para candidatura, reação, pontuação e denúncia. | — |
 
-### 7.2 Validação de uploads (STL, 3MF e laudos)
+### 7.2 Validação de uploads (STL, 3MF e laudos) — implementado
 
-Ainda não implementado. Esta é a especificação para os commits 2 a 4 de §6.2:
+| Verificação | STL | 3MF | Laudo (PDF) | Imagens |
+| :--- | :--- | :--- | :--- | :--- |
+| Extensão e tamanho | `.stl`, ≤ 50 MB | `.3mf`, ≤ 50 MB | `.pdf`, ≤ 10 MB | imagem ≤ 5 MB e até 6000 × 6000 px |
+| Assinatura real | Binário: `84 + 50 × nTriângulos == tamanho`; ASCII: `solid` + `facet normal` | ZIP com `3D/3dmodel.model` e `[Content_Types].xml` | Começa com `%PDF-` | Decodificada pelo GD |
+| Ataques | Até 5 milhões de triângulos | **Zip bomb**: até 200 MB descompactados, taxa ≤ 100× e ≤ 1000 entradas; XML **sem DTD** (bloqueia XXE) | Rejeita `/JavaScript`, `/JS`, `/Launch`, `/RichMedia` | **Re-codificada em WebP**, o que descarta EXIF (GPS) e conteúdo embutido |
+| Metadados | Volume (produto misto), dimensões e nº de triângulos em `metadados` | idem | — | — |
+| Armazenamento | Disco **privado**, nome UUID, `sha256`, MIME detectado | idem | idem | idem |
+| Pós-processamento | Job `VerificarAnexo` (ClamAV via `INSTREAM`) → `status_verificacao` aprovado, infectado (arquivo apagado) ou pendente | idem | idem | idem |
+| Download | Rota assinada de 10 min (`/api/anexo/{id}/arquivo`), gerada após checar a Policy do dono | idem | idem | URL assinada de 30 min na resposta do projeto |
 
-| Verificação | STL | 3MF | Laudo (PDF) |
-| :--- | :--- | :--- | :--- |
-| Extensão e tamanho | `.stl`, ≤ 50 MB | `.3mf`, ≤ 50 MB | `.pdf`, ≤ 10 MB |
-| Assinatura real | Binário: `84 + 50 × nTriângulos == tamanho`; ASCII: começa com `solid` e contém `facet normal` | ZIP (`PK\x03\x04`) contendo `3D/3dmodel.model` e `[Content_Types].xml` | Começa com `%PDF-` |
-| Ataques | Limite de triângulos (ex.: 5 milhões) | **Zip bomb**: soma descompactada ≤ 200 MB e taxa ≤ 100×; XML lido com `LIBXML_NONET` (sem XXE) | Rejeitar `/JavaScript` e `/Launch` |
-| Armazenamento | Disco **privado**, nome UUID, `sha256` em `anexos_documentos` (deduplicação e auditoria) | idem | idem |
-| Pós-processamento (fila) | ClamAV; volume (soma de tetraedros), *bounding box* e miniatura | idem | ClamAV; `status_verificacao` → aprovado só após scan e conferência do laboratório |
-| Download | `Storage::temporaryUrl()` ou rota assinada de 5 min, com rate limit | idem | Visível para o laboratório emissor e no rastreio do lote |
-
-Infraestrutura: `upload_max_filesize = 64M` e `post_max_size = 70M` no PHP; `client_max_body_size 70m` no Nginx.
+Infraestrutura de produção: `upload_max_filesize = 64M` e `post_max_size = 70M` no PHP; `client_max_body_size 70m` no Nginx.
 
 ### 7.3 Performance e cache
 
@@ -440,13 +491,12 @@ Infraestrutura: `upload_max_filesize = 64M` e `post_max_size = 70M` no PHP; `cli
 
 ### 7.4 Bibliotecas, extensões e Skills/MCPs
 
-**Backend:**
-- `spatie/laravel-medialibrary` (uploads);
-- `laravel/scout` com o driver `database` (busca);
+O passo a passo de instalação (Laravel Boost, MCP de PostgreSQL somente leitura, Playwright, Figma, GitHub, hooks e Skills) está em [`docs/FERRAMENTAS_E_MCP.md`](FERRAMENTAS_E_MCP.md); a configuração de projeto já está em [`.mcp.json`](../.mcp.json).
+
+**Backend (sugestões ainda não instaladas):**
 - `laravel/horizon` (filas);
-- `simplesoftwareio/simple-qrcode` (etiqueta do lote);
+- `simplesoftwareio/simple-qrcode` (etiqueta impressa do lote);
 - `dedoc/scramble` (OpenAPI);
-- `laravel-lang/lang` (pt-BR);
 - `larastan/larastan` (análise estática);
 - `laravel/telescope` (dev);
 - `tpetry/laravel-postgresql-enhanced` (índices parciais, GIN e `NOT VALID` sem SQL cru).
