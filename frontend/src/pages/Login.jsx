@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
-import PainelMarca from "../components/PainelMarca";
+import { QrCode } from "lucide-react";
+import RegistroLayout from "../components/RegistroLayout";
 import { Aviso, Campo } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../services/api";
-import "../styles/pages/auth.css";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -33,49 +32,40 @@ export default function Login() {
     };
 
     return (
-        <div className="auth">
-            <PainelMarca
-                titulo={
-                    <>
-                        A rede da impressão 3D <em>que não desperdiça</em>.
-                    </>
-                }
-                descricao="Makers, laboratórios, escolas públicas e empresas trocando resíduos, conhecimento e oportunidades — com o material rastreado do carretel ao laudo."
-            />
+        <RegistroLayout>
+            <h1 className="registro__titulo">Entre na rede</h1>
 
-            <section className="auth__formulario">
-                <div className="auth__cartao">
-                    <span className="sobrelinha">Bem-vindo de volta</span>
-                    <h1>Entrar</h1>
-                    <p>Acesse sua conta para continuar.</p>
+            <Link to="/rastreio" className="registro__contorno">
+                <QrCode size={20} aria-hidden="true" />
+                Rastrear um lote sem entrar
+            </Link>
 
-                    <form className="auth__campos" onSubmit={enviar} noValidate>
-                        {erro && <Aviso tom="perigo">{erro}</Aviso>}
+            <span className="registro__ou">ou</span>
 
-                        <Campo id="email" rotulo="E-mail">
-                            <input id="email" type="email" className="entrada" autoComplete="email" placeholder="voce@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                        </Campo>
-                        <Campo id="senha" rotulo="Senha">
-                            <input id="senha" type="password" className="entrada" autoComplete="current-password" placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} required />
-                        </Campo>
+            <form className="registro__form" onSubmit={enviar} noValidate>
+                {erro && <Aviso tom="perigo">{erro}</Aviso>}
 
-                        <button type="submit" className="botao botao--grande botao--bloco" disabled={enviando}>
-                            {enviando ? "Entrando..." : "Entrar"} <ArrowRight size={18} aria-hidden="true" />
-                        </button>
-                    </form>
+                <Campo id="email" rotulo="E-mail">
+                    <input id="email" type="email" className="entrada" autoComplete="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </Campo>
+                <Campo id="senha" rotulo="Senha">
+                    <input id="senha" type="password" className="entrada" autoComplete="current-password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+                </Campo>
 
-                    <p className="auth__rodape">
-                        Ainda não tem conta? <Link to="/cadastro/usuario">Criar conta</Link>
-                        <br />
-                        <Link to="/rastreio">Rastrear um lote de filamento</Link> sem entrar
-                    </p>
+                <button type="submit" className="registro__principal" disabled={enviando}>
+                    {enviando ? "Entrando..." : "Entrar"}
+                </button>
+            </form>
 
-                    <div className="auth__demo">
-                        Demonstração: <code>escola@ecohub3d.test</code>, <code>maker@ecohub3d.test</code>, <code>laboratorio@ecohub3d.test</code>,{" "}
-                        <code>empresa@ecohub3d.test</code>, <code>moderador@ecohub3d.test</code> — senha <code>Senha@123</code>
-                    </div>
-                </div>
-            </section>
-        </div>
+            <div className="registro__textos">
+                <span>
+                    Ainda não tem conta? <Link to="/cadastro/usuario">Criar conta</Link>
+                </span>
+                <p className="registro__demo">
+                    Contas de demonstração: <code>escola@ecohub3d.test</code>, <code>maker@ecohub3d.test</code>, <code>laboratorio@ecohub3d.test</code>,{" "}
+                    <code>empresa@ecohub3d.test</code>, <code>moderador@ecohub3d.test</code> — senha <code>Senha@123</code>
+                </p>
+            </div>
+        </RegistroLayout>
     );
 }

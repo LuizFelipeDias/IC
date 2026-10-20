@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Building2, FlaskConical, School, UserRound } from "lucide-react";
-import PainelMarca from "../../components/PainelMarca";
+import { Building2, FlaskConical, School, UserRound } from "lucide-react";
+import RegistroLayout from "../../components/RegistroLayout";
 import { Aviso, Campo, errosPorCampo } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, ApiError } from "../../services/api";
-import "../../styles/pages/auth.css";
 
 const TIPOS = [
     { valor: "pessoa_fisica", rotulo: "Pessoa física", icone: UserRound, ajuda: "Estudantes, profissionais e makers: candidatam-se a vagas, doam resíduos e podem atender chamados." },
@@ -89,109 +88,95 @@ export default function CadastroUsuario() {
     );
 
     return (
-        <div className="auth">
-            <PainelMarca
-                titulo={
+        <RegistroLayout largo>
+            <h1 className="registro__titulo">Crie sua conta grátis</h1>
+
+            <div className="tipo-perfil" role="radiogroup" aria-label="Tipo de conta">
+                {TIPOS.map(({ valor, rotulo, icone: Icone }) => (
+                    <button key={valor} type="button" role="radio" aria-checked={tipo === valor} onClick={() => setTipo(valor)}>
+                        <Icone size={20} aria-hidden="true" />
+                        {rotulo}
+                    </button>
+                ))}
+            </div>
+            <p className="registro__ajuda-tipo">{tipoAtual.ajuda}</p>
+
+            <form className="registro__form" onSubmit={enviar} noValidate>
+                {!pessoaFisica && (
+                    <Aviso tom="info">
+                        Após o cadastro, a equipe confere o CNPJ{tipo === "escola" && " e o código INEP"}. Até lá, você navega normalmente, mas ainda não publica nem abre chamados.
+                    </Aviso>
+                )}
+                {mensagem && <Aviso tom="perigo">{mensagem}</Aviso>}
+
+                <Campo id="nome" rotulo={pessoaFisica ? "Nome completo" : "Nome da instituição"} erro={erros.nome}>
+                    {entrada("nome", { autoComplete: pessoaFisica ? "name" : "organization", placeholder: pessoaFisica ? "Nome completo" : "Nome da instituição" })}
+                </Campo>
+                <Campo id="email" rotulo="E-mail" erro={erros.email}>
+                    {entrada("email", { type: "email", autoComplete: "email", placeholder: "E-mail" })}
+                </Campo>
+                <Campo id="telefone" rotulo="Telefone" erro={erros.telefone}>
+                    {entrada("telefone", { mascara: mascaraTelefone, inputMode: "tel", placeholder: "Telefone (42) 99999-0000" })}
+                </Campo>
+
+                {pessoaFisica ? (
                     <>
-                        Faça parte da <em>economia circular</em> da impressão 3D.
+                        <Campo id="cpf" rotulo="CPF" erro={erros.cpf}>
+                            {entrada("cpf", { mascara: mascaraCpf, inputMode: "numeric", placeholder: "CPF" })}
+                        </Campo>
+                        <Campo id="sexo" rotulo="Sexo" erro={erros.sexo}>
+                            <select id="sexo" className={`entrada ${form.sexo ? "" : "entrada--vazia"}`} value={form.sexo} onChange={alterar("sexo")} aria-invalid={Boolean(erros.sexo)}>
+                                <option value="">Sexo (opcional)</option>
+                                <option value="feminino">Feminino</option>
+                                <option value="masculino">Masculino</option>
+                            </select>
+                        </Campo>
+                        <Campo id="profissao" rotulo="Profissão ou área de atuação" erro={erros.profissao}>
+                            {entrada("profissao", { placeholder: "Profissão ou área de atuação" })}
+                        </Campo>
+                        <label className="registro__checagem">
+                            <input type="checkbox" checked={form.prestador_servico} onChange={alterar("prestador_servico")} />
+                            <span>
+                                <strong>Quero atender chamados como maker/voluntário.</strong>
+                                <small>Você verá os pedidos de escolas e empresas e poderá aceitá-los.</small>
+                            </span>
+                        </label>
                     </>
-                }
-                descricao="Escolha seu perfil: cada um libera ações diferentes. Empresas, escolas e laboratórios passam por uma verificação rápida do CNPJ antes de publicar."
-            />
-
-            <section className="auth__formulario">
-                <form className="auth__cartao auth__cartao--largo" onSubmit={enviar} noValidate>
-                    <span className="sobrelinha">Cadastro</span>
-                    <h1>Crie sua conta</h1>
-                    <p>{tipoAtual.ajuda}</p>
-
-                    <div className="auth__campos">
-                        <div className="tipo-perfil" role="radiogroup" aria-label="Tipo de perfil">
-                            {TIPOS.map(({ valor, rotulo, icone: Icone }) => (
-                                <button key={valor} type="button" role="radio" aria-checked={tipo === valor} onClick={() => setTipo(valor)}>
-                                    <Icone size={20} aria-hidden="true" />
-                                    {rotulo}
-                                </button>
-                            ))}
-                        </div>
-
-                        {!pessoaFisica && (
-                            <Aviso tom="info">
-                                Após o cadastro, a equipe confere o CNPJ{tipo === "escola" && " e o código INEP"}. Até lá, você navega normalmente, mas ainda não publica nem abre chamados.
-                            </Aviso>
+                ) : (
+                    <>
+                        <Campo id="cnpj" rotulo="CNPJ" erro={erros.cnpj}>
+                            {entrada("cnpj", { mascara: mascaraCnpj, inputMode: "numeric", placeholder: "CNPJ" })}
+                        </Campo>
+                        {tipo === "escola" && (
+                            <Campo id="codigo_inep" rotulo="Código INEP" erro={erros.codigo_inep} ajuda="8 dígitos, no Censo Escolar.">
+                                {entrada("codigo_inep", { mascara: (v) => v.replace(/\D/g, "").slice(0, 8), inputMode: "numeric", placeholder: "Código INEP" })}
+                            </Campo>
                         )}
-                        {mensagem && <Aviso tom="perigo">{mensagem}</Aviso>}
+                    </>
+                )}
 
-                        <div className="formulario-grade">
-                            <div className="inteiro">
-                                <Campo id="nome" rotulo={pessoaFisica ? "Nome completo" : "Nome da instituição"} erro={erros.nome}>
-                                    {entrada("nome", { autoComplete: pessoaFisica ? "name" : "organization" })}
-                                </Campo>
-                            </div>
-                            <Campo id="email" rotulo="E-mail" erro={erros.email}>
-                                {entrada("email", { type: "email", autoComplete: "email" })}
-                            </Campo>
-                            <Campo id="telefone" rotulo="Telefone" erro={erros.telefone}>
-                                {entrada("telefone", { mascara: mascaraTelefone, inputMode: "tel", placeholder: "(42) 99999-0000" })}
-                            </Campo>
+                <Campo id="senha" rotulo="Senha" erro={erros.senha} ajuda="Mínimo de 8 caracteres, com maiúscula, minúscula, número e símbolo.">
+                    {entrada("senha", { type: "password", autoComplete: "new-password", placeholder: "Senha" })}
+                </Campo>
+                <Campo id="confirmarSenha" rotulo="Confirme a senha" erro={erros.confirmarSenha}>
+                    {entrada("confirmarSenha", { type: "password", autoComplete: "new-password", placeholder: "Confirme a senha" })}
+                </Campo>
 
-                            {pessoaFisica ? (
-                                <>
-                                    <Campo id="cpf" rotulo="CPF" erro={erros.cpf}>
-                                        {entrada("cpf", { mascara: mascaraCpf, inputMode: "numeric", placeholder: "000.000.000-00" })}
-                                    </Campo>
-                                    <Campo id="sexo" rotulo="Sexo" erro={erros.sexo}>
-                                        <select id="sexo" className="entrada" value={form.sexo} onChange={alterar("sexo")} aria-invalid={Boolean(erros.sexo)}>
-                                            <option value="">Selecione</option>
-                                            <option value="feminino">Feminino</option>
-                                            <option value="masculino">Masculino</option>
-                                        </select>
-                                    </Campo>
-                                    <div className="inteiro">
-                                        <Campo id="profissao" rotulo="Profissão ou área de atuação" erro={erros.profissao}>
-                                            {entrada("profissao", { placeholder: "Ex.: estudante de Engenharia, técnico em impressão 3D" })}
-                                        </Campo>
-                                    </div>
-                                    <label className="caixa-selecao inteiro">
-                                        <input type="checkbox" checked={form.prestador_servico} onChange={alterar("prestador_servico")} />
-                                        <span>
-                                            <strong>Quero atender chamados como maker/voluntário.</strong>
-                                            <br />
-                                            <span className="texto-suave">Você verá os pedidos de escolas e empresas e poderá aceitá-los.</span>
-                                        </span>
-                                    </label>
-                                </>
-                            ) : (
-                                <>
-                                    <Campo id="cnpj" rotulo="CNPJ" erro={erros.cnpj}>
-                                        {entrada("cnpj", { mascara: mascaraCnpj, inputMode: "numeric", placeholder: "00.000.000/0000-00" })}
-                                    </Campo>
-                                    {tipo === "escola" && (
-                                        <Campo id="codigo_inep" rotulo="Código INEP" erro={erros.codigo_inep} ajuda="8 dígitos, no Censo Escolar.">
-                                            {entrada("codigo_inep", { mascara: (v) => v.replace(/\D/g, "").slice(0, 8), inputMode: "numeric" })}
-                                        </Campo>
-                                    )}
-                                </>
-                            )}
+                <button type="submit" className="registro__principal" disabled={enviando}>
+                    {enviando ? "Criando conta..." : "Criar conta"}
+                </button>
+            </form>
 
-                            <Campo id="senha" rotulo="Senha" erro={erros.senha} ajuda="Mínimo de 8 caracteres, com maiúscula, minúscula, número e símbolo.">
-                                {entrada("senha", { type: "password", autoComplete: "new-password" })}
-                            </Campo>
-                            <Campo id="confirmarSenha" rotulo="Confirme a senha" erro={erros.confirmarSenha}>
-                                {entrada("confirmarSenha", { type: "password", autoComplete: "new-password" })}
-                            </Campo>
-                        </div>
-
-                        <button type="submit" className="botao botao--grande botao--bloco" disabled={enviando}>
-                            {enviando ? "Criando conta..." : "Criar conta"} <ArrowRight size={18} aria-hidden="true" />
-                        </button>
-                    </div>
-
-                    <p className="auth__rodape">
-                        Já tem conta? <Link to="/">Entrar</Link>
-                    </p>
-                </form>
-            </section>
-        </div>
+            <div className="registro__textos">
+                <Link to="/rastreio">Rastrear um lote sem conta</Link>
+                <span>
+                    Já tem conta? <Link to="/">Entrar</Link>
+                </span>
+                <p className="registro__legal">
+                    Ao clicar em “Criar conta”, você concorda com os <span className="registro__roxo">Termos de uso </span>e a{" "}
+                    <span className="registro__roxo">Política de privacidade</span> do EcoHub 3D (LGPD).
+                </p>
+            </div>
+        </RegistroLayout>
     );
 }
