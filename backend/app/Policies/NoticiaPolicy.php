@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-class NoticiaPolicy extends ConteudoDoUsuarioPolicy
+class NoticiaPolicy extends ConteudoModeradoPolicy
 {
     //
 }

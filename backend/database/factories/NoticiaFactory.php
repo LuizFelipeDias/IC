@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\StatusPublicacao;
 use App\Models\Noticia;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,6 +22,12 @@ class NoticiaFactory extends Factory
             'tema' => fake()->randomElement(['Reciclagem', 'Mercado', 'Pesquisa', 'Educação']),
             'texto' => fake()->paragraphs(3, true),
             'data_publicacao' => now(),
+            'status' => StatusPublicacao::Publicado,
         ];
+    }
+
+    public function emRevisao(): static
+    {
+        return $this->state(fn () => ['status' => StatusPublicacao::EmRevisao]);
     }
 }

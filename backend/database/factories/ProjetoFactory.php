@@ -2,6 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\AreaProjeto;
+use App\Enums\LicencaProjeto;
+use App\Enums\StatusPublicacao;
 use App\Models\Projeto;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,6 +25,14 @@ class ProjetoFactory extends Factory
             'empresa' => fake()->company(),
             'texto' => fake()->paragraphs(3, true),
             'data_publicacao' => now(),
+            'area' => fake()->randomElement(AreaProjeto::cases()),
+            'licenca' => fake()->randomElement(LicencaProjeto::cases()),
+            'status' => StatusPublicacao::Publicado,
         ];
+    }
+
+    public function emRevisao(): static
+    {
+        return $this->state(fn () => ['status' => StatusPublicacao::EmRevisao]);
     }
 }

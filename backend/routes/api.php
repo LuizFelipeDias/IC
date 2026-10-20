@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CandidaturaController;
 use App\Http\Controllers\ChamadoController;
 use App\Http\Controllers\CurriculoController;
+use App\Http\Controllers\DenunciaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\UsuarioController;
@@ -48,8 +49,26 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/candidatura', [CandidaturaController::class, 'store']);
         Route::delete('/candidatura/{candidatura}', [CandidaturaController::class, 'destroy']);
     });
-    Route::apiResource('noticia', NoticiaController::class)->except(['index', 'show'])->parameters(['noticia' => 'noticia']);
-    Route::apiResource('projeto', ProjetoController::class)->except(['index', 'show']);
+    // Notícias: publicam pessoas jurídicas e moderadores; tudo passa por moderação.
+    Route::get('/noticia/minhas', [NoticiaController::class, 'minhas']);
+    Route::post('/noticia', [NoticiaController::class, 'store'])->middleware('perfil:publicador');
+    Route::match(['put', 'patch'], '/noticia/{noticia}', [NoticiaController::class, 'update']);
+    Route::delete('/noticia/{noticia}', [NoticiaController::class, 'destroy']);
+
+    // Projetos: qualquer usuário submete ao repositório; só aparecem após aprovação.
+    Route::get('/projeto/minhas', [ProjetoController::class, 'minhas']);
+    Route::post('/projeto', [ProjetoController::class, 'store']);
+    Route::match(['put', 'patch'], '/projeto/{projeto}', [ProjetoController::class, 'update']);
+    Route::delete('/projeto/{projeto}', [ProjetoController::class, 'destroy']);
+
+    Route::post('/denuncia', [DenunciaController::class, 'store']);
+
+    Route::middleware('perfil:moderador')->group(function () {
+        Route::post('/noticia/{noticia}/moderacao', [NoticiaController::class, 'moderar']);
+        Route::post('/projeto/{projeto}/moderacao', [ProjetoController::class, 'moderar']);
+        Route::get('/denuncia', [DenunciaController::class, 'index']);
+        Route::post('/denuncia/{denuncia}/resolver', [DenunciaController::class, 'resolver']);
+    });
     // Chamados: escolas/empresas abrem; laboratórios e makers/voluntários atendem.
     Route::middleware('perfil:solicitante,prestador,moderador')->group(function () {
         Route::get('/chamado', [ChamadoController::class, 'index']);

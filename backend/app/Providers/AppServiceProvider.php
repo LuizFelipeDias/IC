@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Noticia;
+use App\Models\Projeto;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\RateLimiter;
@@ -28,6 +31,12 @@ class AppServiceProvider extends ServiceProvider
         // Em desenvolvimento, falha alto em N+1, atributos inexistentes e mass assignment ignorado.
         Model::shouldBeStrict(! $this->app->isProduction());
 
+        // Nomes curtos nas colunas polimórficas (moderacoes, denuncias) em vez do nome da classe.
+        Relation::morphMap([
+            'noticia' => Noticia::class,
+            'projeto' => Projeto::class,
+        ]);
+
         // Recurso único sai sem o envelope {"data": ...}; listas paginadas mantêm data/links/meta.
         JsonResource::withoutWrapping();
 
@@ -39,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
         Route::pattern('projeto', '[0-9]+');
         Route::pattern('chamado', '[0-9]+');
         Route::pattern('curriculo', '[0-9]+');
+        Route::pattern('denuncia', '[0-9]+');
 
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()),

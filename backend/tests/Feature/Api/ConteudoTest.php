@@ -1,14 +1,12 @@
 <?php
 
 use App\Models\Curriculo;
-use App\Models\Noticia;
 use App\Models\Projeto;
 use App\Models\Usuario;
 use Laravel\Sanctum\Sanctum;
 
 dataset('conteudos', [
-    'noticia' => ['noticia', Noticia::class, ['titulo' => 'Nova', 'tema' => 'Reciclagem', 'texto' => 'Texto']],
-    'projeto' => ['projeto', Projeto::class, ['titulo' => 'Novo', 'tema' => 'Saúde', 'texto' => 'Texto']],
+    'projeto' => ['projeto', Projeto::class, ['titulo' => 'Novo', 'texto' => 'Texto', 'area' => 'saude', 'licenca' => 'cc-by']],
     'curriculo' => ['curriculo', Curriculo::class, ['cargo' => 'Modelador', 'texto' => 'Resumo']],
 ]);
 
@@ -45,14 +43,6 @@ it('o autor exclui o próprio conteúdo', function (string $rota, string $model,
     $this->deleteJson("/api/{$rota}/{$existente->id}")->assertNoContent();
     expect($model::find($existente->id))->toBeNull();
 })->with('conteudos');
-
-it('notícias e projetos são públicos para leitura; projeto não quebra mais', function () {
-    Noticia::factory(2)->create();
-    Projeto::factory(2)->create();
-
-    $this->getJson('/api/noticia')->assertOk()->assertJsonCount(2, 'data');
-    $this->getJson('/api/projeto')->assertOk()->assertJsonCount(2, 'data');
-});
 
 it('currículos de terceiros só são visíveis para empresas', function () {
     $curriculo = Curriculo::factory()->create();
