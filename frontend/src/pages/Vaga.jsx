@@ -110,11 +110,14 @@ const TOM_STATUS = {
 };
 
 /* ================================================================== *
- * Perfil do usuário — CPF → candidato · CNPJ → empregador
+ * Perfil do usuário — contratante (CNPJ) → empregador · pessoa física → candidato
  * ================================================================== */
 
 function identificarPerfil(usuario) {
     if (!usuario) return null;
+
+    // Perfis calculados pela API: quem contrata (CNPJ/instituição) vê o painel do empregador.
+    if (usuario.perfis) return usuario.perfis.contratante ? "empregador" : "candidato";
 
     const tipo = String(usuario.tipo ?? usuario.perfil ?? "").toLowerCase();
     if (tipo.includes("empreg") || tipo.includes("empresa") || tipo === "cnpj") return "empregador";

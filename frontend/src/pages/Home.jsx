@@ -4,23 +4,27 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import Footer from "../components/Footer.jsx";
 import Navbar from "../components/Nav.jsx";
+import { useAuth } from "../contexts/AuthContext";
 import { api, lista } from "../services/api";
 
+// "perfis": só aparece para quem tem um deles (mesma regra da API).
 const GRID_ITEMS = [
-    { title: "CHAMADOS", link: "VEJA MAIS >", path: "/chamados" },
+    { title: "CHAMADOS", link: "VEJA MAIS >", path: "/chamados", perfis: ["solicitante", "prestador", "moderador"] },
     { title: "VAGAS", link: "VEJA MAIS >", path: "/vaga" },
-    { title: "CURRÍCULO", link: "VEJA MAIS >", path: "/cadastro/curriculo" },
+    { title: "CURRÍCULO", link: "VEJA MAIS >", path: "/cadastro/curriculo", perfis: ["candidato"] },
     { title: "PROJETOS", link: "VEJA MAIS >", path: "/projetos" },
     { title: "NOTÍCIAS", link: "VEJA MAIS >", path: "/noticias" },
 ];
 
 function FeatureGrid() {
     const navigate = useNavigate();
+    const { pode } = useAuth();
+    const itens = GRID_ITEMS.filter((item) => !item.perfis || pode(...item.perfis));
 
     return (
         <div className="w-full bg-white">
             <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row flex-wrap">
-                {GRID_ITEMS.map((item, index) => (
+                {itens.map((item, index) => (
                     <div
                         key={index}
                         onClick={() => navigate(item.path)}

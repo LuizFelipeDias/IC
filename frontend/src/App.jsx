@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import RequirePerfil from './components/RequirePerfil';
 
 // Importação das páginas principais
 import Login from './pages/Login';
@@ -56,7 +57,7 @@ function App() {
                     {/* Agrupamento de rotas protegidas pelo Sanctum */}
                     <Route element={<RotaProtegida />}>
                         <Route path="/home" element={<Home />} />
-                        <Route path="/chamados" element={<Chamados />} />
+                        <Route path="/chamados" element={<RequirePerfil perfis={['solicitante', 'prestador', 'moderador']}><Chamados /></RequirePerfil>} />
                         <Route path="/projetos" element={<Projeto />} />
                         <Route path="/noticias" element={<Noticia />} />
                         <Route path="/vaga" element={<Vaga />} />
@@ -67,8 +68,8 @@ function App() {
 
                         <Route path="/cadastro/curriculo" element={<CadastroCurriculo />} />
                         <Route path="/cadastro/projeto" element={<CadastroProjeto />} />
-                        <Route path="/cadastro/noticia" element={<CadastroNoticia />} />
-                        <Route path="/cadastro/vaga" element={<CadastroVaga />} />
+                        <Route path="/cadastro/noticia" element={<RequirePerfil perfis={['publicador']}><CadastroNoticia /></RequirePerfil>} />
+                        <Route path="/cadastro/vaga" element={<RequirePerfil perfis={['contratante']}><CadastroVaga /></RequirePerfil>} />
                     </Route>
 
                     {/* Endereço antigo do login e qualquer rota inexistente */}

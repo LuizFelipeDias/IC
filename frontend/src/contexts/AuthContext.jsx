@@ -50,9 +50,12 @@ export function AuthProvider({ children }) {
         setToken(null);
     }, []);
 
+    // Perfis calculados pela API (solicitante, prestador, contratante, candidato, publicador, moderador).
+    const pode = useCallback((...perfis) => perfis.some((perfil) => Boolean(usuario?.perfis?.[perfil])), [usuario]);
+
     const valor = useMemo(
-        () => ({ token, usuario, carregando, autenticado: Boolean(token), entrar, sair }),
-        [token, usuario, carregando, entrar, sair]
+        () => ({ token, usuario, carregando, autenticado: Boolean(token), entrar, sair, pode }),
+        [token, usuario, carregando, entrar, sair, pode]
     );
 
     return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

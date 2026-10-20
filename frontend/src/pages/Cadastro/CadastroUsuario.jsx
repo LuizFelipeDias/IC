@@ -46,6 +46,14 @@ const CustomInput = ({ label, placeholder, type = "text", value, onChange }) => 
     </div>
 );
 
+// Tipos de usuário aceitos pela API (tipo_usuario) e o que cada um faz na plataforma.
+const TIPOS_PERFIL = [
+    { valor: "pessoa_fisica", rotulo: "Pessoa física", titulo: <>Área do<br />Profissional</>, ajuda: "Estudantes, profissionais e makers: candidatam-se a vagas e podem atender chamados." },
+    { valor: "empresa", rotulo: "Empresa", titulo: <>Área da<br />Empresa</>, ajuda: "Publica vagas e notícias e abre chamados." },
+    { valor: "escola", rotulo: "Escola", titulo: <>Área da<br />Escola</>, ajuda: "Escolas públicas abrem chamados de treinamento, modelagem e impressão." },
+    { valor: "laboratorio", rotulo: "Laboratório", titulo: <>Área do<br />Laboratório</>, ajuda: "Laboratórios recebem resíduos, atendem chamados e publicam vagas e notícias." },
+];
+
 export default function CadastroUsuario() {
     const { entrar } = useAuth();
 
@@ -57,16 +65,20 @@ export default function CadastroUsuario() {
     const [senha, setSenha] = useState("");
     const [confirmarSenha, setConfirmarSenha] = useState("");
 
-    // 2. Controle de Tipo (Inicia como estudante)
-    const [tipoPerfil, setTipoPerfil] = useState("estudante");
+    // 2. Tipo de usuário (define as permissões na plataforma)
+    const [tipoPerfil, setTipoPerfil] = useState("pessoa_fisica");
+    const pessoaFisica = tipoPerfil === "pessoa_fisica";
 
     // 3. Dados Estudante
     const [cpf, setCPF] = useState("");
     const [profissao, setProfissao] = useState("");
     const [sexo, setSexo] = useState("");
 
-    // 4. Dados Empresa
+    const [prestador, setPrestador] = useState(false);
+
+    // 4. Dados de pessoa jurídica (empresa, escola, laboratório)
     const [cnpj, setCnpj] = useState("");
+    const [codigoInep, setCodigoInep] = useState("");
 
     // 5. Status da requisição e validações
     const [loading, setLoading] = useState(false);
@@ -107,15 +119,13 @@ export default function CadastroUsuario() {
 
         setLoading(true);
 
-        const isEstudante = tipoPerfil === "estudante";
-        const isEmpresa = tipoPerfil === "empresa";
-
         const payload = {
             nome, email, telefone, senha,
-            estudante: isEstudante,
-            empresa: isEmpresa,
-            ...(isEstudante && { cpf, profissao, sexo: sexo === "Feminino" }),
-            ...(isEmpresa && { cnpj })
+            tipo_usuario: tipoPerfil,
+            ...(pessoaFisica
+                ? { cpf, profissao, sexo: sexo === "" ? null : sexo === "Feminino", prestador_servico: prestador }
+                : { cnpj }),
+            ...(tipoPerfil === "escola" && { codigo_inep: codigoInep })
         };
 
         try {
@@ -126,7 +136,7 @@ export default function CadastroUsuario() {
             setErro(false);
 
             // 1. Limpa os campos por segurança
-            setNome(""); setTelefone(""); setEmail(""); setConfirmarEmail(""); setSenha(""); setConfirmarSenha(""); setCPF(""); setCnpj(""); setProfissao(""); setSexo("");
+            setNome(""); setTelefone(""); setEmail(""); setConfirmarEmail(""); setSenha(""); setConfirmarSenha(""); setCPF(""); setCnpj(""); setCodigoInep(""); setProfissao(""); setSexo(""); setPrestador(false);
 
             // 2. O backend devolve o token: auto-login
             if (data?.token) {
@@ -216,30 +226,25 @@ export default function CadastroUsuario() {
                             <label className="text-[11px] font-bold text-[#3800df] uppercase tracking-wider pl-2">
                                 TIPO DE PERFIL
                             </label>
-                            <div className="flex w-full h-[42px] border-[1.5px] border-[#d1d1d1] p-1 bg-[#f9f9f9]">
-                                <button
-                                    type="button"
-                                    onClick={() => setTipoPerfil("estudante")}
-                                    className={`flex-1 h-full flex items-center justify-center font-bold text-[12px] uppercase tracking-wider transition-all duration-300 ${
-                                        tipoPerfil === "estudante"
-                                            ? "bg-[#3800df] text-white shadow-sm"
-                                            : "text-[#858585] hover:text-black hover:bg-gray-100"
-                                    }`}
-                                >
-                                    Sou Estudante
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setTipoPerfil("empresa")}
-                                    className={`flex-1 h-full flex items-center justify-center font-bold text-[12px] uppercase tracking-wider transition-all duration-300 ${
-                                        tipoPerfil === "empresa"
-                                            ? "bg-[#3800df] text-white shadow-sm"
-                                            : "text-[#858585] hover:text-black hover:bg-gray-100"
-                                    }`}
-                                >
-                                    Sou Empresa
-                                </button>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 w-full border-[1.5px] border-[#d1d1d1] p-1 bg-[#f9f9f9] gap-1" role="radiogroup" aria-label="Tipo de perfil">
+                                {TIPOS_PERFIL.map((tipo) => (
+                                    <button
+                                        key={tipo.valor}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={tipoPerfil === tipo.valor}
+                                        onClick={() => setTipoPerfil(tipo.valor)}
+                                        className={`h-[34px] flex items-center justify-center font-bold text-[11px] uppercase tracking-wider transition-all duration-300 ${
+                                            tipoPerfil === tipo.valor
+                                                ? "bg-[#3800df] text-white shadow-sm"
+                                                : "text-[#858585] hover:text-black hover:bg-gray-100"
+                                        }`}
+                                    >
+                                        {tipo.rotulo}
+                                    </button>
+                                ))}
                             </div>
+                            <p className="text-[11px] text-[#858585] pl-2">{TIPOS_PERFIL.find((t) => t.valor === tipoPerfil).ajuda}</p>
                         </div>
 
                         {/* GRID DOS CAMPOS */}
@@ -252,7 +257,7 @@ export default function CadastroUsuario() {
                             <CustomInput label="CONFIRME O EMAIL" placeholder="seu@email.com" type="email" value={confirmarEmail} onChange={(e) => setConfirmarEmail(e.target.value)} />
 
                             {/* RENDERIZAÇÃO CONDICIONAL - ESTUDANTE */}
-                            <Collapse in={tipoPerfil === "estudante"} className="md:col-span-2" unmountOnExit>
+                            <Collapse in={pessoaFisica} className="md:col-span-2" unmountOnExit>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 pt-1">
                                     <CustomInput label="CPF" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCPF(maskCPF(e.target.value))} />
                                     <CustomInput label="PROFISSÃO" placeholder="Sua área de atuação" value={profissao} onChange={(e) => setProfissao(e.target.value)} />
@@ -278,13 +283,21 @@ export default function CadastroUsuario() {
                                             <MenuItem value="Feminino" sx={{ fontFamily: "Inter" }}>Feminino</MenuItem>
                                         </Select>
                                     </div>
+
+                                    <label className="flex items-center gap-2 text-[12px] font-bold text-[#555] cursor-pointer md:col-span-2">
+                                        <input type="checkbox" checked={prestador} onChange={(e) => setPrestador(e.target.checked)} className="w-4 h-4 accent-[#3800df]" />
+                                        Quero atender chamados de escolas como maker/voluntário
+                                    </label>
                                 </div>
                             </Collapse>
 
                             {/* RENDERIZAÇÃO CONDICIONAL - EMPRESA */}
-                            <Collapse in={tipoPerfil === "empresa"} className="md:col-span-2" unmountOnExit>
-                                <div className="grid grid-cols-1 gap-x-4 gap-y-4 pt-1">
+                            <Collapse in={!pessoaFisica} className="md:col-span-2" unmountOnExit>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 pt-1">
                                     <CustomInput label="CNPJ" placeholder="00.000.000/0000-00" value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} />
+                                    {tipoPerfil === "escola" && (
+                                        <CustomInput label="CÓDIGO INEP" placeholder="8 dígitos" value={codigoInep} onChange={(e) => setCodigoInep(e.target.value.replace(/\D/g, "").slice(0, 8))} />
+                                    )}
                                 </div>
                             </Collapse>
 
@@ -322,11 +335,7 @@ export default function CadastroUsuario() {
                 {/* ÁREA CINZA DINÂMICA (Fixa na Direita) */}
                 <div className="hidden md:flex flex-1 bg-[#e0e0e0] items-center justify-center text-center p-10">
                     <h1 className="text-[45px] lg:text-[65px] font-bold text-black select-none tracking-tight leading-tight transition-all duration-300 ease-in-out">
-                        {tipoPerfil === "estudante" ? (
-                            <>Área do<br />Aluno</>
-                        ) : (
-                            <>Área da<br />Empresa</>
-                        )}
+                        {TIPOS_PERFIL.find((t) => t.valor === tipoPerfil).titulo}
                     </h1>
                 </div>
             </section>
