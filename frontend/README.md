@@ -13,6 +13,7 @@ npm run build          # build de produção em dist/
 ## Convenções
 
 - **Chamadas à API:** sempre via `api()` de `src/services/api.js` (URL base, token, tratamento de 401 e de erros 422). Não use `fetch` direto nas páginas.
-- **Usuário logado:** `useAuth()` de `src/contexts/AuthContext.jsx` (`usuario`, `autenticado`, `entrar`, `sair`).
+- **Usuário logado:** `useAuth()` de `src/contexts/AuthContext.jsx` (`usuario`, `autenticado`, `entrar`, `sair`, `pode`).
+- **Permissões:** `pode("solicitante", "prestador")` usa o mapa `perfis` devolvido por `/usuario/me`; para páginas inteiras, envolva a rota com `<RequirePerfil perfis={[...]}>`. A API aplica a mesma regra, então a interface só esconde ações.
 - **Listas da API** vêm paginadas (`{ data, links, meta }`); use `lista(resposta)` para obter o array.
 - **Cor da marca:** classe Tailwind `brand` (`bg-brand`, `text-brand`, `border-brand`).
