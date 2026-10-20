@@ -3,6 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Enums\TipoUsuario;
+use App\Rules\Cnpj;
+use App\Rules\Cpf;
+use App\Support\Documento;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -23,6 +26,14 @@ class UsuarioRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // CPF e CNPJ sempre gravados com máscara, para o UNIQUE não aceitar o mesmo documento em dois formatos.
+        foreach (['cpf' => 11, 'cnpj' => 14] as $campo => $tamanho) {
+            $digitos = Documento::somenteDigitos($this->input($campo));
+            if (strlen($digitos) === $tamanho) {
+                $this->merge([$campo => $campo === 'cpf' ? Documento::formatarCpf($digitos) : Documento::formatarCnpj($digitos)]);
+            }
+        }
+
         if (! $this->isMethod('post')) {
             return;
         }
@@ -61,10 +72,10 @@ class UsuarioRequest extends FormRequest
             'empresa' => [$cadastro ? 'required' : 'prohibited', 'boolean'],
 
             // Espelha as constraints chk_dados_consistentes e chk_prestador_pessoa_fisica do banco.
-            'cpf' => [Rule::requiredIf($cadastro && $pessoaFisica), Rule::prohibitedIf(! $pessoaFisica), 'nullable', 'string', 'max:14', Rule::unique('usuario', 'cpf')->ignore($idAtual)],
+            'cpf' => [Rule::requiredIf($cadastro && $pessoaFisica), Rule::prohibitedIf(! $pessoaFisica), 'nullable', 'string', new Cpf, Rule::unique('usuario', 'cpf')->ignore($idAtual)],
             'sexo' => [Rule::requiredIf($cadastro && $pessoaFisica), Rule::prohibitedIf(! $pessoaFisica), 'nullable', 'boolean'],
             'profissao' => [Rule::requiredIf($cadastro && $pessoaFisica), 'nullable', 'string', 'max:255'],
-            'cnpj' => [Rule::requiredIf($cadastro && ! $pessoaFisica), Rule::prohibitedIf($pessoaFisica), 'nullable', 'string', 'max:18', Rule::unique('usuario', 'cnpj')->ignore($idAtual)],
+            'cnpj' => [Rule::requiredIf($cadastro && ! $pessoaFisica), Rule::prohibitedIf($pessoaFisica), 'nullable', 'string', new Cnpj, Rule::unique('usuario', 'cnpj')->ignore($idAtual)],
             'prestador_servico' => [Rule::prohibitedIf(! $pessoaFisica), 'sometimes', 'boolean'],
             'codigo_inep' => [
                 Rule::requiredIf($cadastro && $tipo === TipoUsuario::Escola),
