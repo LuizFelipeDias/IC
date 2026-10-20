@@ -7,12 +7,16 @@ use App\Enums\LicencaProjeto;
 use App\Enums\StatusPublicacao;
 use App\Http\Requests\ModeracaoRequest;
 use App\Http\Requests\ProjetoRequest;
+use App\Http\Resources\AnexoResource;
 use App\Http\Resources\ProjetoResource;
 use App\Models\Projeto;
+use App\Rules\ModeloImpressao3d;
+use App\Services\Anexos\ArmazenamentoAnexos;
 use App\Services\ModeracaoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 class ProjetoController extends Controller
 {
@@ -30,7 +34,7 @@ class ProjetoController extends Controller
 
         $moderador = (bool) $request->user('sanctum')?->ehModerador();
 
-        $projetos = Projeto::with('usuario')
+        $projetos = Projeto::with(['usuario', 'anexos'])
             ->when(
                 $moderador && $request->filled('status'),
                 fn ($query) => $query->where('status', $request->input('status')),
@@ -61,7 +65,7 @@ class ProjetoController extends Controller
     {
         Gate::forUser($request->user('sanctum'))->authorize('view', $projeto);
 
-        return new ProjetoResource($projeto->load('usuario'));
+        return new ProjetoResource($projeto->load(['usuario', 'anexos']));
     }
 
     /**
@@ -115,5 +119,38 @@ class ProjetoController extends Controller
             : $moderacao->rejeitar($projeto, $request->user(), $request->input('motivo'));
 
         return new ProjetoResource($projeto->refresh());
+    }
+
+    /**
+     * Envio de modelo 3D (STL/3MF, até 50 MB) ou imagem (até 5 MB) do projeto.
+     * Arquivo novo de quem não é moderador devolve o projeto para revisão.
+     */
+    public function enviarAnexo(Request $request, Projeto $projeto, ArmazenamentoAnexos $armazenamento)
+    {
+        Gate::authorize('update', $projeto);
+
+        $request->validate(['tipo' => ['required', Rule::in(['modelo', 'imagem'])]]);
+        $tipo = $request->input('tipo');
+
+        $request->validate([
+            'arquivo' => $tipo === 'modelo'
+                ? ['required', new ModeloImpressao3d]
+                : ['required', File::image()->max(5 * 1024)->dimensions(Rule::dimensions()->maxWidth(6000)->maxHeight(6000))],
+        ]);
+
+        $limite = $tipo === 'modelo' ? 5 : 8;
+        abort_if(
+            $projeto->anexos()->where('tipo_documento', $tipo)->count() >= $limite,
+            422,
+            "Cada projeto aceita no máximo {$limite} arquivos desse tipo.",
+        );
+
+        $anexo = $armazenamento->guardar($request->file('arquivo'), $tipo, $projeto, $request->user());
+
+        if (! $request->user()->ehModerador()) {
+            $projeto->forceFill(['status' => StatusPublicacao::EmRevisao])->save();
+        }
+
+        return (new AnexoResource($anexo))->response()->setStatusCode(201);
     }
 }

@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Antivírus dos anexos: "clamav" (daemon clamd) ou "nenhum" (anexos ficam "pendente").
+    'antivirus' => [
+        'driver' => env('ANTIVIRUS_DRIVER', 'nenhum'),
+        'host' => env('CLAMAV_HOST', '127.0.0.1'),
+        'port' => (int) env('CLAMAV_PORT', 3310),
+    ],
+
 ];

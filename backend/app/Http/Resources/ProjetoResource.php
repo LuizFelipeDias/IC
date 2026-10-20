@@ -27,6 +27,10 @@ class ProjetoResource extends JsonResource
             'motivo_rejeicao' => $this->when($this->ehAutor($usuario) || $usuario?->ehModerador(), $this->motivo_rejeicao),
             'moderado_em' => $this->moderado_em,
             'usuario' => new UsuarioResource($this->whenLoaded('usuario')),
+            'anexos' => AnexoResource::collection($this->whenLoaded('anexos')),
+            'capa' => $this->whenLoaded('anexos', fn () => $this->anexos
+                ->firstWhere('tipo_documento', 'imagem')
+                ?->pipe(fn ($imagem) => (new AnexoResource($imagem))->resolve()['url'] ?? null)),
         ];
     }
 }

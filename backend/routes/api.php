@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CandidaturaController;
 use App\Http\Controllers\ChamadoController;
@@ -27,6 +28,10 @@ Route::apiResource('vaga', VagaController::class)->only(['index', 'show']);
 Route::apiResource('noticia', NoticiaController::class)->only(['index', 'show'])->parameters(['noticia' => 'noticia']);
 Route::get('/noticia/{noticia}/reacoes', [ReacaoNoticiaController::class, 'index']);
 Route::apiResource('projeto', ProjetoController::class)->only(['index', 'show']);
+
+// Anexos: o link temporário respeita a visibilidade do registro dono; o arquivo só sai com assinatura válida.
+Route::get('/anexo/{anexo}/link', [AnexoController::class, 'link'])->middleware('throttle:60,1');
+Route::get('/anexo/{anexo}/arquivo', [AnexoController::class, 'arquivo'])->middleware('signed')->name('anexo.arquivo');
 
 // Rastreabilidade: página aberta pelo QR Code do lote de filamento.
 Route::get('/ranking', RankingController::class);
@@ -71,6 +76,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projeto', [ProjetoController::class, 'store']);
     Route::match(['put', 'patch'], '/projeto/{projeto}', [ProjetoController::class, 'update']);
     Route::delete('/projeto/{projeto}', [ProjetoController::class, 'destroy']);
+    Route::post('/projeto/{projeto}/anexos', [ProjetoController::class, 'enviarAnexo'])->middleware('throttle:uploads');
+    Route::delete('/anexo/{anexo}', [AnexoController::class, 'destroy']);
 
     Route::post('/denuncia', [DenunciaController::class, 'store']);
 

@@ -8,6 +8,7 @@ use App\Models\Concerns\Moderavel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Projeto extends Model
 {
@@ -35,6 +36,12 @@ class Projeto extends Model
             'area' => AreaProjeto::class,
             'licenca' => LicencaProjeto::class,
         ];
+    }
+
+    /** Modelos 3D (STL/3MF) e imagens do projeto. */
+    public function anexos(): MorphMany
+    {
+        return $this->morphMany(AnexoDocumento::class, 'anexavel');
     }
 
     public function usuario(): BelongsTo

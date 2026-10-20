@@ -2,10 +2,15 @@
 
 namespace App\Providers;
 
+use App\Contracts\AntivirusScanner;
 use App\Contracts\ConsultaCnpj;
 use App\Models\Chamado;
+use App\Models\Doacao;
+use App\Models\LaudoQualidade;
 use App\Models\Noticia;
 use App\Models\Projeto;
+use App\Services\Anexos\ClamAvScanner;
+use App\Services\Anexos\SemAntivirus;
 use App\Services\BrasilApiConsultaCnpj;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ConsultaCnpj::class, BrasilApiConsultaCnpj::class);
+
+        $this->app->bind(AntivirusScanner::class, fn () => config('services.antivirus.driver') === 'clamav'
+            ? new ClamAvScanner(config('services.antivirus.host'), config('services.antivirus.port'))
+            : new SemAntivirus);
     }
 
     /**
@@ -37,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
         // Nomes curtos nas colunas polimórficas (moderacoes, denuncias) em vez do nome da classe.
         Relation::morphMap([
             'chamado' => Chamado::class,
+            'doacao' => Doacao::class,
+            'laudo' => LaudoQualidade::class,
             'noticia' => Noticia::class,
             'projeto' => Projeto::class,
         ]);
@@ -53,11 +64,14 @@ class AppServiceProvider extends ServiceProvider
         Route::pattern('chamado', '[0-9]+');
         Route::pattern('curriculo', '[0-9]+');
         Route::pattern('denuncia', '[0-9]+');
+        Route::pattern('anexo', '[0-9]+');
 
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()),
             Limit::perMinute(20)->by($request->ip()),
         ]);
+
+        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()));
 
         RateLimiter::for('cadastro', fn (Request $request) => Limit::perMinute(6)->by($request->ip()));
     }
