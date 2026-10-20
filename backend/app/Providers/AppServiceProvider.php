@@ -9,6 +9,7 @@ use App\Models\Doacao;
 use App\Models\LaudoQualidade;
 use App\Models\Noticia;
 use App\Models\Projeto;
+use App\Models\SolicitacaoColeta;
 use App\Services\Anexos\ClamAvScanner;
 use App\Services\Anexos\SemAntivirus;
 use App\Services\BrasilApiConsultaCnpj;
@@ -48,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
             'chamado' => Chamado::class,
             'doacao' => Doacao::class,
             'laudo' => LaudoQualidade::class,
+            'coleta' => SolicitacaoColeta::class,
             'noticia' => Noticia::class,
             'projeto' => Projeto::class,
         ]);
@@ -65,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
         Route::pattern('curriculo', '[0-9]+');
         Route::pattern('denuncia', '[0-9]+');
         Route::pattern('anexo', '[0-9]+');
+        Route::pattern('doacao', '[0-9]+');
+        Route::pattern('coleta', '[0-9]+');
+        Route::pattern('lote', '[0-9]+');
 
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(5)->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()),

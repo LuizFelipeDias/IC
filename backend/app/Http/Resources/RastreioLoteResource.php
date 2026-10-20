@@ -47,6 +47,8 @@ class RastreioLoteResource extends JsonResource
                 'tolerancia_mm' => $laudo->tolerancia_mm,
                 'resistencia_tracao_mpa' => $laudo->resistencia_tracao_mpa,
                 'temp_impressao' => [$laudo->temp_impressao_min, $laudo->temp_impressao_max],
+                // PDF público do laudo: GET /api/anexo/{id_anexo}/link
+                'id_anexo' => $laudo->id_anexo,
             ]),
         ];
     }

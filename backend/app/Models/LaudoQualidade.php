@@ -55,6 +55,11 @@ class LaudoQualidade extends Model
         return $this->belongsTo(Usuario::class, 'id_laboratorio');
     }
 
+    public function responsavel(): BelongsTo
+    {
+        return $this->belongsTo(Usuario::class, 'id_responsavel');
+    }
+
     public function anexo(): BelongsTo
     {
         return $this->belongsTo(AnexoDocumento::class, 'id_anexo');

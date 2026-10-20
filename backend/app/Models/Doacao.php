@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\StatusDoacao;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Peça excedente, carretel usado ou resto de filamento oferecido por um maker.
@@ -34,6 +36,22 @@ class Doacao extends Model
         'latitude',
         'longitude',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => StatusDoacao::class,
+            'peso_estimado_g' => 'integer',
+            'latitude' => 'float',
+            'longitude' => 'float',
+        ];
+    }
+
+    /** Fotos da doação. */
+    public function anexos(): MorphMany
+    {
+        return $this->morphMany(AnexoDocumento::class, 'anexavel');
+    }
 
     public function doador(): BelongsTo
     {

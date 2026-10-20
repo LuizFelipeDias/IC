@@ -42,6 +42,8 @@ class LoteFilamento extends Model
     {
         return [
             'diametro_nominal_mm' => 'float',
+            'peso_entrada_g' => 'integer',
+            'peso_saida_g' => 'integer',
             'produzido_em' => 'datetime',
         ];
     }

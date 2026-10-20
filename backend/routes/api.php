@@ -4,9 +4,13 @@ use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CandidaturaController;
 use App\Http\Controllers\ChamadoController;
+use App\Http\Controllers\ColetaController;
 use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\DenunciaController;
+use App\Http\Controllers\DoacaoController;
+use App\Http\Controllers\LoteController;
 use App\Http\Controllers\NoticiaController;
+use App\Http\Controllers\PolimeroController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\RankingController;
 use App\Http\Controllers\RastreioController;
@@ -35,7 +39,10 @@ Route::get('/anexo/{anexo}/arquivo', [AnexoController::class, 'arquivo'])->middl
 
 // Rastreabilidade: página aberta pelo QR Code do lote de filamento.
 Route::get('/ranking', RankingController::class);
-Route::get('/rastreio/{lote:codigo}', RastreioController::class)->middleware('throttle:60,1');
+Route::get('/polimeros', [PolimeroController::class, 'index']);
+Route::get('/rastreio/{lote:codigo}', RastreioController::class)
+    ->where('lote', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+    ->middleware('throttle:60,1');
 
 /* =========================================
    AUTENTICADAS (token Sanctum)
@@ -80,6 +87,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/anexo/{anexo}', [AnexoController::class, 'destroy']);
 
     Route::post('/denuncia', [DenunciaController::class, 'store']);
+
+    // Módulo 1 — Doação de makers (qualquer usuário doa).
+    Route::get('/doacao', [DoacaoController::class, 'index']);
+    Route::get('/doacao/minhas', [DoacaoController::class, 'minhas']);
+    Route::get('/doacao/{doacao}', [DoacaoController::class, 'show']);
+    Route::post('/doacao', [DoacaoController::class, 'store']);
+    Route::match(['put', 'patch'], '/doacao/{doacao}', [DoacaoController::class, 'update']);
+    Route::delete('/doacao/{doacao}', [DoacaoController::class, 'destroy']);
+    Route::post('/doacao/{doacao}/fotos', [DoacaoController::class, 'enviarFoto'])->middleware('throttle:uploads');
+
+    // Módulo 2 — Coletas: o laboratório solicita; doador e laboratório conduzem o fluxo.
+    Route::get('/coleta', [ColetaController::class, 'index']);
+    Route::get('/coleta/{coleta}', [ColetaController::class, 'show']);
+    Route::post('/coleta/{coleta}/aceitar', [ColetaController::class, 'aceitar']);
+    Route::post('/coleta/{coleta}/recusar', [ColetaController::class, 'recusar']);
+    Route::post('/coleta/{coleta}/agendar', [ColetaController::class, 'agendar']);
+    Route::post('/coleta/{coleta}/concluir', [ColetaController::class, 'concluir']);
+    Route::post('/coleta/{coleta}/cancelar', [ColetaController::class, 'cancelar']);
+
+    // Laboratórios verificados: solicitar resíduos, produzir lotes e emitir laudos.
+    Route::middleware('perfil:receptor')->group(function () {
+        Route::post('/doacao/{doacao}/coletas', [ColetaController::class, 'store']);
+        Route::get('/lote', [LoteController::class, 'index']);
+        Route::post('/lote', [LoteController::class, 'store']);
+        Route::get('/lote/{lote}', [LoteController::class, 'show']);
+        Route::patch('/lote/{lote}', [LoteController::class, 'update']);
+        Route::post('/lote/{lote}/eventos', [LoteController::class, 'registrarEvento']);
+        Route::post('/lote/{lote}/laudos', [LoteController::class, 'emitirLaudo'])->middleware('throttle:uploads');
+    });
 
     Route::middleware('perfil:moderador')->group(function () {
         Route::post('/noticia/{noticia}/moderacao', [NoticiaController::class, 'moderar']);
