@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Chamado;
 use App\Models\Noticia;
 use App\Models\Projeto;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Nomes curtos nas colunas polimórficas (moderacoes, denuncias) em vez do nome da classe.
         Relation::morphMap([
+            'chamado' => Chamado::class,
             'noticia' => Noticia::class,
             'projeto' => Projeto::class,
         ]);

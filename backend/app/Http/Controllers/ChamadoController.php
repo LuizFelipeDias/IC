@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AcaoPontuavel;
 use App\Enums\LocalAtendimento;
 use App\Enums\StatusChamado;
 use App\Enums\TipoServico;
 use App\Http\Requests\ChamadoRequest;
 use App\Http\Resources\ChamadoResource;
 use App\Models\Chamado;
+use App\Services\GamificacaoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -106,7 +108,7 @@ class ChamadoController extends Controller
         return new ChamadoResource($chamado->load(['usuario', 'prestador']));
     }
 
-    public function concluir(Chamado $chamado)
+    public function concluir(Chamado $chamado, GamificacaoService $gamificacao)
     {
         Gate::authorize('concluir', $chamado);
 
@@ -114,6 +116,8 @@ class ChamadoController extends Controller
             'status' => StatusChamado::Resolvido,
             'concluido_em' => now(),
         ])->save();
+
+        $gamificacao->conceder($chamado->prestador, AcaoPontuavel::ChamadoConcluido, $chamado);
 
         return new ChamadoResource($chamado->load(['usuario', 'prestador']));
     }

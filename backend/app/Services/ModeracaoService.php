@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\AcaoPontuavel;
 use App\Enums\StatusPublicacao;
 use App\Models\Denuncia;
+use App\Models\Projeto;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -13,9 +15,15 @@ use Illuminate\Support\Facades\DB;
  */
 class ModeracaoService
 {
+    public function __construct(private GamificacaoService $gamificacao) {}
+
     public function aprovar(Model $conteudo, Usuario $moderador): void
     {
         $this->decidir($conteudo, $moderador, 'aprovar', null);
+
+        if ($conteudo instanceof Projeto && $conteudo->usuario !== null) {
+            $this->gamificacao->conceder($conteudo->usuario, AcaoPontuavel::ProjetoPublicado, $conteudo);
+        }
     }
 
     public function rejeitar(Model $conteudo, Usuario $moderador, string $motivo): void

@@ -9,6 +9,7 @@ use Database\Factories\UsuarioFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -41,6 +42,7 @@ class Usuario extends Authenticatable
         'tipo_usuario' => 'pessoa_fisica',
         'papel' => 'usuario',
         'prestador_servico' => false,
+        'pontos_total' => 0,
     ];
 
     public function getAuthPasswordName(): string
@@ -97,6 +99,12 @@ class Usuario extends Authenticatable
         return collect(Perfil::cases())
             ->mapWithKeys(fn (Perfil $perfil) => [$perfil->value => $this->temPerfil($perfil)])
             ->all();
+    }
+
+    public function selos(): BelongsToMany
+    {
+        return $this->belongsToMany(Selo::class, 'selos_usuario', 'id_usuario', 'id_selo')
+            ->withPivot('conquistado_em');
     }
 
     public function vagas(): HasMany

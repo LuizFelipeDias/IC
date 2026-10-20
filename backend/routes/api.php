@@ -7,6 +7,7 @@ use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\DenunciaController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\ProjetoController;
+use App\Http\Controllers\RankingController;
 use App\Http\Controllers\RastreioController;
 use App\Http\Controllers\ReacaoNoticiaController;
 use App\Http\Controllers\UsuarioController;
@@ -27,6 +28,7 @@ Route::get('/noticia/{noticia}/reacoes', [ReacaoNoticiaController::class, 'index
 Route::apiResource('projeto', ProjetoController::class)->only(['index', 'show']);
 
 // Rastreabilidade: página aberta pelo QR Code do lote de filamento.
+Route::get('/ranking', RankingController::class);
 Route::get('/rastreio/{lote:codigo}', RastreioController::class)->middleware('throttle:60,1');
 
 /* =========================================
