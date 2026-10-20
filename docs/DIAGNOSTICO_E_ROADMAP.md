@@ -1,523 +1,496 @@
-# EcoHub 3D — Diagnóstico técnico e roadmap de arquitetura
+# EcoHub 3D — Relatório técnico: diagnóstico, banco de dados, permissões e roadmap
 
-> Referência: commit `2ba4c42` ("Versao inicial") × documento *Requisitos Plataforma Eco Hub 3d — Adapta One (outubro/2026)*.
-> Escopo: `backend/` (Laravel 13 + Sanctum 4) e `frontend/` (React 19 + Tailwind 3 + MUI 9).
-> Método: leitura integral do código, `php -l` em todos os controllers/models (sem erros de sintaxe). Não foi possível subir a aplicação: o `composer.lock` exige PHP ≥ 8.4.1 (ver D-02) e o ambiente de análise tem PHP 8.3.
+> **Versão 2 (outubro/2026).** Substitui a versão 1, que está no histórico do Git (commit `c64fded`).
+> **Artefatos analisados:** repositório (branch `claude/ecstatic-noether-5miksl`), *Requisitos Plataforma Eco Hub 3d — Adapta One (outubro/2026)* e o script DDL PostgreSQL do banco em uso (`script.sql`).
+> **Como foi verificado:**
+> - O DDL foi carregado num PostgreSQL 16 e comparado com o esquema gerado pelas migrations (diff de `information_schema` e `pg_constraint`): **idêntico em 103 itens** (colunas, tipos, defaults, identity, constraints, FKs e triggers).
+> - As migrations novas rodaram sobre uma **cópia do banco legado com dados**, sem perda de registros.
+> - A suíte de testes (**73 testes de API**, 281 asserções) passa em **PostgreSQL e SQLite**; o frontend tem 12 testes Vitest.
+> - Os fluxos de cada perfil foram percorridos num navegador real (Chromium headless).
 
 ---
 
 ## Sumário executivo
 
-| Área | Situação real | Observação |
+| Indicador | Commit inicial (`2ba4c42`) | Agora |
 | :--- | :--- | :--- |
-| Backend | **Protótipo, não "concluído"** | 7 entidades com CRUD parcial; o módulo Projeto quebra com erro fatal; quase nenhuma rota exige autenticação; o banco de dados não está versionado em migrations. |
-| Frontend | **Protótipo visual** | Apenas Login, Cadastro de usuário, Home e Vagas consomem a API. Chamados, Projetos e Notícias usam dados *mock* fixos no código. |
-| Cobertura dos requisitos | **≈ 10–15 %** | Dos 6 módulos do documento, só "Banco de currículos" (parcial) e um esboço do "Hub" (vagas/candidaturas) existem. Doações, reciclagem, repositório de modelos 3D e pedidos de escolas não existem. |
-| Segurança | **Crítica** | Qualquer pessoa, sem login, lista todos os usuários (com CPF/CNPJ), altera o e-mail/senha de qualquer conta e apaga notícias, projetos, chamados e currículos. |
+| Rotas de API protegidas por autenticação | 1 de 25 | 44 de 55 (as 11 públicas são login, cadastro, leitura de vagas/notícias/projetos/reações, ranking e rastreio) |
+| Controle de acesso por perfil | Inexistente (só triggers no banco) | Middleware `perfil` + 6 Policies (sobre 2 bases abstratas) + CHECKs/triggers no banco |
+| Esquema versionado em migrations | 2 tabelas de infraestrutura | 18 migrations; esquema legado reproduzido 1:1 e evoluído sem perda de dados |
+| Testes automatizados | 0 | 73 (API, PostgreSQL e SQLite) + 12 (frontend) + CI |
+| Módulos dos requisitos com backend | ~1,5 de 6 | 4,5 de 6 (ver §2.3) |
+| Funcionalidades sugeridas com base de dados | 0 | Rastreabilidade (QR), laudos, gamificação e moderação |
 
-**As três primeiras ações, nesta ordem:**
-1. Fechar as rotas (middleware `auth:sanctum` + Policies) e remover a listagem pública de usuários.
-2. Escrever as migrations das tabelas existentes. Sem isso não há testes, deploy reproduzível nem colaboração.
-3. Migrar o frontend de CRA para Vite e criar a camada `api/` única antes de integrar novas telas.
-
----
-
-## 1. Diagnóstico geral do código
-
-### 1.1 O que já funciona
-
-- **Login com Sanctum** (`POST /api/login`): busca por e-mail, `Hash::check`, emite *personal access token*, expiração de 120 min (`config/sanctum.php`). O frontend guarda o token e o envia como `Bearer`.
-- **Modelo `Usuario` customizado** como `Authenticatable` (tabela `usuario`, coluna `senha` com cast `hashed`, `getAuthPasswordName()`), já registrado em `config/auth.php`.
-- **Vagas e candidaturas**: são os controllers mais maduros. `VagaController` e `CandidaturaController` têm escopo por dono (`abort_unless(... === $request->user()->id, 403)`), pegam o `id_usuario` do token e não do corpo da requisição, usam `firstOrCreate` contra duplicidade e restringem o status com `Rule::in`. Esse é o padrão a replicar.
-- **Respostas JSON para exceções em `api/*`** (`bootstrap/app.php`).
-- **Tela de Vagas** (`frontend/src/pages/Vaga.jsx`): tem um *helper* `request()` com token, tratamento de 401, estados de carregando/erro, busca e filtro. É o melhor ponto de partida para a camada de API do front.
-- **Ferramental moderno instalado**: Laravel Boost (MCP), Pest 4, Pint, Pail.
-
-### 1.2 Padrões em uso
-
-| Camada | Padrão observado |
-| :--- | :--- |
-| Backend | MVC "magro": Controller → Model, sem Services/Policies/Resources. Dois estilos convivem: FormRequest (`ChamadoRequest`, etc.) e `$request->validate()` inline (Vaga, Candidatura). Nomes em português, FK no estilo `id_usuario` (o padrão do Laravel é `usuario_id`). Mistura `protected $casts` com `casts()` e atributos PHP 8 (`#[Fillable]`, `#[Hidden]`). |
-| Frontend | Uma página = um arquivo grande (até 660 linhas) com subcomponentes, dados *mock*, estilos e chamadas `fetch` juntos. Estado só com `useState`/`useEffect`. Tailwind com valores arbitrários (`text-[11px]`, `bg-[#3800df]`) e MUI usado só para ícones e alguns inputs. |
-
-### 1.3 Dívidas técnicas e inconsistências estruturais (priorizadas)
-
-| ID | Severidade | Problema | Evidência |
-| :--- | :--- | :--- | :--- |
-| D-01 | **Crítica** | O schema do banco **não está em migrations**. Só existem `cache` e `personal_access_tokens`. As tabelas `usuario`, `vagas`, `candidaturas`, `curriculo`, `noticias`, `projetos` e `chamados` foram criadas à mão em SQL, como mostram comentários do tipo "caso você não tenha criado created_at e updated_at no SQL". Também faltam as migrations padrão de `sessions`, `jobs` e `password_reset_tokens`, e o `.env.example` usa `SESSION_DRIVER=database` e `QUEUE_CONNECTION=database`. | `backend/database/migrations/` |
-| D-02 | **Crítica** | Versões de PHP inconsistentes: o `composer.json` declara `php: ^8.3`, o `composer.lock` exige ≥ 8.4.1 (Symfony 8.1), o `AGENTS.md` diz 8.5 e o README diz "8.0 ou superior". `composer install` falha em PHP 8.3. | `composer install` → "symfony/console v8.1.1 requires php >=8.4.1" |
-| D-03 | **Crítica** | `ProjetoController` importa `App\Http\Requests\Projeto` (classe inexistente) e não importa `App\Models\Projeto`. **Todo** endpoint `/api/projeto` responde 500 (*Class not found*). O mesmo erro está em `ProjetoFactory`. | `ProjetoController.php:5`, `ProjetoFactory.php:5` |
-| D-04 | Alta | `DatabaseSeeder` e `UserFactory` usam `App\Models\User`, que não existe. `php artisan db:seed` quebra. | `database/seeders/DatabaseSeeder.php` |
-| D-05 | Alta | As factories não batem com as tabelas: usam `usuario_id`/`vaga_id` onde o model usa `id_usuario`/`id_vaga`, preenchem `created_at` em models com `$timestamps = false`, geram `status` booleano onde o domínio espera texto e `id_usuario => randomNumber()` sem FK. Nenhum teste de feature conseguirá usá-las. | `database/factories/*` |
-| D-06 | Alta | Rotas e controllers estão dessincronizados. `show`/`update` existem nos controllers, mas não têm rota. `VagaController::minhas` e `CandidaturaController::porVaga`/`update` também não têm rota. O front chama `GET /api/vaga/minhas` e recebe 404/405. | `routes/api.php`, `Vaga.jsx:524` |
-| D-07 | Alta | Controllers que dependem de `$request->user()` (Vaga e Candidatura) estão em rotas **sem** `auth:sanctum`. Sem token, a resposta é 500 ("property id on null") e não 401. | `routes/api.php` |
-| D-08 | Média | FormRequests mortos ou incoerentes. `VagaRequest` e `CandidaturaRequest` não são usados. `CandidaturaRequest` valida `usuario_id`/`status: boolean`, que não existem nesse formato. `CurriculoRequest` exige o campo `usuario`, que não é coluna. Todos têm `authorize(): true`, regras sem tipo (`'titulo' => ['required']`) e nenhum `max`. | `app/Http/Requests/*` |
-| D-09 | Média | Respostas inconsistentes: `destroy` devolve `200 {}` em uns controllers e `204` em outros; o login devolve `Mensagem` (maiúsculo) enquanto o Laravel devolve `message`; os models são retornados crus, sem API Resource (vaza todas as colunas). Também não há paginação: `Model::all()` em todos os `index`. | Controllers |
-| D-10 | Média | Datas duplicadas: `chamados.data_criacao` e `*.data_publicacao` são preenchidas pelo cliente e convivem com `created_at`. | Models |
-| D-11 | Média | O frontend usa **Create React App** (`react-scripts 5`, descontinuado), mas o README fala em Vite e porta 5173. O README também manda subir o back com `php -S` em vez de `php artisan serve`. | `frontend/package.json`, `README.md` |
-| D-12 | Média | URL da API *hardcoded* (`http://localhost:8000`) em 5 arquivos, sem `.env`. Cada página reimplementa `fetch` + token + 401. | `Nav.jsx`, `Login.jsx`, `Home.jsx`, `CadastroUsuario.jsx`, `Vaga.jsx` |
-| D-13 | Média | Arquivos trocados ou vazios: `CadastroVaga.jsx` contém uma cópia da Navbar, não um formulário. Há 13 arquivos vazios (9 `.css`, `HubNoticiasProjetos.jsx`, `SolicitaçoesChamados.jsx` com cedilha no nome, `VisualizacaoChamados.jsx` e `VisualizacaoCurriculo.jsx`, que são importados pelo `App.js` sem *export default*: a rota quebra ao renderizar, e o build quebra em CI, onde avisos do webpack viram erro). `HubVagas.jsx` está 100 % comentado. | `frontend/src` |
-| D-14 | Média | Nomes de componentes herdados de exportação Figma/IA (`LayoutLuluMaster`, `Group`, `Layout`, `DashboardLuluMaster`, `VisualizacaoArtigoClean` repetido em duas páginas). | `export default function …` |
-| D-15 | Baixa | `Vaga.jsx` redireciona para `/login`, rota que não existe (o login é `/`). Rotas com maiúsculas (`/Visualizacao/VisualizacaoVagas`) e sem parâmetro `:id`, então a tela de detalhe não sabe qual item mostrar. | `App.js`, `Vaga.jsx:97` |
-| D-16 | Baixa | Fonte Google e CSS injetados via `<style dangerouslySetInnerHTML>` em 3 páginas; cor de marca `#3800df` repetida dezenas de vezes em vez de virar *token* no `tailwind.config.js`. | `Login.jsx`, `Home.jsx`, `CadastroUsuario.jsx` |
-| D-17 | Baixa | `.junie/mcp/mcp.json` tem caminho absoluto do Windows (`C:\php\...`), que não funciona para outros devs nem para CI. `backend/config/database.php` está no `.gitignore` (credenciais devem ficar só no `.env`; o Laravel 11+ usa o default do framework quando o arquivo falta). | `.junie/`, `.gitignore` |
-| D-18 | Baixa | Testes: só os `ExampleTest` do esqueleto. Não há CI. | `tests/` |
+**Riscos que continuam abertos** (detalhados em §7):
+- não há upload de arquivos STL/3MF nem dos PDFs de laudo;
+- as mensagens de validação estão em inglês;
+- doações, coletas e lotes já têm tabelas, mas ainda não têm endpoints de cadastro;
+- empresas não são verificadas (qualquer um pode se declarar empresa);
+- usuários legados sem e-mail não conseguem fazer login.
 
 ---
 
-## 2. Análise completa de backend e frontend
+## 1. Diagnóstico do código e funções cumpridas
 
-### 2.1 Backend (Laravel)
+### 1.1 Saúde geral
 
-#### Controllers
-| Controller | Nota | Comentário |
+| Dimensão | Avaliação | Comentário |
 | :--- | :---: | :--- |
-| `VagaController` | B | Bom escopo por dono e validação inline correta. Falta Policy (o `abort_unless` está repetido), API Resource e paginação. `minhas` está sem rota. |
-| `CandidaturaController` | B | Bom: status controlado pelo dono da vaga e `firstOrCreate`. Falta índice `UNIQUE(id_usuario,id_vaga)` no banco (`firstOrCreate` não é atômico sob concorrência). |
-| `UsuarioController` | D | `index`/`show`/`update`/`destroy` públicos. `store` (cadastro) não verifica e-mail único. `update` usa o mesmo Request do cadastro (senha obrigatória). Não há `logout` nem "meus dados". |
-| `Noticia`/`Chamado`/`Curriculo` | C− | Código de scaffold. Aceitam `id_usuario` do cliente (qualquer um publica "como" outro usuário) e não têm dono nem autorização. |
-| `ProjetoController` | F | Erro fatal de *import* (D-03). |
+| Segurança de acesso | 🟢 | Todas as escritas exigem token e passam por perfil e por Policy; dados pessoais saem só para o próprio usuário. |
+| Integridade de dados | 🟢 | CHECKs, FKs com `ON DELETE` definido, UNIQUEs e triggers no PostgreSQL; validação espelhada nos FormRequests. |
+| Testabilidade | 🟢 | Factories com estados por perfil (`escola()`, `laboratorio()`, `prestador()`, `moderador()`), CI em dois bancos. |
+| Consistência de API | 🟡 | Resources, paginação e 204/422/403/409 padronizados; ainda sem versionamento (`/api/v1`) nem documentação OpenAPI. |
+| Frontend | 🟡 | Login, cadastro, home, vagas e chamados integrados à API; notícias, projetos e currículo ainda usam dados fixos. |
+| Cobertura dos requisitos | 🟡 | Ver §2.3. |
 
-**Recomendação de padrão:** Controller fino → `FormRequest` (validação + `authorize` via Policy) → `Action`/`Service` (regra de negócio) → `Model` → `JsonResource` (resposta). Use `Route::apiResource` com `->middleware('auth:sanctum')` e `$this->authorize()`/`Gate`.
+### 1.2 Funções, rotas e regras de negócio operacionais
 
-#### Models
-- Faltam relacionamentos inversos (`Usuario::vagas()`, `Usuario::curriculo()`, `Vaga::candidaturas()`). Não há `SoftDeletes` nem Enums nativos para `status`.
-- `Usuario`: `sexo` como boolean é inadequado (use enum/string opcional ou remova; é dado sensível pela LGPD). `cpf`/`cnpj` devem ter cast `encrypted` ou ficar fora das respostas (`#[Hidden]`). Os flags `estudante`/`empresa` não comportam os perfis do requisito (maker, laboratório, escola, empresa, admin). Use papéis (ver §3).
-- Padronize em `casts()` (método) e atributos `#[Fillable]`/`#[Hidden]` do Laravel 13, já que o projeto mistura os três estilos.
+Todas as linhas abaixo têm teste automatizado em `backend/tests/Feature/Api/`.
 
-#### Requests
-Reescrever todos com regras tipadas e limites, por exemplo:
-```php
-'titulo' => ['required', 'string', 'max:255'],
-'email'  => ['required', 'email:rfc', 'max:255', Rule::unique('usuario')->ignore($this->usuario)],
-'senha'  => [$this->isMethod('post') ? 'required' : 'sometimes', Password::min(8)->letters()->numbers()],
-```
-Separe `Store*Request` e `Update*Request`. Nunca valide `id_usuario` vindo do cliente; atribua `$request->user()->id` no servidor.
-
-#### Migrations
-São inexistentes para o domínio (D-01). O primeiro passo é gerar as migrations a partir do banco atual (`kitloong/laravel-migrations-generator` faz isso automaticamente) e passar a usar `foreignId()->constrained()->cascadeOnDelete()`, índices em colunas de filtro e `timestamps()`/`softDeletes()` em todas as tabelas de negócio.
-
-#### Rotas
-- **API:** sem versionamento, sem `auth:sanctum` (exceto `/usuario/me`), sem `throttle` no login e sem `apiResource`. Proposta:
-  ```php
-  Route::prefix('v1')->group(function () {
-      Route::post('auth/login', LoginController::class)->middleware('throttle:login');
-      Route::post('auth/register', RegisterController::class)->middleware('throttle:6,1');
-      Route::get('rastreio/{lote:codigo}', RastreioController::class);           // público (QR Code)
-      Route::apiResource('modelos', ModeloController::class)->only(['index','show']);
-
-      Route::middleware('auth:sanctum')->group(function () {
-          Route::post('auth/logout', LogoutController::class);
-          Route::get('me', MeController::class);
-          Route::apiResource('vagas', VagaController::class);
-          Route::get('me/vagas', [VagaController::class, 'minhas']);
-          // ... demais módulos
-      });
-  });
-  ```
-- **Web:** só a `welcome`. Como o front é SPA separado, está correto; apenas mantenha `/up` (health) e, se adotar autenticação SPA por cookie, a rota `/sanctum/csrf-cookie`.
-
-### 2.2 Frontend (React)
-
-| Aspecto | Situação | Recomendação |
+#### Autenticação e conta
+| Rota | Acesso | Regra de negócio |
 | :--- | :--- | :--- |
-| **Build** | CRA 5 (descontinuado, lento, sem suporte oficial a React 19). | Migrar para **Vite 7** (`npm create vite@latest`, copiar `src/`, renomear `.js`→`.jsx` com JSX, `REACT_APP_`→`VITE_`). A migração leva cerca de 1 hora. |
-| **Componentização** | Páginas-monólito de 300–660 linhas. Subcomponentes úteis (`Avatar`, `UrgPill`, `StatusPill`, cartões, carrossel) estão presos dentro de cada página e duplicados (o carrossel de `VisualizacaoNoticia`/`Projeto`/`Vaga` é praticamente o mesmo). | Extrair para `shared/components/ui` (Button, Input, Select, Badge, Card, Modal, Avatar, Pagination, EmptyState, Spinner) e `shared/components/layout` (AppLayout com Nav + Footer + `<Outlet/>`). |
-| **Estado** | `useState` + `useEffect` com `fetch` manual. Não há cache, *refetch* nem sessão global (a Navbar busca `/usuario/me` a cada página). | **TanStack Query** para estado de servidor e **AuthContext** (ou Zustand) com o usuário logado. Formulários com **React Hook Form + Zod**. |
-| **Consumo da API** | `fetch` espalhado, URL fixa, tratamento de erro diferente em cada tela, mensagens do back com chaves divergentes (`Mensagem` × `message` × `errors`). | Um `apiClient` (axios ou `ky`) com `baseURL` vinda de `import.meta.env.VITE_API_URL`, *interceptor* de token/401 e normalização de erros 422 → `{campo: mensagem}`. Um arquivo de serviço por módulo. |
-| **Tailwind** | Bem usado em layout, mas com muitos valores arbitrários e cor de marca *hardcoded*. MUI e Emotion coexistem só por ícones e 3–4 inputs (cerca de 300 kB a mais no bundle). | Definir *design tokens* no `tailwind.config.js` (`colors.brand`, `fontFamily.sans: ['Inter']`, `fontSize`). Trocar MUI por **lucide-react** (ícones) + **Radix UI / shadcn/ui** (Dialog, Select, Collapse). Avaliar Tailwind v4 depois da migração para Vite. |
-| **Páginas e rotas** | Rotas com maiúsculas e sem `:id`; telas de cadastro e visualização órfãs; `RotaProtegida` confia só na existência do token. | Rotas em *kebab-case* com parâmetros (`/vagas/:id`, `/modelos/:slug`), `lazy()` por rota, guarda por papel (`<RequireRole role="laboratorio">`) e página 404. |
-| **Estilos** | 9 `.css` vazios, `@import` de fonte via `<style>` injetado. | Apagar os vazios, carregar a fonte no `index.html` (ou `@fontsource/inter`) e usar só `index.css` com `@tailwind` e `@layer components` para classes recorrentes (`.input-group`, `.btn-base`). |
-| **Acessibilidade** | Inputs sem `<label htmlFor>`, botões só com ícone e sem `aria-label`, contraste `#858585` em fundo branco (≈ 3.7:1, abaixo do AA para texto pequeno). | `eslint-plugin-jsx-a11y` e revisão com axe DevTools. |
+| `POST /api/usuario` | público, 6/min por IP | Cadastro com `tipo_usuario` (pessoa física, empresa, escola, laboratório). Deriva `estudante`/`empresa` exigidos pelo banco. Pessoa física: CPF, sexo e profissão obrigatórios. PJ: CNPJ. Escola: código INEP (8 dígitos). E-mail único, senha forte. Devolve o token (auto-login). |
+| `POST /api/login` | público, 5/min por e-mail+IP | Verifica a senha com hash e emite token Sanctum de 120 min. |
+| `POST /api/logout` | autenticado | Revoga o token no servidor. |
+| `GET/PATCH/DELETE /api/usuario/me` | autenticado | Dados completos e **mapa de perfis** do próprio usuário. Trocar a senha exige a atual. Tipo e papel não mudam depois do cadastro. Excluir a conta remove tokens e vagas e mantém notícias e projetos sem autor. |
+| `GET /api/usuario/{id}` | autenticado | Perfil público, sem CPF, CNPJ, e-mail ou telefone. |
 
----
-
-## 3. Mapeamento de lacunas (lógica e banco de dados)
-
-### 3.1 Cruzamento requisito × código atual
-
-| # | Módulo do documento | Existe hoje? | O que existe | Lacuna |
-| :-: | :--- | :---: | :--- | :--- |
-| 1 | Doação de makers | ❌ | — | Tudo: cadastro de doação, fotos, polímero, peso, localização. |
-| 2 | Receptores e reciclagem | ❌ | — | Cadastro de laboratórios/grupos, polímeros aceitos, capacidade, fluxo de solicitação e agendamento de coleta. |
-| 3 | Repositório de projetos | 🟡 5 % | `projetos` (título, tema, empresa, texto): é uma vitrine/notícia, não um catálogo de peças. | Arquivos STL/3MF, áreas (saúde/educação/agro/acessibilidade), instruções de impressão, licença, busca por filtros, moderação. |
-| 4 | Pedidos de escolas públicas | 🟡 5 % | `chamados` (título, descrição, prazo, status texto); a tela usa *mock* de helpdesk de TI. | Tipo de demanda (treinamento/scanner/modelagem), escola (código INEP), índice de vulnerabilidade, priorização, pareamento com voluntários. |
-| 5 | Banco de currículos | 🟡 35 % | `curriculo` (cargo, habilidades/competências em texto livre, datas), `vagas`, `candidaturas`. | Portfólio de peças, especialidades estruturadas, busca por empresas com filtros, visibilidade/LGPD, múltiplas experiências. |
-| 6 | Hub de conexão | 🟡 10 % | Vagas + candidaturas fazem um "match" de emprego. | Mural de demandas/ofertas de impressão e resíduo, respostas/interesse, mensagens, notificações. |
-| — | Marketplace de serviços | ❌ | — | Perfis de máquina, orçamento automático, pedido de serviço, avaliação mútua, reputação. |
-| — | Rastreabilidade (QR Code) | ❌ | — | Lotes de filamento, origem do resíduo, eventos, página pública de rastreio, geração/leitura de QR. |
-| — | Painel de impacto | ❌ | — | Agregados (kg desviados, peças doadas, escolas atendidas) e export para relatórios FINEP/CNPq. |
-| — | Gamificação | ❌ | — | Pontos, selos, ranking. |
-| — | Mapa interativo | ❌ | Só `cep`/`cidade` em vagas. | Latitude/longitude em todos os atores, pontos de coleta, consulta por raio. |
-| — | Fórum / base de conhecimento | 🟡 | `noticias` | Tópicos, respostas, categorias, FAQ. |
-| — | Controle de qualidade | ❌ | — | Laudos (diâmetro, resistência, temperatura) vinculados ao lote. |
-| — | Agenda de eventos | ❌ | — | Eventos e inscrições. |
-| — | Curadoria e segurança | ❌ | — | Moderação, denúncias, licenças. |
-| — | API pública / integrações | ❌ | — | Versionamento, tokens com *abilities*, sincronização com Printables/Thingiverse. |
-| — | App mobile | ❌ | — | Push tokens, endpoints de proximidade, leitura de QR. |
-
-### 3.2 Tabelas, colunas e chaves estrangeiras que faltam
-
-> Convenção proposta para **tabelas novas**: plural em português, PK `id` (bigint), FK `<entidade>_id` via `foreignId()->constrained()`, `timestamps()`, `softDeletes()` em entidades de negócio e enums PHP nativos com cast. Migrar as antigas (`id_usuario` → `usuario_id`, `usuario` → `usuarios`, `curriculo` → `curriculos`) numa migration de *rename* única, antes de crescer.
-
-#### 3.2.0 Núcleo (pré-requisito de todos os módulos)
-
-| Tabela | Colunas principais | FKs / índices |
+#### Vagas e candidaturas (banco de currículos)
+| Rota | Acesso | Regra |
 | :--- | :--- | :--- |
-| `usuarios` *(alterar)* | + `email_verified_at`, `remember_token`, `avatar_path`, `bio`, `cidade`, `uf` (char 2), `latitude` decimal(10,7), `longitude` decimal(10,7), `pontos_total` int default 0, `reputacao_media` decimal(3,2), `reputacao_qtd` int, `aceite_termos_em`, `deleted_at`. Remover `estudante`/`empresa`/`sexo` (papéis passam para a tabela abaixo). | `UNIQUE(email)`, `UNIQUE(cpf)`, índice `(uf, cidade)` |
-| `roles`, `model_has_roles`, `permissions`… | via **spatie/laravel-permission**. Papéis: `maker`, `laboratorio`, `escola`, `empresa`, `estudante`, `moderador`, `admin`. | — |
-| `instituicoes` | `tipo` enum(`laboratorio`,`grupo_pesquisa`,`escola_publica`,`empresa`,`ong`), `nome`, `slug`, `cnpj` null, `codigo_inep` null, `descricao`, `site`, `capacidade_kg_mes` decimal null, `cidade`, `uf`, `latitude`, `longitude`, `verificada_em` null | `responsavel_id → usuarios`; índices `(tipo)`, `(uf,cidade)`, `UNIQUE(codigo_inep)` |
-| `instituicao_usuario` | `papel` enum(`responsavel`,`membro`) | `instituicao_id`, `usuario_id`; `UNIQUE(instituicao_id, usuario_id)` |
-| `polimeros` | `sigla` (PLA, PETG, ABS, TPU, PET, PP…), `nome`, `densidade_g_cm3`, `temp_extrusao_min/max`, `reciclavel` bool | `UNIQUE(sigla)` (catálogo, deve ser cacheado) |
-| `areas` | `nome`, `slug` (saúde, educação, agro, acessibilidade…) | `UNIQUE(slug)` |
-| `anexos` *(polimórfica)* | `anexavel_type`, `anexavel_id`, `tipo` enum(`foto`,`stl`,`3mf`,`laudo`,`documento`), `disco`, `caminho`, `nome_original`, `mime`, `tamanho_bytes`, `sha256`, `status_verificacao` enum(`pendente`,`aprovado`,`rejeitado`), `metadados` json (volume, bounding box, nº de triângulos) | `usuario_id → usuarios`; índice `(anexavel_type, anexavel_id)`; `INDEX(sha256)`. *(Ou `media` do spatie/laravel-medialibrary.)* |
+| `GET /api/vaga`, `/vaga/{id}` | público | Lista paginada (`?per_page`, máx. 100). |
+| `POST/PUT/DELETE /api/vaga` | **contratante** (PJ) | Autor vem do token; só o autor altera ou exclui. O trigger `trg_bloquear_estudante_vaga` repete a regra no banco. |
+| `GET /api/vaga/minhas`, `/vaga/{id}/candidaturas` | contratante, dono | Painel do empregador. |
+| `POST/GET/DELETE /api/candidatura` | **candidato** (PF) | Uma candidatura por vaga (`candidatura_unica`); começa "Em análise"; só o candidato desiste. |
+| `PATCH /api/candidatura/{id}` | contratante, dono da vaga | Muda o status (Em análise, Aprovada, Reprovada, Cancelada). |
+| `GET/POST/PUT/DELETE /api/curriculo` | autenticado | O dono gerencia; empresas consultam o banco de currículos; os demais veem só o próprio. |
 
-#### 3.2.1 Módulo 1 — Doação de makers
-| Tabela | Colunas | FKs |
+#### Chamados (pedidos de escolas públicas e empresas)
+| Rota | Acesso | Regra |
 | :--- | :--- | :--- |
-| `doacoes` | `tipo` enum(`peca_excedente`,`carretel_usado`,`resto_filamento`), `titulo`, `descricao`, `peso_estimado_g` int, `peso_real_g` int null, `quantidade` int, `cor` null, `cidade`, `uf`, `latitude`, `longitude`, `status` enum(`disponivel`,`reservada`,`coletada`,`entregue`,`cancelada`), `disponivel_ate` date null | `doador_id → usuarios`, `polimero_id → polimeros`, `ponto_coleta_id → pontos_coleta` null; índices `(status, polimero_id)`, `(latitude, longitude)` |
-| fotos | via `anexos` (`tipo=foto`, até 5) | — |
+| `GET /api/chamado`, `/chamado/{id}`, `/chamado/opcoes` | solicitante, prestador, moderador | O solicitante vê os próprios; o prestador vê os **abertos** e os que atende; o moderador vê todos. `opcoes` lista tipos de serviço e **locais de atendimento**. |
+| `POST/PUT/DELETE /api/chamado` | **solicitante** (escola, empresa) | Exige tipo de serviço e prazo. Editar e excluir só enquanto está "Aberto". O status nunca é alterado por PATCH. |
+| `POST /api/chamado/{id}/aceitar` | **prestador** (laboratório, maker) | Exige o local de atendimento. Transação com `lockForUpdate`: um segundo aceite recebe 409. O solicitante não aceita o próprio chamado. |
+| `POST /api/chamado/{id}/concluir` | prestador responsável | Marca como "Resolvido" e concede **50 pontos** e selos. |
+| `POST /api/chamado/{id}/cancelar` | solicitante dono | Cancela enquanto está aberto ou em atendimento. |
 
-#### 3.2.2 Módulo 2 — Receptores e reciclagem
-| Tabela | Colunas | FKs |
+O contato (e-mail e telefone) do solicitante e do prestador aparece só para os dois, depois do aceite.
+
+#### Notícias, projetos e curadoria
+| Rota | Acesso | Regra |
 | :--- | :--- | :--- |
-| `instituicao_polimero` | `aceita_contaminado` bool, `peso_minimo_g` int null, `observacoes` | `instituicao_id`, `polimero_id`; `UNIQUE(par)` |
-| `area_instituicao` | — | `area_id`, `instituicao_id` |
-| `pontos_coleta` | `nome`, `endereco`, `cidade`, `uf`, `latitude`, `longitude`, `horario_funcionamento` json, `ativo` | `instituicao_id → instituicoes` |
-| `solicitacoes_coleta` | `modalidade` enum(`coleta`,`entrega`), `status` enum(`pendente`,`aceita`,`recusada`,`agendada`,`concluida`,`cancelada`), `agendado_para` datetime null, `endereco`, `peso_recebido_g` null, `motivo_recusa`, `concluida_em` | `doacao_id → doacoes`, `instituicao_id → instituicoes`, `solicitante_id → usuarios`; índice `(instituicao_id, status)` |
-| `lotes_filamento` | `codigo` char(26) **ULID público para o QR**, `peso_entrada_g`, `peso_saida_g`, `diametro_nominal_mm` decimal(4,2), `cor`, `status` enum(`em_processamento`,`aguardando_laudo`,`aprovado`,`reprovado`,`distribuido`), `produzido_em` | `instituicao_id → instituicoes`, `polimero_id → polimeros`; `UNIQUE(codigo)` |
-| `lote_origens` | `peso_g` | `lote_id → lotes_filamento`, `solicitacao_coleta_id → solicitacoes_coleta` (ligação resíduo → lote) |
-| `lote_eventos` | `tipo` enum(`coletado`,`triturado`,`extrudado`,`laudo_emitido`,`enviado`,`utilizado`), `ocorrido_em`, `dados` json | `lote_id`, `responsavel_id → usuarios` (linha do tempo da rastreabilidade) |
-| `laudos_qualidade` | `diametro_medio_mm`, `tolerancia_mm`, `ovalidade`, `resistencia_tracao_mpa`, `alongamento_pct`, `temp_impressao_min/max`, `umidade_pct`, `resultado` enum(`aprovado`,`reprovado`,`restrito`), `emitido_em` | `lote_id → lotes_filamento`, `laboratorio_id → instituicoes`, `emitido_por → usuarios`; PDF via `anexos` (`tipo=laudo`) |
+| `GET /api/noticia`, `/api/projeto` | público | Só conteúdo **publicado**. Filtros `tema`, `area`, `licenca`, `q`. O moderador pode filtrar por `status`. |
+| `GET /api/{noticia|projeto}/{id}` | público / autor / moderador | Rascunho ou rejeitado: só o autor e os moderadores. |
+| `GET /api/{noticia|projeto}/minhas` | autenticado | Acompanhamento da revisão. |
+| `POST /api/noticia` | **publicador** (PJ ou moderador) | Nasce "em revisão" (a do moderador já nasce publicada). |
+| `POST /api/projeto` | autenticado | Área e licença Creative Commons obrigatórias; nasce "em revisão". |
+| `PUT/DELETE` | autor ou moderador | Edição do autor volta para revisão. |
+| `POST /api/{noticia|projeto}/{id}/moderacao` | **moderador** | Aprovar ou rejeitar com motivo; registra em `moderacoes`. O moderador não modera o próprio conteúdo. Projeto aprovado dá **20 pontos** ao autor. |
+| `POST /api/denuncia` · `GET /api/denuncia` · `POST /api/denuncia/{id}/resolver` | autenticado · moderador | Denúncia de conteúdo publicado (peça perigosa, licença violada...). Se procedente, o conteúdo sai do ar. |
+| `PUT/DELETE /api/noticia/{id}/reacao` · `GET /api/noticia/{id}/reacoes` | autenticado · público | Uma reação por usuário (curtir, útil, inspirador) com comentário. Usa a tabela legada `reacoes_noticias`. |
 
-#### 3.2.3 Módulo 3 — Repositório de projetos (modelos 3D)
-| Tabela | Colunas | FKs |
+#### Economia circular e engajamento
+| Rota | Acesso | Regra |
 | :--- | :--- | :--- |
-| `licencas` | `sigla` (CC-BY, CC-BY-SA, CC-BY-NC, CC0, GPL-3.0), `nome`, `url`, `permite_uso_comercial`, `permite_derivados` | `UNIQUE(sigla)` |
-| `modelos` | `titulo`, `slug`, `descricao`, `instrucoes_impressao` json (`altura_camada`, `infill`, `suporte`, `bico`, `temp`), `volume_cm3` decimal null, `tempo_estimado_min` null, `status_moderacao` enum(`rascunho`,`em_revisao`,`publicado`,`bloqueado`), `motivo_bloqueio`, `downloads_count`, `favoritos_count`, `origem` enum(`local`,`printables`,`thingiverse`), `url_externa`, `publicado_em` | `autor_id → usuarios`, `area_id → areas`, `licenca_id → licencas`, `polimero_recomendado_id → polimeros` null, `moderado_por → usuarios` null; `UNIQUE(slug)`, `FULLTEXT(titulo, descricao)`, índice `(status_moderacao, area_id)` |
-| arquivos | via `anexos` (`stl`/`3mf`/`foto`); opcional `modelo_versoes` (`versao`, `changelog`) | `modelo_id` |
-| `tags`, `taggables` | `nome`, `slug` | polimórfico |
-| `favoritos` | — | `usuario_id`, `modelo_id`; `UNIQUE(par)` |
-| `downloads` | `ip_hash`, `created_at` | `modelo_id`, `usuario_id` null |
-| `projetos` *(atual)* | Manter como "Projetos/Notícias de iniciativas" ou fundir em `noticias` com `tipo`. | — |
+| `GET /api/rastreio/{codigo}` | público, 60/min | Página do **QR Code**: polímero, dados técnicos, laboratório, origem agregada (doações, peso reciclado, tipos, cidades), linha do tempo e laudos, **sem dados pessoais**. Código ULID não enumerável. |
+| `GET /api/ranking?tipo=` | público | Top 20 por pontos, com selos e sem contato. |
 
-#### 3.2.4 Módulo 4 — Pedidos de escolas públicas
-| Tabela | Colunas | FKs |
-| :--- | :--- | :--- |
-| `pedidos_escola` *(substitui/evolui `chamados`)* | `tipo` enum(`treinamento_impressao`,`scanner_3d`,`modelagem`,`impressao_peca`,`manutencao`), `titulo`, `descricao`, `publico_estimado` int, `data_desejada` date, `modalidade` enum(`presencial`,`remoto`), `indice_vulnerabilidade` decimal(5,2) (INSE/IDEB), `prioridade` int (calculada), `status` enum(`aberto`,`em_triagem`,`pareado`,`em_execucao`,`concluido`,`cancelado`), `concluido_em` | `escola_id → instituicoes` (tipo escola), `solicitante_id → usuarios`; índice `(status, prioridade DESC)` |
-| `pareamentos` | `voluntario_type`, `voluntario_id` (usuário maker **ou** instituição), `score_compatibilidade` decimal, `status` enum(`sugerido`,`convidado`,`aceito`,`recusado`,`concluido`), `aceito_em`, `relato_conclusao` | `pedido_escola_id → pedidos_escola`; `UNIQUE(pedido, voluntario)` |
+### 1.3 Padrões de código em uso
 
-#### 3.2.5 Módulo 5 — Banco de currículos
-| Tabela | Colunas | FKs |
-| :--- | :--- | :--- |
-| `perfis_profissionais` *(substitui `curriculo` flat)* | `titulo`, `resumo`, `disponibilidade` enum, `modalidade` enum(`presencial`,`remoto`,`hibrido`), `linkedin_url`, `portfolio_url`, `visivel_para_empresas` bool, `cidade`, `uf` | `usuario_id → usuarios` `UNIQUE` (1:1) |
-| `especialidades` | `nome`, `slug`, `categoria` (modelagem, pós-processamento, manutenção, CAD, scanner…) | `UNIQUE(slug)` |
-| `especialidade_usuario` | `nivel` enum(`basico`,`intermediario`,`avancado`) | `usuario_id`, `especialidade_id`; `UNIQUE(par)` |
-| `experiencias` | `cargo`, `organizacao`, `inicio`, `fim` null, `descricao` | `usuario_id` |
-| `formacoes` | `curso`, `instituicao`, `nivel`, `inicio`, `fim` | `usuario_id` |
-| `portfolio_itens` | `titulo`, `descricao` + fotos via `anexos` | `usuario_id`, `modelo_id → modelos` null |
-| `vagas` *(alterar)* | + `modalidade`, `faixa_salarial_min/max`, `status` enum(`aberta`,`pausada`,`encerrada`), `expira_em`, `created_at/updated_at` | + `instituicao_id → instituicoes` null; FK real `usuario_id`; `vaga_especialidade` (pivot) |
-| `candidaturas` *(alterar)* | + `mensagem`, `updated_at` | FK `usuario_id`, `vaga_id` com `cascadeOnDelete`; **`UNIQUE(usuario_id, vaga_id)`** |
-
-#### 3.2.6 Módulo 6 — Hub de conexão
-| Tabela | Colunas | FKs |
-| :--- | :--- | :--- |
-| `anuncios` (mural) | `tipo` enum(`demanda`,`oferta`), `categoria` enum(`impressao_peca`,`residuo`,`reciclagem`,`servico`,`equipamento`), `titulo`, `descricao`, `quantidade`, `cidade`, `uf`, `latitude`, `longitude`, `status` enum(`aberto`,`em_negociacao`,`atendido`,`expirado`), `expira_em` | `autor_id → usuarios`, `polimero_id` null, `referencia_type/id` (doação, modelo) null; índice `(categoria, tipo, status)` |
-| `anuncio_interesses` | `mensagem`, `status` enum(`enviado`,`aceito`,`recusado`) | `anuncio_id`, `usuario_id`; `UNIQUE(par)` |
-| `conversas`, `conversa_participantes`, `mensagens` | `assunto_type/id` (contexto); `corpo`, `lida_em` | `conversa_id`, `usuario_id` |
-| `notifications` | padrão do Laravel (`php artisan make:notifications-table`) | morph `notifiable` |
-
-#### 3.2.7 Funcionalidades sugeridas
-| Funcionalidade | Tabelas |
+| Camada | Padrão |
 | :--- | :--- |
-| **Perfis de máquina** | `impressoras` (`usuario_id`, `instituicao_id` null, `fabricante`, `modelo`, `tecnologia` enum(FDM, SLA, SLS), `volume_x/y/z_mm`, `bico_mm`, `horas_ociosas_semana`, `valor_hora` decimal, `ativa`), `impressora_polimero` (pivot com `preco_grama`) |
-| **Marketplace** | `orcamentos` (`demandante_id`, `maker_id`, `impressora_id`, `modelo_id`/`anexo_id`, `polimero_id`, `volume_cm3`, `peso_g`, `tempo_min`, `valor_material`, `valor_maquina`, `valor_total`, `status` enum(`rascunho`,`enviado`,`aceito`,`recusado`,`expirado`), `valido_ate`), `pedidos_servico` (`orcamento_id` UNIQUE, `status` enum(`em_producao`,`enviado`,`entregue`,`disputa`,`cancelado`), `codigo_rastreio_envio`, `entregue_em`) |
-| **Avaliação/Reputação** | `avaliacoes` (`avaliador_id`, `avaliado_id`, `avaliavel_type/id` → pedido_servico / solicitacao_coleta / pareamento, `nota` tinyint 1–5, `comentario`; `UNIQUE(avaliador_id, avaliavel_type, avaliavel_id)`); agregado desnormalizado em `usuarios.reputacao_*` via Observer |
-| **Rastreabilidade QR** | `lotes_filamento.codigo` + `lote_origens` + `lote_eventos` + `laudos_qualidade` (acima). O QR aponta para `https://ecohub3d…/rastreio/{codigo}`. |
-| **Painel de impacto** | `metricas_impacto_diarias` (`data`, `instituicao_id` null, `kg_desviados`, `pecas_doadas`, `escolas_atendidas`, `alunos_impactados`, `lotes_produzidos`, `co2_evitado_kg`), preenchida por *job* agendado (`Schedule::job(...)->daily()`) a partir das tabelas transacionais |
-| **Gamificação** | `pontuacoes` (*ledger* imutável: `usuario_id`, `acao` enum, `pontos`, `origem_type/id`, `created_at`; `UNIQUE(usuario_id, acao, origem_type, origem_id)` contra duplicidade), `selos` (`slug`, `nome`, `descricao`, `icone`, `criterio` json), `selo_usuario` (`conquistado_em`); ranking em cache/Redis *sorted set* |
-| **Mapa** | `latitude`/`longitude` em `instituicoes`, `pontos_coleta`, `doacoes`, `anuncios`, `usuarios` (opcional `POINT SRID 4326` + `SPATIAL INDEX` no MySQL 8 para `ST_Distance_Sphere`) |
-| **Fórum/KB** | `forum_categorias`, `forum_topicos` (`categoria_id`, `autor_id`, `titulo`, `corpo_md`, `fixado`, `resolvido`), `forum_respostas` (`topico_id`, `autor_id`, `corpo_md`, `aceita`); `artigos` ou `noticias.tipo` enum(`noticia`,`tutorial`,`faq`) |
-| **Eventos** | `eventos` (`organizador_id`, `instituicao_id`, `tipo` enum(`workshop`,`hackathon`,`mutirao`), `titulo`, `descricao`, `inicio`, `fim`, `local`, `latitude/longitude`, `vagas`, `online_url`), `inscricoes_evento` (`evento_id`, `usuario_id`, `status`, `checkin_em`; `UNIQUE(par)`) |
-| **Curadoria** | `denuncias` (`denunciante_id`, `denunciavel_type/id`, `motivo` enum, `descricao`, `status`, `resolvida_por`), `moderacoes` (log: `moderador_id`, `moderavel_type/id`, `acao`, `justificativa`) |
-| **Integrações/API** | `integracoes_externas` (`provedor`, `id_externo`, `modelo_id`, `sincronizado_em`, `payload` json); tokens Sanctum com *abilities* |
-| **Mobile** | `dispositivos` (`usuario_id`, `plataforma`, `push_token` UNIQUE, `ultimo_acesso_em`) |
+| Rotas | `routes/api.php` agrupado por **perfil** (`middleware('perfil:...')`), padrões numéricos globais para `{id}`. |
+| Autorização | Duas camadas: o **middleware** `GarantePerfil` decide *quem pode usar a rota*; as **Policies** decidem *sobre qual registro* (dono, status). A regra de cada perfil fica num lugar só: `Usuario::temPerfil()`. |
+| Validação | FormRequest por entidade com regras `required/sometimes` conforme o método; `prepareForValidation` normaliza (UF, booleanos derivados). |
+| Domínio | **Enums** PHP para todo valor fechado (`TipoUsuario`, `Perfil`, `StatusChamado`, `LocalAtendimento`...), espelhados por CHECK no banco. |
+| Regras transversais | **Services** (`ModeracaoService`, `GamificacaoService`) e o trait `Moderavel`. |
+| Respostas | API Resources; perfil público e privado separados; `JsonResource::withoutWrapping()`. |
+| Banco | Nomes em português, FK `id_<entidade>` (convenção do DDL original mantida), constraints com nome explícito, `NOT VALID` para não rejeitar dados legados. |
+| Frontend | `services/api.js` (cliente único), `AuthContext` com `pode(...perfis)`, `RequirePerfil` para rotas, páginas com *lazy loading*. |
 
-### 3.3 Lógica de negócio, rotas e telas a desenvolver
+### 1.4 Dívidas técnicas e inconsistências que permanecem
 
-| Módulo | Regras de negócio (Services/Actions) | Endpoints (prefixo `/api/v1`) | Páginas/componentes |
+| Severidade | Dívida | Encaminhamento |
+| :---: | :--- | :--- |
+| Alta | Sem upload de STL/3MF e de PDFs de laudo (§7.2). | Próximo commit planejado (§6.2). |
+| Alta | Doações, coletas, lotes e laudos não têm endpoints de escrita; o rastreio já lê. | §6.2. |
+| Média | Mensagens de validação em inglês. | `laravel-lang/lang` ou `lang/pt_BR/validation.php`. |
+| Média | Telas de Notícias, Projetos, Currículo e Visualização usam dados fixos. | Ligar à API já existente (`/noticia`, `/projeto`, `/curriculo`). |
+| Média | Qualquer pessoa pode se cadastrar como empresa ou laboratório e ganhar os perfis correspondentes. | Verificação de CNPJ/INEP (consulta à Receita/INEP ou aprovação por moderador) antes de liberar os perfis. |
+| Média | Usuários legados com `email` nulo não conseguem logar. | `SELECT id, nome FROM usuario WHERE email IS NULL;` e completar manualmente. |
+| Baixa | Convenção mista de nomes de tabela (`usuario`/`curriculo` no singular, demais no plural). | Mantida para não quebrar o banco em uso; renomear só numa janela de manutenção. |
+| Baixa | MUI e Emotion convivem com Tailwind; alguns `<style dangerouslySetInnerHTML>` restantes. | Trocar por Tailwind + lucide-react/Radix. |
+| Baixa | API sem versionamento e sem OpenAPI. | `dedoc/scramble` + prefixo `/api/v1` quando houver cliente externo (app mobile). |
+
+---
+
+## 2. Banco de dados atual × requisitos
+
+### 2.1 Avaliação do DDL enviado (`script.sql`)
+
+**Pontos fortes**
+- `chk_tipo_usuario` e `chk_dados_consistentes`: o banco garante que pessoa física tem CPF, sexo e profissão e que empresa tem CNPJ. Essa é a melhor regra de integridade do projeto, e o código foi alinhado a ela.
+- `candidatura_unica` e o `UNIQUE` de `reacoes_noticias` evitam duplicidade.
+- Os triggers `trg_bloquear_estudante_vaga` e `trg_bloquear_empresa_candidatura` funcionam como última barreira de regra de negócio.
+- `generated always as identity` e `timestamptz` nas datas de negócio.
+
+**Problemas encontrados (e o que foi feito)**
+
+| # | Problema no DDL | Impacto | Situação |
+| :-: | :--- | :--- | :--- |
+| B1 | `usuario.email` é **nulo e não único**. | Login ambíguo ou impossível. | ✅ `UNIQUE` adicionado (`usuario_email_key`); o app exige o e-mail. Nulos legados continuam (ver §1.4). |
+| B2 | As funções `verificar_criador_vaga()` e `verificar_candidato_estudante()` **não estão no script**. | Restaurar o banco a partir do script falha. | ✅ Recriadas na migration de linha de base (só em bancos novos). |
+| B3 | FKs de `noticias`, `projetos` e `vagas` **sem `ON DELETE`**. | Excluir a conta de quem publicou dava erro 500. | ✅ `CASCADE` para vagas, `SET NULL` para notícias e projetos. |
+| B4 | **Nenhum índice em colunas de FK** (o PostgreSQL não cria sozinho). | Varredura completa em "minhas vagas" e "meus chamados" e em cascatas. | ✅ Índices adicionados. |
+| B5 | `status` em `chamados` e `candidaturas` é `varchar` livre. | Valores inválidos (ex.: "Pendente"). | ✅ CHECK em `chamados` (`NOT VALID` preserva o legado). Candidaturas: validado na API; CHECK pendente. |
+| B6 | Não há como representar **escola**, **laboratório**, **maker/voluntário** nem **moderador**. | Impossível aplicar as regras de permissão pedidas. | ✅ `tipo_usuario`, `prestador_servico`, `papel`, `codigo_inep` + CHECKs. |
+| B7 | `reacoes_noticias` e `anexos_documentos` existiam **sem código**. | Funcionalidade morta. | ✅ Reações com endpoint; anexos ganharam metadados e servem aos laudos. |
+| B8 | `vagas` e `curriculo` têm `created_at/updated_at`, mas os models diziam que não. | Datas sempre nulas. | ✅ Models corrigidos. |
+| B9 | Mistura de `timestamp` (sem fuso) e `timestamptz`. | Datas ambíguas entre servidores. | Mantido nas colunas legadas; todas as novas usam `timestamptz`. |
+
+### 2.2 Tabelas adicionadas nesta etapa
+
+```mermaid
+erDiagram
+    usuario ||--o{ chamados : "abre (id_usuario)"
+    usuario ||--o{ chamados : "atende (id_prestador)"
+    usuario ||--o{ doacoes : doa
+    doacoes ||--o{ solicitacoes_coleta : "é solicitada"
+    usuario ||--o{ solicitacoes_coleta : "laboratório recebe"
+    solicitacoes_coleta ||--o{ lote_origens : compõe
+    lotes_filamento ||--o{ lote_origens : "tem origem"
+    lotes_filamento ||--o{ lote_eventos : "linha do tempo"
+    lotes_filamento ||--o{ laudos_qualidade : "é avaliado"
+    anexos_documentos |o--o{ laudos_qualidade : "PDF do laudo"
+    polimeros ||--o{ doacoes : ""
+    polimeros ||--o{ lotes_filamento : ""
+    usuario ||--o{ pontuacoes : ganha
+    selos ||--o{ selos_usuario : ""
+    usuario ||--o{ selos_usuario : conquista
+    usuario ||--o{ denuncias : denuncia
+    usuario ||--o{ moderacoes : decide
+```
+
+| Funcionalidade | Tabelas e colunas | Constraints e relacionamentos principais |
+| :--- | :--- | :--- |
+| **Perfis (RBAC)** | `usuario` + `tipo_usuario`, `prestador_servico`, `papel`, `codigo_inep`, `remember_token`, `pontos_total` | `chk_tipo_usuario_valido`, `chk_tipo_usuario_documento` (`(tipo='pessoa_fisica') = estudante`), `chk_prestador_pessoa_fisica`, `chk_papel_valido`; UNIQUE `email`, `codigo_inep` |
+| **Chamados** | `chamados` + `tipo_servico`, `cidade`, `uf`, `id_prestador`, `local_atendimento`, `aceito_em`, `concluido_em` | FK `id_prestador → usuario ON DELETE SET NULL`; CHECKs de status, tipo, local, `id_prestador <> id_usuario` e "em atendimento exige prestador e local" |
+| **Doações (módulo 1)** | `polimeros` (catálogo PLA, PETG, ABS, PET, TPU, PP), `doacoes` | FK doador `CASCADE`, polímero `RESTRICT`; CHECK de tipo, status e peso > 0; índice em (lat, long) |
+| **Coleta (módulo 2)** | `solicitacoes_coleta` | **Índice único parcial**: uma solicitação ativa por doação; CHECK de modalidade, status e peso |
+| **Rastreabilidade (QR)** | `lotes_filamento` (`codigo` ULID), `lote_origens`, `lote_eventos` | UNIQUE `codigo`; `peso_saida ≤ peso_entrada`; UNIQUE (lote, coleta); eventos com tipo controlado |
+| **Controle de qualidade** | `laudos_qualidade`; `anexos_documentos` + `mime`, `tamanho_bytes`, `sha256`, `disco`, `status_verificacao` | FK lote `CASCADE`, laboratório, responsável, anexo `SET NULL`; CHECK de resultado, medidas > 0 e faixa de temperatura |
+| **Gamificação** | `pontuacoes` (histórico imutável), `selos`, `selos_usuario` | **UNIQUE (usuário, ação, origem)**, o que torna a concessão idempotente; PK composta em `selos_usuario` |
+| **Moderação** | `noticias`/`projetos` + `status`, `motivo_rejeicao`, `id_moderador`, `moderado_em`; `projetos` + `area`, `licenca`; `moderacoes`, `denuncias` | CHECK de status, área, licença CC e motivo; UNIQUE (denunciante, conteúdo); índice (status, data_publicacao) |
+
+### 2.3 Cobertura dos 6 módulos
+
+| Módulo | Banco | API | Tela | O que falta |
+| :--- | :---: | :---: | :---: | :--- |
+| 1. Doação de makers | ✅ | ❌ | ❌ | CRUD de doações com fotos e geolocalização do CEP. |
+| 2. Receptores e reciclagem | ✅ | 🟡 (rastreio) | ❌ | Polímeros aceitos e capacidade por laboratório (`laboratorio_polimeros`), fluxo de solicitação e agendamento, criação de lotes e eventos. |
+| 3. Repositório de projetos | 🟡 | 🟡 | ❌ | Arquivos STL/3MF com validação, instruções de impressão (`jsonb`), visualizador 3D. |
+| 4. Pedidos de escolas | ✅ | ✅ | ✅ | Índice de vulnerabilidade (INSE/IDEB pelo INEP) para priorizar, sugestão automática de prestadores. |
+| 5. Banco de currículos | 🟡 | ✅ | 🟡 | Especialidades estruturadas, portfólio de peças, busca por filtros. |
+| 6. Hub de conexão | ❌ | ❌ | ❌ | `anuncios` (demanda/oferta), `anuncio_interesses`, mensagens e notificações. |
+
+**Funcionalidades sugeridas ainda sem tabela:**
+- marketplace: `impressoras`, `orcamentos`, `pedidos_servico`, `avaliacoes`;
+- mapa: coluna `geography(Point)` com PostGIS e índice GiST;
+- eventos: `eventos` e `inscricoes_evento`;
+- fórum: `forum_topicos` e `forum_respostas`;
+- integrações: `integracoes_externas`;
+- mobile: `dispositivos` (tokens de push).
+
+As colunas detalhadas estão na versão 1 deste relatório.
+
+---
+
+## 3. Backend e frontend
+
+### 3.1 Backend (Laravel 13)
+
+| Elemento | Situação | Qualidade |
+| :--- | :--- | :---: |
+| **Controllers** (12) | Finos: validam, autorizam (`Gate::authorize`) e delegam. As regras transversais ficam nos Services. `ChamadoController::aceitar` trata concorrência com lock pessimista. | 🟢 |
+| **Models** (18) | Relacionamentos completos, enums com cast, `$attributes` com os defaults do banco, trait `Moderavel`, *scopes* (`visiveisPara`, `publicados`). `Model::shouldBeStrict()` em desenvolvimento. | 🟢 |
+| **Requests** (7) | Espelham as constraints do banco (CPF/CNPJ/INEP condicionais, enums, `after_or_equal:today`). `CandidaturaController` e `CurriculoController` ainda validam inline em parte. | 🟢 |
+| **Migrations** (18) | Linha de base idempotente que reproduz o DDL; evoluções com `down()` testado (rollback/migrate); CHECKs só no PostgreSQL. | 🟢 |
+| **Rotas** | API agrupada por perfil; web só com `/` e `/up`. Falta versionamento `/api/v1`. | 🟡 |
+| **Resources** (9) | Perfil público e privado separados; contato condicionado ao envolvimento; rastreio sem dados pessoais. | 🟢 |
+
+### 3.2 Frontend (React 19 + Vite + Tailwind)
+
+| Aspecto | Situação | Próximo passo |
+| :--- | :--- | :--- |
+| Componentização | `Nav`, `Footer`, `RequirePerfil`; páginas novas (`Chamados`, `CadastroVaga`) com subcomponentes locais. Páginas antigas ainda monolíticas (300–600 linhas). | Extrair `shared/ui` (Button, Input, Select, Badge, Card, EmptyState). |
+| Estado | `AuthContext` com usuário, perfis e `pode()`; estado de servidor com `useState`/`useEffect`. | TanStack Query para cache e revalidação. |
+| Consumo da API | Cliente único `services/api.js` (token, 401 encerra a sessão, 422 por campo, erro de rede). Sem URL fixa no código. | Gerar o cliente a partir do OpenAPI. |
+| Tailwind | Cor de marca como *token* (`brand`); páginas novas sem CSS injetado. | Remover MUI/Emotion e os `<style>` restantes. |
+| Páginas e rotas | Rotas em minúsculas, *lazy loading* (bundle inicial de 243 kB), 404 → login, guardas por perfil. | Rotas de detalhe com `:id` (`/noticias/:id`). |
+
+---
+
+## 4. Lacunas e lógica de permissões (RBAC)
+
+### 4.1 Modelo
+
+- **Tipo de usuário** (`tipo_usuario`, escolhido no cadastro e imutável): `pessoa_fisica`, `empresa`, `escola`, `laboratorio`. Os booleanos legados continuam: `estudante` = pessoa física e `empresa` = pessoa jurídica.
+- **Atributo de pessoa física:** `prestador_servico` (maker/voluntário), que a própria pessoa liga e desliga.
+- **Papel administrativo** (`papel`): `usuario`, `moderador`, `admin`. Só muda direto no banco ou por um admin.
+- **Perfis de acesso** (enum `Perfil`), calculados em `Usuario::temPerfil()`:
+
+| Perfil | Quem tem | O que libera |
+| :--- | :--- | :--- |
+| `solicitante` | escola, empresa ("Escola" ou "CNPJ") | criar e acompanhar chamados |
+| `prestador` | laboratório; pessoa física com `prestador_servico` | ver chamados abertos, **escolher o local de atendimento**, aceitar e concluir |
+| `contratante` | empresa, escola, laboratório ("CNPJ/Instituição") | publicar vagas e gerir candidatos |
+| `candidato` | pessoa física | candidatar-se a vagas |
+| `publicador` | pessoa jurídica ou moderador | publicar notícias (sujeitas a moderação) |
+| `moderador` | `papel` moderador ou admin | aprovar e rejeitar conteúdo, resolver denúncias, ver todos os chamados |
+
+### 4.2 Matriz de permissões
+
+| Ação | PF | PF maker | Empresa | Escola | Laboratório | Moderador | Visitante |
+| :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Abrir e ver os próprios chamados | | | ✅ | ✅ | | (vê todos) | |
+| Ver chamados abertos, escolher local, aceitar | | ✅ | | | ✅ | | |
+| Concluir chamado | | responsável | | | responsável | | |
+| Publicar vaga e ver candidatos | | | ✅ | ✅ | ✅ | | |
+| Candidatar-se | ✅ | ✅ | | | | | |
+| Publicar notícia (em revisão) | | | ✅ | ✅ | ✅ | ✅ (publica direto) | |
+| Submeter projeto (em revisão) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Ver notícia ou projeto publicado | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ver rascunho ou rejeitado | autor | autor | autor | autor | autor | ✅ | |
+| Editar ou excluir notícia/projeto | autor | autor | autor | autor | autor | ✅ | |
+| Moderar e resolver denúncias | | | | | | ✅ (exceto o próprio) | |
+| Consultar banco de currículos | o próprio | o próprio | ✅ | o próprio | o próprio | o próprio | |
+| Rastreio por QR Code e ranking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### 4.3 Onde cada regra é aplicada (defesa em camadas)
+
+1. **Front** (`RequirePerfil`, `pode()`): esconde o que o usuário não pode fazer. É só experiência de uso, não segurança.
+2. **Middleware `perfil`**: devolve 403 antes do controller.
+3. **Policy**: regra sobre o registro (dono, status "Aberto", moderador não modera o próprio).
+4. **Banco**: CHECKs (`chk_prestador_pessoa_fisica`, `chk_chamados_prestador_diferente`...) e triggers legados.
+
+> **Decisões a validar com a orientação.** As duas primeiras ficam em `Usuario::temPerfil()` e mudam numa linha.
+> - **Laboratório não abre chamados:** "CNPJ", no requisito, foi interpretado como *empresa*.
+> - **Escola pode publicar vagas**, por ser instituição com CNPJ.
+> - **Notícias exigem moderação** mesmo para instituições.
+
+---
+
+## 5. Estrutura de pastas
+
+### 5.1 Backend — atual (após esta etapa) e evolução
+
+```
+backend/app/
+├── Enums/                 # valores de domínio (TipoUsuario, Perfil, StatusChamado...) — espelhados por CHECK
+├── Http/
+│   ├── Controllers/       # finos; um por recurso (+ RastreioController, RankingController invocáveis)
+│   ├── Middleware/
+│   │   └── GarantePerfil.php   # RBAC por rota: ->middleware('perfil:solicitante,prestador')
+│   ├── Requests/          # validação espelhando as constraints do banco
+│   └── Resources/         # contrato JSON (público × privado)
+├── Models/
+│   └── Concerns/          # traits de domínio (Moderavel)
+├── Policies/              # regras por registro (dono, status, moderação)
+├── Services/              # regras transversais (ModeracaoService, GamificacaoService)
+└── Providers/             # rate limiters, morph map, padrões de rota
+```
+
+**Próximo passo de escala**, quando os módulos 1, 2 e 6 entrarem (com mais de ~20 controllers):
+
+```
+backend/app/
+├── Actions/<Modulo>/                # 1 caso de uso por classe (SolicitarColeta, CriarLote, AceitarChamado)
+├── Contracts/                       # INTERFACES de fronteira: AnalisadorModelo3D, AntivirusScanner,
+│                                    #   Geocodificador, CalculadoraOrcamento, RepositorioExternoModelos
+├── Services/<Modulo>/               # implementações (AnalisadorStl, ClamAvScanner, ViaCepGeocodificador)
+├── Repositories/                    # só consultas complexas reutilizadas (MapaRepository com PostGIS,
+│                                    #   RankingRepository); o Eloquent já cumpre o papel no resto
+├── Http/Controllers/Api/V1/<Modulo>/
+├── Http/Middleware/                 # GarantePerfil, ForcaJson, RegistraAuditoria
+├── Rules/                           # ArquivoStlValido, Arquivo3mfValido, PdfValido, Cpf, Cnpj
+├── Events/ Listeners/ Jobs/         # ColetaConcluida -> ConcederPontos; EscanearAnexo; AgregarImpacto
+└── Support/                         # utilitários puros (Haversine, formatadores)
+routes/api/v1/<modulo>.php
+```
+
+### 5.2 Frontend — evolução por feature
+
+```
+frontend/src/
+├── app/            # router.jsx, providers.jsx, guards/ (RequireAuth, RequirePerfil)
+├── features/
+│   ├── auth/  chamados/  vagas/  noticias/  projetos/  doacoes/  rastreio/  ranking/
+│   │   └── {api.js, hooks/, pages/, components/, schemas.js}
+├── shared/
+│   ├── components/ui/      # Button, Input, Select, Badge, Card, Modal, EmptyState
+│   ├── components/layout/  # AppLayout, Navbar, Footer
+│   ├── lib/                # apiClient (o atual services/api.js), queryClient
+│   ├── hooks/              # usePermissoes, useDebounce, usePagination
+│   └── utils/              # formatadores, enums espelhados do backend
+└── styles/
+```
+
+---
+
+## 6. Plano de commits
+
+### 6.1 Executados (branch `claude/ecstatic-noether-5miksl`)
+
+| # | Commit | O que entrega |
+| :-: | :--- | :--- |
+| 1 | `c64fded docs: diagnóstico técnico...` | Relatório v1 |
+| 2 | `b580d96 fix(backend): fecha rotas com Sanctum...` | Autenticação, Policies, Resources, 40 testes |
+| 3 | `72373c1 fix(backend): impede trocar o perfil...` | Bloqueio de escalada de perfil |
+| 4 | `ea31ebc feat(frontend): migra para Vite...` | Vite, cliente de API, AuthProvider |
+| 5 | `f20fa3e refactor(db): espelha o DDL PostgreSQL...` | Linha de base 1:1 com o banco real |
+| 6 | `96e7ef5 feat(auth): adiciona tipos de usuário e middleware de perfis (RBAC)` | Perfis e middleware |
+| 7 | `ef30de0 feat(chamados): fluxo de atendimento com permissões por perfil` | Chamados |
+| 8 | `7bbf916 feat(vagas): restringe publicação a contratantes e candidatura a pessoa física` | Vagas |
+| 9 | `f4a0a48 fix(db): define ON DELETE nas FKs de autoria...` | Exclusão de conta |
+| 10 | `e999afa feat(moderacao): curadoria de notícias e projetos...` | Moderação e denúncias |
+| 11 | `1d2b4db feat(noticias): reações e comentários...` | Reações |
+| 12 | `be83feb feat(db): adiciona tabelas de rastreabilidade...` | Doações, coletas, lotes |
+| 13 | `8aa6820 feat(db): adiciona laudos de controle de qualidade...` | Laudos |
+| 14 | `0160bd1 feat(rastreio): endpoint público do QR Code...` | Rastreio |
+| 15 | `78ad854 feat(gamificacao): pontos, selos e ranking...` | Gamificação |
+| 16 | `9207afe feat(frontend): mostra ações e áreas de acordo com o perfil...` | RBAC no front |
+| 17 | `ba89691 feat(frontend): tela de chamados integrada à API...` | Tela de chamados |
+| 18 | `ce5ce75 ci: executa os testes do backend também em PostgreSQL 16` | CI em dois bancos |
+| 19 | `705ab1f perf(db): indexa as colunas de chave estrangeira...` | Índices |
+
+### 6.2 Próximos commits sugeridos (na ordem)
+
+1. `feat(i18n): traduz mensagens de validação para pt-BR`
+2. `feat(uploads): adiciona regras de validação de STL, 3MF e PDF por assinatura de arquivo`
+3. `feat(uploads): armazena anexos em disco privado com hash e URL temporária`
+4. `feat(jobs): verifica anexos com ClamAV e extrai volume e dimensões de modelos 3D`
+5. `feat(doacoes): CRUD de doações com fotos e geolocalização por CEP`
+6. `feat(db): adiciona polímeros aceitos e capacidade por laboratório`
+7. `feat(coletas): fluxo de solicitação, aceite, agendamento e conclusão de coleta`
+8. `feat(lotes): cria lotes a partir de coletas e registra eventos da linha do tempo`
+9. `feat(laudos): emissão de laudo com PDF e liberação do lote`
+10. `feat(frontend): página pública de rastreio com leitura de QR Code`
+11. `feat(gamificacao): pontua coletas concluídas e doações entregues`
+12. `feat(frontend): integra notícias, projetos e currículo à API`
+13. `feat(auth): verificação de CNPJ/INEP antes de liberar perfis institucionais`
+14. `feat(db): adiciona PostGIS e consulta por raio para o mapa interativo`
+15. `feat(hub): mural de demandas e ofertas com manifestação de interesse`
+16. `feat(marketplace): perfis de impressoras, orçamento automático e avaliações`
+17. `feat(impacto): agrega métricas diárias e expõe o painel socioambiental`
+18. `refactor(api): versiona rotas em /api/v1 e publica OpenAPI com Scramble`
+
+---
+
+## 7. Segurança, otimização e ferramentas
+
+### 7.1 Segurança
+
+| Tema | Situação | Recomendação |
+| :--- | :--- | :--- |
+| Proteção de rotas | ✅ Token Sanctum (120 min) + perfil + Policy; logout revoga; 401 encerra a sessão no front. | Migrar o SPA para cookie HttpOnly (Sanctum *stateful*) e manter os tokens para mobile e API pública com *abilities*. |
+| Escalada de privilégio | ✅ `tipo_usuario` e `papel` imutáveis via API; CHECKs no banco. | Verificar CNPJ/INEP (§1.4). |
+| Força bruta e abuso | ✅ Rate limit no login (5/min por e-mail+IP, 20/min por IP), cadastro (6/min) e rastreio (60/min). | Rate limit por usuário nas escritas. |
+| Injeção de SQL | ✅ Só Eloquent e *bindings*; filtros por enum ou `whereLike` com parâmetro; nenhuma interpolação de entrada em SQL. | Manter *whitelist* para ordenação dinâmica. |
+| XSS | ✅ React escapa por padrão; textos guardados como texto puro. | Ao introduzir Markdown, usar `react-markdown` sem HTML cru; cabeçalhos CSP e `nosniff` no servidor. |
+| Exposição de dados | ✅ Resources separam público e privado; contato só para envolvidos; rastreio sem doadores. | Política LGPD (termo de aceite, exportação e exclusão de dados). |
+| Integridade sob concorrência | ✅ Aceite de chamado com `lockForUpdate`; UNIQUEs para candidatura, reação, pontuação e denúncia. | — |
+
+### 7.2 Validação de uploads (STL, 3MF e laudos)
+
+Ainda não implementado. Esta é a especificação para os commits 2 a 4 de §6.2:
+
+| Verificação | STL | 3MF | Laudo (PDF) |
 | :--- | :--- | :--- | :--- |
-| **Base** | `RegisterUser`, `IssueToken`, `Logout`, verificação de e-mail, reset de senha, atribuição de papel no cadastro, Policies para todos os models | `auth/register`, `auth/login`, `auth/logout`, `auth/forgot-password`, `auth/reset-password`, `me` (GET/PATCH), `me/avatar` | `AuthProvider`, `AppLayout`, `RequireRole`, `/perfil`, `/configuracoes`, 404 |
-| **1 Doações** | `CriarDoacao` (valida fotos e geolocaliza o CEP via ViaCEP + Nominatim), transições de status com máquina de estados (`spatie/laravel-model-states` ou enum com `canTransitionTo`) | `doacoes` (CRUD), `doacoes/{id}/fotos`, `me/doacoes` | `/doacoes` (lista + filtros + mapa), `/doacoes/nova` (wizard: tipo → polímero → peso → fotos → local), `/doacoes/:id` |
-| **2 Reciclagem** | `SolicitarColeta` (bloqueia a doação: `disponivel → reservada`), `AceitarSolicitacao`, `AgendarColeta` (notifica as duas partes), `ConcluirColeta` (registra peso real, gera pontos e atualiza o impacto), `CriarLote`, `RegistrarEventoLote` | `instituicoes`, `instituicoes/{id}/polimeros`, `solicitacoes-coleta` (+ `/aceitar`, `/recusar`, `/agendar`, `/concluir`), `lotes`, `lotes/{id}/eventos`, `lotes/{id}/laudos` | `/laboratorios`, `/laboratorios/:slug`, painel do laboratório (fila de solicitações em kanban, calendário de coletas, lotes) |
-| **3 Repositório** | `PublicarModelo` (upload → validação → *job* de análise → `em_revisao`), `ModerarModelo`, `RegistrarDownload` (URL assinada temporária), busca (Scout + Meilisearch ou FULLTEXT) | `modelos` (index com `?area=&polimero=&licenca=&q=&sort=`), `modelos/{slug}`, `modelos/{id}/download`, `modelos/{id}/favorito`, `moderacao/modelos` | `/modelos` (grade + filtros), `/modelos/:slug` (visualizador 3D com `@react-three/fiber` + `STLLoader`/`3MFLoader`), `/modelos/novo`, fila de moderação |
-| **4 Escolas** | `CalcularPrioridade` (vulnerabilidade × tempo em fila × público), `SugerirVoluntarios` (distância + especialidades + máquinas compatíveis + reputação), `ConvidarVoluntario`, `ConcluirPedido` | `pedidos-escola` (CRUD), `pedidos-escola/{id}/sugestoes`, `pareamentos` (+ `/aceitar`, `/recusar`, `/concluir`) | `/escolas/pedidos/novo` (formulário guiado), `/escolas/pedidos` (fila priorizada, para voluntários), painel da escola |
-| **5 Currículos** | `BuscarTalentos` (filtros por especialidade, nível, cidade/raio, disponibilidade), respeito a `visivel_para_empresas` | `me/perfil-profissional`, `me/experiencias`, `me/portfolio`, `talentos` (só papel `empresa`), `vagas`, `me/vagas`, `vagas/{id}/candidaturas`, `candidaturas/{id}` (PATCH status) | `/talentos`, `/talentos/:id`, editor de currículo em seções, `/vagas`, painel do empregador (já esboçado em `Painel/Empregador.jsx`) |
-| **6 Hub** | `PublicarAnuncio`, `SugerirMatches` (demanda ↔ oferta por categoria, polímero e distância), `ManifestarInteresse`, `IniciarConversa`, Notifications (database + mail + broadcast) | `anuncios`, `anuncios/{id}/interesses`, `conversas`, `conversas/{id}/mensagens`, `notificacoes` | `/hub` (mural com abas Demanda/Oferta + mapa), `/hub/:id`, `/mensagens`, sino de notificações (`ModalNotificacao.jsx` já existe) |
-| **Marketplace** | `CalculadoraOrcamento` (interface; ver §4): `peso = volume × densidade × fator_infill`; `custo = peso × preço_g + tempo × valor_hora + margem`; tempo estimado por volume e vazão do bico, ou via *slicer* CLI em *job* | `impressoras`, `orcamentos` (POST calcula), `orcamentos/{id}/aceitar`, `pedidos-servico`, `avaliacoes` | `/makers` (busca por máquina/material), "Solicitar orçamento" na página do modelo, `/pedidos` |
-| **Rastreabilidade** | `GerarQrLote` (SVG via `simplesoftwareio/simple-qrcode` ou `endroid/qr-code`), timeline pública só com dados não pessoais | `GET rastreio/{codigo}` (**público**, *throttle*), `lotes/{id}/qrcode.svg` | `/rastreio/:codigo` (pública, mobile-first), leitor de QR no front (`@yudiel/react-qr-scanner`), etiqueta para impressão |
-| **Impacto** | `AgregarMetricasDiarias` (*job* agendado), fatores de conversão configuráveis | `impacto/resumo`, `impacto/serie?de=&ate=`, `impacto/export.csv|pdf` | `/impacto` (pública: KPIs + gráficos com Recharts), export para editais |
-| **Gamificação** | `ConcederPontos` via *listeners* de eventos de domínio (`ColetaConcluida`, `ModeloPublicado`, `PedidoEscolaConcluido`, `MentoriaRealizada`), `AvaliarSelos` | `ranking?tipo=maker|laboratorio&periodo=`, `me/pontos`, `me/selos` | `/ranking`, selos no perfil |
-| **Mapa** | Consulta por raio (Haversine ou `ST_Distance_Sphere`), *clusterização* no front | `mapa/pontos?lat=&lng=&raio=&tipos[]=` | `/mapa` com **react-leaflet** + OpenStreetMap + `leaflet.markercluster` |
-| **Fórum/Eventos/Curadoria** | Markdown sanitizado, inscrição com limite de vagas (lock otimista), denúncia → fila de moderação | `forum/*`, `eventos`, `eventos/{id}/inscricao`, `denuncias`, `moderacao/*` | `/forum`, `/eventos`, `/admin/moderacao` (avaliar **Filament 4** para o painel admin inteiro) |
+| Extensão e tamanho | `.stl`, ≤ 50 MB | `.3mf`, ≤ 50 MB | `.pdf`, ≤ 10 MB |
+| Assinatura real | Binário: `84 + 50 × nTriângulos == tamanho`; ASCII: começa com `solid` e contém `facet normal` | ZIP (`PK\x03\x04`) contendo `3D/3dmodel.model` e `[Content_Types].xml` | Começa com `%PDF-` |
+| Ataques | Limite de triângulos (ex.: 5 milhões) | **Zip bomb**: soma descompactada ≤ 200 MB e taxa ≤ 100×; XML lido com `LIBXML_NONET` (sem XXE) | Rejeitar `/JavaScript` e `/Launch` |
+| Armazenamento | Disco **privado**, nome UUID, `sha256` em `anexos_documentos` (deduplicação e auditoria) | idem | idem |
+| Pós-processamento (fila) | ClamAV; volume (soma de tetraedros), *bounding box* e miniatura | idem | ClamAV; `status_verificacao` → aprovado só após scan e conferência do laboratório |
+| Download | `Storage::temporaryUrl()` ou rota assinada de 5 min, com rate limit | idem | Visível para o laboratório emissor e no rastreio do lote |
 
-**Ordem sugerida de implementação (sprints de cerca de 2 semanas):**
-1. Fundação: migrations, segurança, Policies, Resources, Vite, apiClient, AuthProvider, CI.
-2. Núcleo: instituições, polímeros, anexos, papéis e mapa básico.
-3. Módulos 1 e 2: doação → solicitação → coleta → lote. Fecha o ciclo da economia circular.
-4. Rastreabilidade QR e laudos de qualidade.
-5. Módulo 3: repositório com upload seguro e visualizador 3D.
-6. Módulo 4: pedidos de escolas com priorização e pareamento.
-7. Módulos 5 e 6: evolução de currículos e Hub.
-8. Painel de impacto e gamificação.
-9. Marketplace e avaliações.
-10. Fórum, eventos, API pública e PWA/mobile.
+Infraestrutura: `upload_max_filesize = 64M` e `post_max_size = 70M` no PHP; `client_max_body_size 70m` no Nginx.
 
----
+### 7.3 Performance e cache
 
-## 4. Estrutura de pastas ideal
+- **Já aplicado:**
+  - paginação em todas as listas;
+  - *eager loading* (`with`) nas listagens;
+  - índices em FKs, status e (status, data_publicacao);
+  - `pontos_total` desnormalizado para o ranking;
+  - *lazy loading* de rotas no front.
+- **Cache (Redis):**
+  - `Cache::flexible` para catálogos (polímeros, selos, opções de chamado), ranking (5 min) e páginas de rastreio (10 min, invalidadas ao registrar evento ou laudo);
+  - `CACHE_STORE=redis` e `QUEUE_CONNECTION=redis` em produção.
+- **PostgreSQL:**
+  - `EXPLAIN ANALYZE` nas listagens principais;
+  - índice GIN `to_tsvector('portuguese', titulo || texto)` para a busca de projetos e notícias;
+  - PostGIS com índice GiST para o mapa;
+  - `pg_stat_statements` em produção.
+- **Filas:** varredura de anexos, extração de geometria, notificações e agregação diária do painel de impacto.
+- **Front:**
+  - TanStack Query (cache e *prefetch*);
+  - remover MUI (cerca de 300 kB);
+  - visualizador 3D (three.js) e mapa (Leaflet) só sob demanda.
 
-### 4.1 `backend/`
-Organização **por camada com subpastas por módulo**. É escalável sem o custo de um DDD completo, e o Laravel Boost e as convenções do framework continuam funcionando.
+### 7.4 Bibliotecas, extensões e Skills/MCPs
 
-```
-backend/
-├── app/
-│   ├── Actions/                      # 1 classe = 1 caso de uso (método handle/execute)
-│   │   ├── Doacoes/CriarDoacao.php
-│   │   ├── Reciclagem/{SolicitarColeta,ConcluirColeta,CriarLote}.php
-│   │   ├── Escolas/CalcularPrioridade.php
-│   │   └── Gamificacao/ConcederPontos.php
-│   ├── Contracts/                    # INTERFACES (só onde há troca real de implementação)
-│   │   ├── Orcamento/CalculadoraOrcamento.php
-│   │   ├── Arquivos/AnalisadorModelo3D.php
-│   │   ├── Arquivos/AntivirusScanner.php
-│   │   ├── Geo/Geocodificador.php
-│   │   └── Integracoes/RepositorioExternoModelos.php
-│   ├── Services/                     # implementações e orquestração com dependências externas
-│   │   ├── Orcamento/CalculadoraPorVolume.php
-│   │   ├── Arquivos/{AnalisadorStl,Analisador3mf,ClamAvScanner}.php
-│   │   ├── Geo/{ViaCepNominatimGeocodificador}.php
-│   │   ├── Integracoes/{PrintablesClient,ThingiverseClient}.php
-│   │   └── Impacto/AgregadorMetricas.php
-│   ├── Repositories/                 # OPCIONAL: só consultas complexas reutilizadas (busca geográfica, ranking)
-│   │   ├── MapaRepository.php
-│   │   └── RankingRepository.php
-│   ├── Enums/                        # StatusDoacao, TipoInstituicao, Papel, StatusModeracao...
-│   ├── Events/  Listeners/           # ColetaConcluida → ConcederPontos, AtualizarImpacto
-│   ├── Jobs/                         # ProcessarModelo3D, EscanearAnexo, AgregarImpactoDiario
-│   ├── Notifications/
-│   ├── Observers/                    # AvaliacaoObserver → recalcula reputação
-│   ├── Policies/                     # 1 por Model (auto-discovery)
-│   ├── Rules/                        # ArquivoStlValido, Arquivo3mfValido, Cpf, Cnpj
-│   ├── Support/                      # UTILITÁRIOS puros: Haversine, Formatadores, Slug
-│   ├── Http/
-│   │   ├── Controllers/Api/V1/{Auth,Doacoes,Reciclagem,Modelos,Escolas,Curriculos,Hub,Marketplace,Impacto}/
-│   │   ├── Requests/Api/V1/{mesmos módulos}/Store*Request.php, Update*Request.php
-│   │   ├── Resources/V1/{...}Resource.php
-│   │   └── Middleware/
-│   ├── Models/
-│   └── Providers/AppServiceProvider.php   # bind Contracts → Services; Model::shouldBeStrict()
-├── database/{migrations,factories,seeders}   # seeders de catálogo: Polimeros, Licencas, Areas, Especialidades, Papeis
-├── routes/
-│   ├── api.php                       # só require dos arquivos v1
-│   └── api/v1/{auth,doacoes,reciclagem,modelos,escolas,curriculos,hub,marketplace,publico}.php
-└── tests/
-    ├── Feature/Api/V1/<Modulo>/*Test.php
-    └── Unit/{Actions,Services,Support}/
-```
-**Sobre o padrão Repository:** o Eloquent já é um repositório. Interfaces de repositório para cada model criam boilerplate sem ganho em um projeto deste porte. Reserve `Contracts/` para fronteiras reais (cálculo de orçamento, antivírus, geocodificação, APIs externas), que são justamente as que você vai querer *mockar* nos testes e trocar no futuro. Faça o *binding* no `AppServiceProvider`:
-```php
-$this->app->bind(CalculadoraOrcamento::class, CalculadoraPorVolume::class);
-```
+**Backend:**
+- `spatie/laravel-medialibrary` (uploads);
+- `laravel/scout` com o driver `database` (busca);
+- `laravel/horizon` (filas);
+- `simplesoftwareio/simple-qrcode` (etiqueta do lote);
+- `dedoc/scramble` (OpenAPI);
+- `laravel-lang/lang` (pt-BR);
+- `larastan/larastan` (análise estática);
+- `laravel/telescope` (dev);
+- `tpetry/laravel-postgresql-enhanced` (índices parciais, GIN e `NOT VALID` sem SQL cru).
 
-### 4.2 `frontend/` (após migrar para Vite)
-Organização **por feature**:
-```
-frontend/
-├── index.html
-├── vite.config.js                    # alias '@' → src, proxy /api → :8000 em dev
-├── .env.example                      # VITE_API_URL=http://localhost:8000/api/v1
-└── src/
-    ├── main.jsx
-    ├── app/
-    │   ├── router.jsx                # createBrowserRouter + lazy() por rota
-    │   ├── providers.jsx             # QueryClientProvider, AuthProvider, Toaster
-    │   └── guards/{RequireAuth,RequireRole,GuestOnly}.jsx
-    ├── features/
-    │   ├── auth/      {api.js, hooks/useAuth.js, pages/LoginPage.jsx, pages/RegisterPage.jsx, components/}
-    │   ├── doacoes/   {api.js, hooks/useDoacoes.js, pages/, components/DoacaoCard.jsx, schemas.js}
-    │   ├── reciclagem/
-    │   ├── modelos/   {..., components/Viewer3D.jsx (lazy)}
-    │   ├── escolas/
-    │   ├── curriculos/
-    │   ├── vagas/
-    │   ├── hub/
-    │   ├── marketplace/
-    │   ├── rastreio/
-    │   ├── impacto/
-    │   └── mapa/
-    ├── shared/
-    │   ├── components/
-    │   │   ├── ui/          # Button, Input, Select, Badge, Card, Modal, Avatar, Pagination, Spinner, EmptyState
-    │   │   └── layout/      # AppLayout, Navbar, Footer, Sidebar
-    │   ├── lib/
-    │   │   ├── apiClient.js # axios.create + interceptors (token, 401, normalização de erro 422)
-    │   │   └── queryClient.js
-    │   ├── hooks/           # useDebounce, useGeolocation, usePagination
-    │   ├── utils/           # formatters (peso, data, moeda), constants, enums espelhados do back
-    │   └── assets/
-    ├── styles/index.css     # @tailwind + @layer components
-    └── test/                # setup do Vitest + MSW
-```
-Regra: uma feature só importa de `shared/` e dela mesma. Componentes reutilizados por duas features sobem para `shared/`.
+**Frontend:**
+- `@tanstack/react-query`;
+- `react-hook-form` + `zod`;
+- `lucide-react` + Radix/shadcn;
+- `@react-three/fiber` (STL/3MF);
+- `react-leaflet`;
+- `qrcode.react` e `@yudiel/react-qr-scanner`;
+- `recharts`;
+- `msw` (mocks em teste);
+- `@playwright/test` (E2E).
 
----
+**VS Code:**
+- PHP Intelephense;
+- Laravel (oficial);
+- Laravel Pint;
+- PHPStan;
+- Pest;
+- ESLint, Prettier e Tailwind CSS IntelliSense;
+- **PostgreSQL** (Microsoft) ou SQLTools com o driver PostgreSQL;
+- GitLens;
+- Error Lens;
+- REST Client (coleção `docs/api.http`);
+- Mermaid Preview;
+- Code Spell Checker com o dicionário pt-BR.
 
-## 5. Segurança e otimização
+**Integração contínua:**
+- já roda: Pint, Pest (PostgreSQL 16 + SQLite), Vitest e build;
+- a adicionar: Larastan, `composer audit`/`npm audit`, Playwright contra o seed de demonstração, Dependabot e *branch protection*.
 
-### 5.1 Vulnerabilidades encontradas (corrigir já)
-
-| ID | Severidade | Vulnerabilidade | Correção |
-| :--- | :--- | :--- | :--- |
-| S-01 | **Crítica** | `GET /api/usuario` e `/usuario/{id}` são **públicos** e devolvem todos os usuários com **CPF, CNPJ, telefone e e-mail** (só `senha` está oculta). Isso é exposição de dados pessoais (LGPD). | Remover `index`; `show` só com `auth:sanctum` + Policy + `UsuarioResource` sem documentos; `cpf`/`cnpj` com cast `encrypted` e `#[Hidden]`. |
-| S-02 | **Crítica** | `PUT /api/usuario/{id}` e `DELETE /api/usuario/{id}` sem autenticação: **qualquer pessoa troca o e-mail/senha de qualquer conta (account takeover) ou a apaga**. | Mover para `PATCH /me` e `DELETE /me` autenticados; troca de senha exige a senha atual. |
-| S-03 | **Crítica** | `POST`/`DELETE` de notícia, projeto, chamado e currículo sem autenticação, e o `id_usuario` vem do corpo. Permite apagar conteúdo de terceiros e publicar se passando por outro usuário. | `auth:sanctum` + Policies + `id_usuario = $request->user()->id`. |
-| S-04 | Alta | Login sem *rate limit* (força bruta) e sem regra `email`. | `RateLimiter::for('login', fn ($r) => Limit::perMinute(5)->by($r->input('email').$r->ip()))`. |
-| S-05 | Alta | Não existe logout no servidor; o front apaga só o `localStorage` e o token continua válido por 120 min. | `POST /auth/logout` → `$request->user()->currentAccessToken()->delete()`. |
-| S-06 | Alta | Cadastro sem `unique:email`, sem política de senha e sem verificação de e-mail. | `Password::defaults()` no `AppServiceProvider`, `MustVerifyEmail`. |
-| S-07 | Média | Token em `localStorage` fica exposto a qualquer XSS. | Como front e API ficam no mesmo domínio-raiz, preferir **Sanctum SPA (cookie HttpOnly + CSRF)**: `statefulApi()` em `bootstrap/app.php`, `SANCTUM_STATEFUL_DOMAINS`, `SESSION_DOMAIN`, `axios.defaults.withCredentials = true` e `withXSRFToken`. Manter *tokens* apenas para mobile e API pública (com *abilities*). |
-| S-08 | Média | Sem `config/cors.php` (default `*`). | Publicar (`php artisan config:publish cors`) e restringir `allowed_origins` ao domínio do front em produção, com `supports_credentials=true` se usar cookie. |
-| S-09 | Média | Erros 500 expõem *stack trace* se `APP_DEBUG=true` em produção. | `.env.production` com `APP_DEBUG=false`, `LOG_LEVEL=warning`; healthcheck `/up`. |
-| S-10 | Baixa | Validações sem `max` (payloads gigantes) e `orderBy`/filtros futuros vindos da query string. | `max:` em toda string; *whitelist* de colunas ordenáveis (`Rule::in([...])`) ou `spatie/laravel-query-builder` (`allowedSorts`/`allowedFilters`). |
-
-**Injeção e XSS:** hoje não há SQL cru, e o Eloquent usa *bindings*, então o risco é baixo. Mantenha `DB::raw`/`whereRaw` sempre com `?`. No React, o JSX escapa por padrão. Os três `dangerouslySetInnerHTML` atuais só injetam CSS estático (são seguros, mas devem sair). Para conteúdo rico futuro (notícias, fórum, descrições de modelos), use **Markdown** renderizado com `react-markdown` (sem `rehype-raw`) ou sanitize com **DOMPurify** no front e `mews/purifier` no back. Adicione cabeçalhos `Content-Security-Policy`, `X-Content-Type-Options: nosniff` e `Referrer-Policy` no servidor web (ou `bepsvpt/secure-headers`).
-
-### 5.2 Uploads (STL, 3MF, fotos, laudos)
-
-| Etapa | STL / 3MF | Laudos (PDF) | Fotos |
-| :--- | :--- | :--- | :--- |
-| Validação síncrona (FormRequest) | `File::types(['stl','3mf'])->max(50 * 1024)` + **Rule customizada por *magic bytes***: STL binário: `84 + 50 × nTriângulos === filesize`; STL ASCII: começa com `solid` e contém `facet`. 3MF: assinatura ZIP `PK\x03\x04` e `ZipArchive` contendo `3D/3dmodel.model` e `[Content_Types].xml`. | `mimetypes:application/pdf`, `max:10240`, assinatura `%PDF-` | `File::image()->max(5 * 1024)->dimensions(max_width=6000)` |
-| Proteções | Limite de tamanho descompactado do 3MF (zip bomb: somar `statIndex()['size']`, rejeitar acima de 200 MB e taxa de compressão acima de 100×); parse XML com `LIBXML_NONET` (sem entidades externas/XXE) | Rejeitar PDF com JavaScript/`/Launch` (opcional: reprocessar com `qpdf`) | Reencodar com **Intervention Image** (remove EXIF/GPS, que é privacidade!) e gerar WebP + *thumbnails* |
-| Armazenamento | Disco **privado** (`local` em dev, S3/MinIO em prod), nome = UUID, nunca o original; `sha256` para deduplicar | idem | Disco público + CDN |
-| Processamento assíncrono (*job*) | Antivírus (**ClamAV** via `clamd`); cálculo de volume (soma de volumes de tetraedros assinados), *bounding box* e nº de triângulos → `anexos.metadados` (alimenta o orçamento); geração de *thumbnail* (`stl-thumb` CLI) | Antivírus; status `pendente → aprovado` só após scan e revisão humana | — |
-| Download | `Storage::temporaryUrl()` ou rota com `URL::signedRoute` expirando em 5 min; *throttle*; contagem em `downloads` | Só para o dono, o laboratório emissor e quem consulta o lote | — |
-| Infra | `upload_max_filesize=64M`, `post_max_size=70M` no PHP; `client_max_body_size 70m` no Nginx; upload em *chunks* (tus/Uppy) se passar de 50 MB | | |
-
-`spatie/laravel-medialibrary` resolve armazenamento, conversões, coleções por model e URLs temporárias, e encaixa na tabela `anexos`/`media`.
-
-### 5.3 Performance do backend
-- **Paginação** em todos os `index` (`->paginate(20)` ou `cursorPaginate` para feeds) + **API Resources**.
-- **Eager loading** e `Model::shouldBeStrict(! app()->isProduction())` para pegar N+1, atributos inexistentes e *mass assignment* silencioso.
-- **Índices** em todas as FKs (o `constrained()` já cria), em `status`, `(uf,cidade)`, `(latitude,longitude)` e FULLTEXT nos textos buscáveis.
-- **Cache:** `Cache::flexible()` / `remember()` para catálogos (polímeros, licenças, áreas, especialidades: TTL de 24 h, invalidação no Observer); painel de impacto e ranking pré-calculados por *job* (`metricas_impacto_diarias`) e cacheados por 10 min; contadores (`downloads_count`) via `increment` e não `count()`.
-- **Redis** para cache, filas e *rate limit* em produção (`CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`) + **Laravel Horizon** para monitorar filas.
-- **Filas** para tudo que é lento: e-mails, notificações, análise de arquivos, geocodificação, agregações.
-- **Busca:** Laravel Scout + Meilisearch (ou o driver `database` no início) para o repositório de modelos e talentos.
-- Opcional, mais tarde: Laravel Octane (FrankenPHP).
-
-### 5.4 Performance do frontend
-- Vite + **code splitting por rota** (`lazy()`), com o visualizador 3D (three.js, cerca de 600 kB) e o mapa (Leaflet) carregados só nas páginas que usam.
-- Remover MUI e Emotion (lucide-react + Radix), o que reduz bastante o bundle inicial.
-- TanStack Query com `staleTime` coerente (catálogos 1 h, listas 30 s), `placeholderData: keepPreviousData` na paginação e *prefetch* no hover dos cards.
-- Imagens `loading="lazy"`, `srcset` com os WebP gerados no back; fontes auto-hospedadas (`@fontsource/inter`) com `font-display: swap`.
-- Listas longas (mapa, ranking, mensagens) com `@tanstack/react-virtual`.
-- Medir com Lighthouse CI e `rollup-plugin-visualizer`.
-
----
-
-## 6. Skills, plugins e ferramentas
-
-### 6.1 Bibliotecas recomendadas
-
-**Backend (Composer)**
-| Pacote | Uso |
-| :--- | :--- |
-| `spatie/laravel-permission` | Papéis (maker, laboratório, escola, empresa, moderador, admin) |
-| `spatie/laravel-medialibrary` | Uploads, coleções, conversões, URLs temporárias |
-| `spatie/laravel-query-builder` | Filtros, ordenação e *includes* seguros via query string |
-| `spatie/laravel-model-states` | Máquinas de estado (doação, coleta, pedido, orçamento) |
-| `spatie/laravel-activitylog` | Auditoria (moderação, laudos, rastreabilidade) |
-| `laravel/scout` + `meilisearch/meilisearch-php` | Busca no repositório e em talentos |
-| `laravel/horizon` | Painel de filas (Redis) |
-| `simplesoftwareio/simple-qrcode` | QR Code dos lotes |
-| `intervention/image` | Tratamento de fotos (remoção de EXIF, WebP) |
-| `filament/filament` (v4) | Painel administrativo e de moderação pronto |
-| `dedoc/scramble` | Documentação OpenAPI automática da API (base para a API pública e para gerar o cliente do front) |
-| `kitloong/laravel-migrations-generator` (dev) | **Gerar migrations do banco atual (D-01)** |
-| `larastan/larastan` (dev) | Análise estática (PHPStan nível 5→8) |
-| `laravel/telescope` (dev) | Depurar requests, queries e jobs |
-| `barryvdh/laravel-ide-helper` (dev) | Autocomplete de models e facades |
-
-**Frontend (npm)**
-| Pacote | Uso |
-| :--- | :--- |
-| `vite`, `@vitejs/plugin-react` | Substituir CRA |
-| `@tanstack/react-query` (+ devtools) | Estado de servidor e cache |
-| `axios` ou `ky` | apiClient com interceptors |
-| `react-hook-form` + `zod` + `@hookform/resolvers` | Formulários e validação |
-| `lucide-react`, `@radix-ui/*` ou `shadcn/ui` | Ícones e componentes acessíveis (substituem o MUI) |
-| `clsx` + `tailwind-merge` | Composição de classes |
-| `@react-three/fiber` + `@react-three/drei` | Visualizador STL/3MF |
-| `react-leaflet` + `leaflet.markercluster` | Mapa interativo (OpenStreetMap, sem custo) |
-| `qrcode.react` / `@yudiel/react-qr-scanner` | Exibir e ler QR Code |
-| `recharts` | Painel de impacto |
-| `sonner` | Toasts |
-| `date-fns` | Datas pt-BR |
-| `vitest` + `@testing-library/react` + `msw` | Testes unitários e de integração com API mockada |
-| `@playwright/test` | E2E (fluxo doação → coleta → lote) |
-| `eslint` (flat config) + `eslint-plugin-react-hooks` + `eslint-plugin-jsx-a11y` + `prettier` + `prettier-plugin-tailwindcss` | Qualidade e ordenação de classes |
-| `vite-plugin-pwa` | PWA (cobre boa parte do "app mobile" antes de um app nativo) |
-
-### 6.2 Extensões do VS Code
-- **PHP:** *PHP Intelephense*, *Laravel* (oficial, da Laravel), *Laravel Pint*, *PHPStan*, *Pest* / *Better Pest*, *DotENV*.
-- **Front:** *ESLint*, *Prettier*, *Tailwind CSS IntelliSense*, *ES7+ React snippets*, *Vitest*, *Playwright Test for VS Code*.
-- **Geral:** *EditorConfig*, *GitLens*, *Error Lens*, *Thunder Client* ou *REST Client* (coleção de requests versionada em `docs/api.http`), *Docker*, *Mermaid Preview* (diagramas ER no repositório), *Code Spell Checker* + dicionário **Portuguese (Brazilian)**.
-
-### 6.3 Integração contínua (GitHub Actions)
-`.github/workflows/ci.yml` com dois jobs em paralelo:
-- **backend:** `shivammathur/setup-php@v2` (PHP **8.4**, alinhado ao lock) → `composer install` → `vendor/bin/pint --test` → `vendor/bin/phpstan analyse` → `php artisan test --parallel` (SQLite em memória, depois MySQL em *service container*).
-- **frontend:** `actions/setup-node@v4` (Node 22) → `npm ci` → `npm run lint` → `npm run test -- --run` → `npm run build`.
-
-Complementos: Dependabot (composer + npm + actions), *branch protection* exigindo CI verde e, opcionalmente, o workflow do **Claude Code GitHub Action** para revisão automática de PRs.
-
-### 6.4 Configuração para acelerar o trabalho com o Claude
-1. **`CLAUDE.md` na raiz** (`/init` gera a base). Inclua: stack e versões (PHP 8.4, Laravel 13, React 19/Vite), comandos (`composer test`, `npm run test`, `pint`), convenções (nomes em português, `usuario_id`, Actions, Policies, Resources, `features/`), regras ("nunca aceitar `usuario_id` do cliente", "toda rota de escrita com `auth:sanctum` e Policy", "toda migration com FK `constrained()`"). Coloque `backend/CLAUDE.md` e `frontend/CLAUDE.md` específicos. O `backend/AGENTS.md` do Boost pode ser referenciado no `CLAUDE.md`.
-2. **Laravel Boost para Claude Code:** o Boost hoje está configurado só para o Junie (`boost.json` → `"agents": ["junie"]`, com caminho Windows). Rode `php artisan boost:install`, selecione **Claude Code** e ele gera `.mcp.json` e as *guidelines*. O MCP `laravel-boost` dá ao Claude acesso a `database-schema`, `list-routes`, `tinker`, `last-error`, `read-log-entries` e `search-docs` (docs da versão exata instalada), o que é muito útil para gerar migrations e Policies corretas.
-3. **Skills de projeto** em `.claude/skills/` (as do `.junie/skills` podem ser copiadas). Sugestões:
-   - `novo-modulo-laravel`: *checklist* que gera migration + model + enum + factory + policy + requests + resource + controller + rotas + teste Pest.
-   - `nova-feature-react`: gera `features/<x>/{api.js, hooks, pages, components, schemas}` com padrão TanStack Query + RHF/Zod.
-   - `upload-seguro`: regras de §5.2.
-4. **Hooks** (`.claude/settings.json`, via `/update-config`): `PostToolUse` em `*.php` → `vendor/bin/pint --dirty`; em `*.jsx` → `npx prettier --write`. `SessionStart` (para sessões na nuvem): `composer install && npm ci` (a skill `session-start-hook` gera isso).
-5. **MCPs úteis:**
-   - **Laravel Boost** (acima).
-   - **Figma MCP** (já disponível neste ambiente): o protótipo de alta fidelidade está no Figma, então dá para pedir "implemente a tela X a partir deste link do Figma" usando os componentes de `shared/ui`.
-   - **GitHub MCP**: issues e PRs por módulo, revisão.
-   - **Playwright MCP**: o Claude abre o front, navega e valida o fluxo real.
-   - **MySQL/Postgres MCP** (somente leitura) para o banco local, se não usar o `database-query` do Boost.
-   - **Context7**: documentação atualizada de bibliotecas (React Query, react-three-fiber, Leaflet).
-6. **Fluxo de trabalho:** um módulo por sessão/branch. Use o modo *plan* para desenhar migration e endpoints antes de codar, peça os testes Pest primeiro (TDD) e use `/code-review` e `/security-review` antes de cada PR.
-
----
-
-## Apêndice — Checklist de correções imediatas (sprint 0)
-
-- [x] Alinhar PHP: `composer.json` → `"php": "^8.4"`; README atualizado (PHP 8.4, `php artisan serve`, Vite).
-- [x] Migrations das tabelas existentes (`usuario`, `vagas`, `candidaturas`, `curriculo`, `noticias`, `projetos`, `chamados`) com FKs e `UNIQUE(id_usuario, id_vaga)`, mais as tabelas padrão (`sessions`, `jobs`, `password_reset_tokens`). Escritas à mão a partir dos models, mantendo os nomes atuais.
-- [x] Corrigir `ProjetoController`/`ProjetoFactory`.
-- [x] Remover `UserFactory`; corrigir `DatabaseSeeder` e factories (seed com usuários de demonstração).
-- [x] `routes/api.php`: grupo `auth:sanctum`, `apiResource`, rotas `minhas`/`candidaturas`/`logout`, *throttle* no login e no cadastro.
-- [x] Policies para Vaga, Candidatura, Noticia, Projeto, Chamado e Curriculo; `id_usuario` sempre vem do token.
-- [x] Remover `GET /usuario` público; `GET/PATCH/DELETE /usuario/me` (troca de senha exige a atual; perfil não muda após o cadastro).
-- [x] API Resources (perfil público sem documentos) + paginação (`?per_page`, máx. 100).
-- [x] 41 testes Pest de autenticação e autorização.
-- [x] Frontend: Vite, `.env`, cliente `api()` único, `AuthProvider`, arquivos vazios removidos, `CadastroVaga.jsx` com formulário real, rota `/login`, rotas em minúsculas, *lazy loading* por rota (bundle inicial de 600 kB para 243 kB) e 10 testes Vitest.
-- [x] CI no GitHub Actions (Pint, Pest, Vitest, build).
-
-**Ficou para a próxima sprint:**
-- [ ] Mensagens de validação em pt-BR (hoje o Laravel responde em inglês; instalar `laravel-lang/lang` ou criar `lang/pt_BR/validation.php`).
-- [ ] Rotas de detalhe com `:id` (`/vagas/:id` etc.): as telas de visualização ainda usam dados *mock* e precisam ser ligadas à API junto com o parâmetro.
-- [ ] Telas de Chamados, Projetos, Notícias e cadastros de Notícia/Projeto/Currículo ainda não consomem a API.
-- [ ] Verificação de empresas (CNPJ) antes de liberar o banco de currículos: hoje basta se cadastrar como empresa.
-- [ ] Renomear tabelas e FKs para o padrão do Laravel (`usuarios`, `usuario_id`) antes de criar os novos módulos.
-- [ ] Remover MUI/Emotion e os `<style dangerouslySetInnerHTML>` restantes; ESLint + Prettier.
+**Claude Code (Skills, MCPs, hooks):**
+1. **`CLAUDE.md`** na raiz e em `backend/` e `frontend/`. Deve registrar:
+   - o banco é PostgreSQL com DDL legado;
+   - toda migration nova usa `generatedAs()->always()`, nome explícito de constraint e CHECK com `NOT VALID` quando houver dados legados;
+   - permissões se resolvem em `Usuario::temPerfil()`;
+   - os testes rodam em `pgsql` e `sqlite`.
+2. **Laravel Boost** (`php artisan boost:install` → Claude Code). Hoje ele está configurado só para o Junie, com caminho do Windows. O MCP dá ao Claude `database-schema`, `list-routes`, `last-error` e `search-docs` da versão exata do framework.
+3. **MCP de PostgreSQL somente leitura** (ex.: `@modelcontextprotocol/server-postgres` apontando para um usuário `readonly`), para o Claude consultar o esquema e os dados reais antes de propor migrations.
+4. **Skills de projeto** em `.claude/skills/`:
+   - `nova-migration-postgres`: checklist de identity, constraints nomeadas, `NOT VALID`, índice em FK e teste em pgsql;
+   - `novo-endpoint-com-perfil`: rota no grupo `perfil:`, FormRequest, Policy, Resource e teste de 401/403/200;
+   - `upload-seguro`: §7.2.
+5. **Hooks:** `PostToolUse` em `*.php` → `vendor/bin/pint --dirty`; em `*.jsx` → `prettier --write`. `SessionStart` → `composer install && npm ci` e PostgreSQL de teste.
+6. **Figma MCP** para converter as telas do protótipo, **Playwright MCP** para validar fluxos por perfil e **GitHub MCP** para issues e PRs por módulo.
