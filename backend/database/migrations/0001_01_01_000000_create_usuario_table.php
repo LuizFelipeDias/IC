@@ -2,52 +2,49 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Linha de base: espelha a tabela "usuario" do script DDL original (PostgreSQL).
+ *
+ * Em bancos criados antes das migrations a tabela já existe e a migration
+ * apenas se registra; as mudanças de esquema vêm nas migrations seguintes.
+ */
 return new class extends Migration
 {
-    /**
-     * Tabela de usuários (nome legado "usuario", no singular, mantido
-     * para não quebrar o banco já existente).
-     */
     public function up(): void
     {
+        if (Schema::hasTable('usuario')) {
+            return;
+        }
+
         Schema::create('usuario', function (Blueprint $table) {
-            $table->id();
+            $table->id()->generatedAs()->always();
             $table->string('nome');
-            $table->string('email')->unique();
             $table->string('telefone', 20);
             $table->string('senha');
-            $table->boolean('estudante')->default(false);
-            $table->boolean('empresa')->default(false);
-            $table->string('cpf', 14)->nullable()->unique();
+            $table->boolean('estudante');
+            $table->boolean('empresa');
+            $table->string('cpf', 14)->nullable()->unique('usuario_cpf_key');
             $table->boolean('sexo')->nullable();
             $table->string('profissao')->nullable();
-            $table->string('cnpj', 18)->nullable()->unique();
-            $table->rememberToken();
+            $table->string('cnpj', 18)->nullable()->unique('usuario_cnpj_key');
             $table->timestamps();
+            $table->string('email')->nullable();
         });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
-        });
-
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
-        });
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE usuario ADD CONSTRAINT chk_tipo_usuario CHECK (estudante <> empresa)');
+            DB::statement('ALTER TABLE usuario ADD CONSTRAINT chk_dados_consistentes CHECK (
+                ((empresa = true) AND (cnpj IS NOT NULL) AND (cpf IS NULL)) OR
+                ((estudante = true) AND (cpf IS NOT NULL) AND (sexo IS NOT NULL) AND (profissao IS NOT NULL) AND (cnpj IS NULL))
+            )');
+        }
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('sessions');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('usuario');
     }
 };

@@ -20,7 +20,7 @@ class ChamadoRequest extends FormRequest
         return [
             'titulo' => [$obrigatorio, 'string', 'max:255'],
             'descricao' => [$obrigatorio, 'string', 'max:10000'],
-            'data_limite' => ['nullable', 'date', 'after_or_equal:today'],
+            'data_limite' => [$obrigatorio, 'date', 'after_or_equal:today'],
             'status' => ['sometimes', Rule::in(Chamado::STATUS)],
         ];
     }

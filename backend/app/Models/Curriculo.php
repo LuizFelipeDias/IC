@@ -12,8 +12,6 @@ class Curriculo extends Model
 
     protected $table = 'curriculo';
 
-    public $timestamps = false;
-
     protected $fillable = [
         'cargo',
         'habilidades',

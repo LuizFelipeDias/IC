@@ -14,6 +14,8 @@ function dadosCadastro(array $sobrescrever = []): array
         'estudante' => true,
         'empresa' => false,
         'cpf' => '123.456.789-00',
+        'sexo' => false,
+        'profissao' => 'Estudante de Engenharia',
     ], $sobrescrever);
 }
 
@@ -44,6 +46,20 @@ it('faz login com credenciais válidas e recusa as inválidas', function () {
     $this->postJson('/api/login', ['email' => $usuario->email, 'senha' => 'errada'])
         ->assertUnauthorized()
         ->assertJsonPath('message', 'E-mail e/ou senha incorretos.');
+});
+
+it('exige os dados que o banco obriga para pessoa física e jurídica', function () {
+    $this->postJson('/api/usuario', dadosCadastro(['sexo' => null, 'profissao' => null]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['sexo', 'profissao']);
+
+    $this->postJson('/api/usuario', dadosCadastro(['estudante' => false, 'empresa' => true]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['cnpj', 'cpf']);
+
+    $this->postJson('/api/usuario', dadosCadastro(['empresa' => true]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('empresa');
 });
 
 it('limita tentativas de login por e-mail', function () {

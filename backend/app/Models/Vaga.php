@@ -13,8 +13,6 @@ class Vaga extends Model
 
     protected $table = 'vagas';
 
-    public $timestamps = false;
-
     protected $fillable = [
         'titulo',
         'tema',

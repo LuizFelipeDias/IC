@@ -10,7 +10,7 @@ use Laravel\Sanctum\Sanctum;
 dataset('conteudos', [
     'noticia' => ['noticia', Noticia::class, ['titulo' => 'Nova', 'tema' => 'Reciclagem', 'texto' => 'Texto']],
     'projeto' => ['projeto', Projeto::class, ['titulo' => 'Novo', 'tema' => 'Saúde', 'texto' => 'Texto']],
-    'chamado' => ['chamado', Chamado::class, ['titulo' => 'Ajuda', 'descricao' => 'Descrição']],
+    'chamado' => ['chamado', Chamado::class, ['titulo' => 'Ajuda', 'descricao' => 'Descrição', 'data_limite' => '2099-12-31']],
     'curriculo' => ['curriculo', Curriculo::class, ['cargo' => 'Modelador', 'texto' => 'Resumo']],
 ]);
 

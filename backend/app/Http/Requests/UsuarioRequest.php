@@ -30,12 +30,13 @@ class UsuarioRequest extends FormRequest
             // Trocar a senha exige confirmar a atual.
             'senha_atual' => [Rule::requiredIf(! $cadastro && $this->filled('senha')), 'nullable', 'current_password:sanctum'],
             // O perfil é escolhido no cadastro; mudá-lo depois liberaria o banco de currículos.
-            'estudante' => [$cadastro ? 'sometimes' : 'prohibited', 'boolean'],
-            'empresa' => [$cadastro ? 'sometimes' : 'prohibited', 'boolean'],
-            'cpf' => ['nullable', 'string', 'max:14', Rule::unique('usuario', 'cpf')->ignore($idAtual)],
-            'sexo' => ['nullable', 'boolean'],
-            'profissao' => ['nullable', 'string', 'max:255'],
-            'cnpj' => ['nullable', 'string', 'max:18', Rule::unique('usuario', 'cnpj')->ignore($idAtual)],
+            // Espelha as constraints chk_tipo_usuario e chk_dados_consistentes do banco.
+            'estudante' => [$cadastro ? 'required' : 'prohibited', 'boolean'],
+            'empresa' => [$cadastro ? 'required' : 'prohibited', 'boolean', 'different:estudante'],
+            'cpf' => [Rule::requiredIf($cadastro && $this->boolean('estudante')), Rule::prohibitedIf($this->boolean('empresa')), 'nullable', 'string', 'max:14', Rule::unique('usuario', 'cpf')->ignore($idAtual)],
+            'sexo' => [Rule::requiredIf($cadastro && $this->boolean('estudante')), 'nullable', 'boolean'],
+            'profissao' => [Rule::requiredIf($cadastro && $this->boolean('estudante')), 'nullable', 'string', 'max:255'],
+            'cnpj' => [Rule::requiredIf($cadastro && $this->boolean('empresa')), Rule::prohibitedIf($this->boolean('estudante')), 'nullable', 'string', 'max:18', Rule::unique('usuario', 'cnpj')->ignore($idAtual)],
         ];
     }
 }
