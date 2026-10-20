@@ -67,4 +67,9 @@ class LoteFilamento extends Model
     {
         return $this->hasMany(LoteEvento::class, 'id_lote');
     }
+
+    public function laudos(): HasMany
+    {
+        return $this->hasMany(LaudoQualidade::class, 'id_lote');
+    }
 }
