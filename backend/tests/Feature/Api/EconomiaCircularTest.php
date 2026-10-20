@@ -7,6 +7,7 @@ use App\Models\Polimero;
 use App\Models\SolicitacaoColeta;
 use App\Models\Usuario;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\ArquivosDeTeste;
@@ -174,6 +175,13 @@ it('laudo exige PDF seguro e só o laboratório do lote o emite', function () {
         ->assertCreated()->assertJsonPath('status_lote', 'reprovado');
 });
 
-it('catálogo de polímeros é público', function () {
+it('catálogo de polímeros é público e sobrevive ao cache persistente', function () {
+    // Cache em arquivo, como em produção: a segunda leitura vem desserializada do disco.
+    config(['cache.default' => 'file']);
+    Cache::forget('polimeros');
+
     $this->getJson('/api/polimeros')->assertOk()->assertJsonFragment(['sigla' => 'PETG']);
+    $this->getJson('/api/polimeros')->assertOk()->assertJsonFragment(['sigla' => 'PETG'])->assertJsonPath('data.0.sigla', 'ABS');
+
+    Cache::forget('polimeros');
 });
