@@ -91,11 +91,13 @@ Todo o desenvolvimento e os testes ocorreram em **ambiente local (`localhost`)**
 - JavaScript (ES6+)
 - Tailwind CSS — estilização utilitária
 - Vite — servidor de desenvolvimento e empacotamento
+- Vitest + Testing Library — testes
 
 **Back-end**
-- PHP — APIs e regras de negócio
-- Banco de dados relacional
-- Autenticação por token
+- PHP 8.4 + Laravel 13 — APIs e regras de negócio
+- MySQL (SQLite nos testes)
+- Laravel Sanctum — autenticação por token
+- Pest — testes automatizados
 
 **Design e gestão**
 - Figma — *wireframes* e protótipo de alta fidelidade
@@ -123,29 +125,59 @@ IC/
 
 ### Pré-requisitos
 
-- Node.js 18 ou superior
-- PHP 8.0 ou superior
-- Servidor de banco de dados relacional
+- PHP **8.4** ou superior (exigido pelas dependências do `composer.lock`) com as extensões `pdo_mysql` ou `pdo_sqlite`
+- Composer 2
+- Node.js 20 ou superior
+- MySQL 8 (ou SQLite para testes rápidos)
 
 ### Back-end
 
 ```bash
 cd backend
-# configure as credenciais do banco conforme o arquivo de exemplo
-php -S localhost:8000
+composer install
+cp .env.example .env          # ajuste DB_DATABASE, DB_USERNAME e DB_PASSWORD
+php artisan key:generate
+php artisan migrate --seed    # cria as tabelas e os dados de demonstração
+php artisan serve             # http://localhost:8000
 ```
+
+Usuários de demonstração criados pelo seed (senha `Senha@123`):
+
+| Perfil | E-mail |
+| :--- | :--- |
+| Estudante | `estudante@ecohub3d.test` |
+| Empresa | `empresa@ecohub3d.test` |
+
+> **Banco criado manualmente antes das migrations:** as tabelas já existem e o `migrate` vai acusar conflito. Em ambiente de desenvolvimento, o caminho mais simples é recriar o banco com `php artisan migrate:fresh --seed` (**apaga todos os dados**). Se precisar preservar os dados, exporte-os antes (`mysqldump --no-create-info`) e reimporte depois do `migrate:fresh`.
 
 ### Front-end
 
 ```bash
 cd frontend
 npm install
-npm run dev
+cp .env.example .env          # VITE_API_URL=http://localhost:8000/api
+npm run dev                   # http://localhost:5173
 ```
 
-A aplicação ficará disponível em `http://localhost:5173`, e as APIs em `http://localhost:8000`.
+### Testes
 
-> **Observação:** as credenciais de banco e as variáveis de ambiente não são versionadas. Crie os arquivos de configuração locais a partir dos exemplos antes de executar o projeto.
+```bash
+cd backend && php artisan test        # Pest — autenticação e autorização da API
+cd frontend && npm test -- --run      # Vitest — cliente da API e rotas protegidas
+```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda Pint, Pest, Vitest e o build do front a cada push e pull request.
+
+### Principais rotas da API
+
+| Método | Rota | Acesso |
+| :--- | :--- | :--- |
+| `POST` | `/api/login`, `/api/usuario` (cadastro) | público, com limite de tentativas |
+| `GET` | `/api/vaga`, `/api/noticia`, `/api/projeto` (+ `/{id}`) | público, paginado (`?per_page=`, máx. 100) |
+| `POST` | `/api/logout` | autenticado (revoga o token) |
+| `GET` `PATCH` `DELETE` | `/api/usuario/me` | autenticado (só os próprios dados) |
+| `GET` | `/api/vaga/minhas`, `/api/vaga/{id}/candidaturas` | autenticado (dono da vaga) |
+| `POST` `PUT` `DELETE` | `/api/vaga`, `/api/noticia`, `/api/projeto`, `/api/chamado`, `/api/curriculo`, `/api/candidatura` | autenticado; alterar/excluir só o autor |
 
 ---
 

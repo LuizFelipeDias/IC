@@ -502,14 +502,22 @@ Complementos: Dependabot (composer + npm + actions), *branch protection* exigind
 
 ## Apêndice — Checklist de correções imediatas (sprint 0)
 
-- [ ] Alinhar PHP: `composer.json` → `"php": "^8.4"`; atualizar o README (PHP 8.4, `php artisan serve`, `npm run dev` após Vite).
-- [ ] Gerar migrations do banco atual (`migrate:generate`) + migrations padrão (`sessions`, `jobs`, `password_reset_tokens`, `notifications`).
-- [ ] Corrigir `ProjetoController`/`ProjetoFactory` (`use App\Models\Projeto;`).
-- [ ] Remover `User`/`UserFactory`; corrigir `DatabaseSeeder` e as factories.
-- [ ] `routes/api.php`: grupo `auth:sanctum`, `apiResource`, rotas `minhas`/`porVaga`/`logout`, *throttle* no login.
-- [ ] Policies para Vaga, Candidatura, Noticia, Projeto, Chamado, Curriculo, Usuario.
-- [ ] Remover `GET /usuario` público; `PATCH/DELETE /me`.
-- [ ] API Resources + paginação.
-- [ ] Testes Pest de autorização (403/401) para cada rota de escrita.
-- [ ] Frontend: Vite, `.env`, `apiClient`, `AuthProvider`, remover arquivos vazios, corrigir `CadastroVaga.jsx`, rota `/login`, rotas com `:id`.
-- [ ] CI no GitHub Actions.
+- [x] Alinhar PHP: `composer.json` → `"php": "^8.4"`; README atualizado (PHP 8.4, `php artisan serve`, Vite).
+- [x] Migrations das tabelas existentes (`usuario`, `vagas`, `candidaturas`, `curriculo`, `noticias`, `projetos`, `chamados`) com FKs e `UNIQUE(id_usuario, id_vaga)`, mais as tabelas padrão (`sessions`, `jobs`, `password_reset_tokens`). Escritas à mão a partir dos models, mantendo os nomes atuais.
+- [x] Corrigir `ProjetoController`/`ProjetoFactory`.
+- [x] Remover `UserFactory`; corrigir `DatabaseSeeder` e factories (seed com usuários de demonstração).
+- [x] `routes/api.php`: grupo `auth:sanctum`, `apiResource`, rotas `minhas`/`candidaturas`/`logout`, *throttle* no login e no cadastro.
+- [x] Policies para Vaga, Candidatura, Noticia, Projeto, Chamado e Curriculo; `id_usuario` sempre vem do token.
+- [x] Remover `GET /usuario` público; `GET/PATCH/DELETE /usuario/me` (troca de senha exige a atual; perfil não muda após o cadastro).
+- [x] API Resources (perfil público sem documentos) + paginação (`?per_page`, máx. 100).
+- [x] 41 testes Pest de autenticação e autorização.
+- [x] Frontend: Vite, `.env`, cliente `api()` único, `AuthProvider`, arquivos vazios removidos, `CadastroVaga.jsx` com formulário real, rota `/login`, rotas em minúsculas, *lazy loading* por rota (bundle inicial de 600 kB para 243 kB) e 10 testes Vitest.
+- [x] CI no GitHub Actions (Pint, Pest, Vitest, build).
+
+**Ficou para a próxima sprint:**
+- [ ] Mensagens de validação em pt-BR (hoje o Laravel responde em inglês; instalar `laravel-lang/lang` ou criar `lang/pt_BR/validation.php`).
+- [ ] Rotas de detalhe com `:id` (`/vagas/:id` etc.): as telas de visualização ainda usam dados *mock* e precisam ser ligadas à API junto com o parâmetro.
+- [ ] Telas de Chamados, Projetos, Notícias e cadastros de Notícia/Projeto/Currículo ainda não consomem a API.
+- [ ] Verificação de empresas (CNPJ) antes de liberar o banco de currículos: hoje basta se cadastrar como empresa.
+- [ ] Renomear tabelas e FKs para o padrão do Laravel (`usuarios`, `usuario_id`) antes de criar os novos módulos.
+- [ ] Remover MUI/Emotion e os `<style dangerouslySetInnerHTML>` restantes; ESLint + Prettier.

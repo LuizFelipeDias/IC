@@ -4,6 +4,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import Footer from "../components/Footer.jsx";
 import Navbar from "../components/Nav.jsx";
+import { api, lista } from "../services/api";
 
 const GRID_ITEMS = [
     { title: "CHAMADOS", link: "VEJA MAIS >", path: "/chamados" },
@@ -133,36 +134,20 @@ export default function Home() {
     const [filtroAtivo, setFiltroAtivo] = useState("");
 
     useEffect(() => {
-        const token = localStorage.getItem('@hub:token');
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-        };
-
         const buscarDados = async () => {
-            try {
-                const [resVagas, resProjetos, resNoticias] = await Promise.all([
-                    fetch('http://localhost:8000/api/vaga', { headers }),
-                    fetch('http://localhost:8000/api/projeto', { headers }),
-                    fetch('http://localhost:8000/api/noticia', { headers })
-                ]);
+            const [resVagas, resProjetos, resNoticias] = await Promise.allSettled([
+                api('/vaga?per_page=50'),
+                api('/projeto?per_page=50'),
+                api('/noticia?per_page=50')
+            ]);
 
-                if (resVagas.ok) {
-                    const data = await resVagas.json();
-                    setVagas(Array.isArray(data) ? data : (data.data || []));
-                }
-                if (resProjetos.ok) {
-                    const data = await resProjetos.json();
-                    setProjetos(Array.isArray(data) ? data : (data.data || []));
-                }
-                if (resNoticias.ok) {
-                    const data = await resNoticias.json();
-                    setNoticias(Array.isArray(data) ? data : (data.data || []));
-                }
-            } catch (err) {
-                console.error("Erro ao carregar dados da API:", err);
-            }
+            if (resVagas.status === 'fulfilled') setVagas(lista(resVagas.value));
+            if (resProjetos.status === 'fulfilled') setProjetos(lista(resProjetos.value));
+            if (resNoticias.status === 'fulfilled') setNoticias(lista(resNoticias.value));
+
+            [resVagas, resProjetos, resNoticias]
+                .filter((r) => r.status === 'rejected')
+                .forEach((r) => console.error("Erro ao carregar dados da API:", r.reason));
         };
 
         buscarDados().catch(console.error);

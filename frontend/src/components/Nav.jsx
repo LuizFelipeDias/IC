@@ -1,53 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Nav() {
+    const { usuario, sair } = useAuth();
+    const navigate = useNavigate();
 
-    const [nomeUsuario, setNomeUsuario] = useState("PROFILE");
+    const nomeUsuario = usuario?.nome ? usuario.nome.split(" ")[0] : "PROFILE";
 
-    useEffect(() => {
-        const buscarUsuario = async () => {
-            try {
-                const token = localStorage.getItem("@hub:token");
-
-                if (!token) return;
-
-                const resposta = await fetch("http://localhost:8000/api/usuario/me", {
-                    method: "GET",
-                    headers: {
-                        "Accept": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-
-                if (resposta.ok) {
-                    const dados = await resposta.json();
-
-                    const nomeFinal = dados.nome || dados.name || "USUÁRIO";
-
-                    const primeiroNome = nomeFinal.split(" ")[0];
-
-                    setNomeUsuario(primeiroNome);ch
-                }
-            } catch (erro) {
-                console.error("Erro ao buscar usuário logado:", erro);
-            }
-        };
-
-        buscarUsuario().catch(console.error);
-    }, []);
-
-    // Função para lidar com a saída (logout)
-    const handleExit = () => {
-        localStorage.removeItem("@hub:token");
-        window.location.href = "/";
+    // Logout revoga o token no servidor antes de voltar ao login.
+    const handleExit = async () => {
+        await sair();
+        navigate("/", { replace: true });
     };
 
     return (
         <div style={{ width: "100%" }}>
             <style>
                 {`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
-
           .nav-bg {
             background-color: white; 
             height: 67px;              
@@ -127,7 +97,7 @@ export default function Nav() {
             </style>
 
             <nav className="nav-bg">
-                <h1 className="logo">3D HUB</h1>
+                <h1 className="logo" onClick={() => navigate("/home")}>3D HUB</h1>
 
                 <div className="nav-group">
                     <span className="nav-link hide-tablet">
@@ -138,9 +108,9 @@ export default function Nav() {
                     {/* Aqui o nome do usuário será exibido corretamente */}
                     <span className="nav-link">{nomeUsuario}</span>
 
-                    <span className="nav-link btn-exit" onClick={handleExit}>
+                    <button type="button" className="nav-link btn-exit" onClick={handleExit}>
                         EXIT
-                    </span>
+                    </button>
                 </div>
             </nav>
         </div>

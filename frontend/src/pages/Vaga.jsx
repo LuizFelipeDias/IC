@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Nav.jsx";
 import Footer from "../components/Footer.jsx";
+import { useAuth } from "../contexts/AuthContext";
+import { api, lista } from "../services/api";
 
-const API_URL = "http://localhost:8000/api";
 const ITEMS_PER_PAGE = 10;
 const ROTA_CADASTRO = "/cadastro/vaga";
 
@@ -73,44 +74,6 @@ const IconeLocal = (p) => (
 );
 
 /* ================================================================== *
- * Acesso à API
- * ================================================================== */
-
-const getToken = () => localStorage.getItem("@hub:token");
-
-async function request(path, { method = "GET", body } = {}) {
-    const headers = {
-        Authorization: `Bearer ${getToken()}`,
-        Accept: "application/json",
-    };
-    if (body) headers["Content-Type"] = "application/json";
-
-    const response = await fetch(`${API_URL}${path}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-    });
-
-    // CONTROLE DE SESSÃO: Se o token estiver expirado ou for inválido (401)
-    if (response.status === 401) {
-        localStorage.removeItem("@hub:token"); // Remove da memória
-        window.location.href = "/login"; // Força ida pro login sem load eterno
-        return new Promise(() => {}); // Corta a execução da promise aqui
-    }
-
-    if (!response.ok) {
-        const corpo = await response.json().catch(() => null);
-        const detalhe = corpo?.errors ? Object.values(corpo.errors).flat().join(" ") : corpo?.message;
-        throw new Error(detalhe ?? `${method} ${path} → ${response.status}`);
-    }
-
-    return response.status === 204 ? null : response.json();
-}
-
-// O Laravel devolve array puro ou paginado ({ data: [...] })
-const lista = (resposta) => (Array.isArray(resposta) ? resposta : resposta?.data ?? []);
-
-/* ================================================================== *
  * Normalização — colunas reais do banco
  *   vagas:        id · id_usuario · titulo · tema · cep · cidade · texto
  *                 data_publicacao · created_at · updated_at
@@ -168,25 +131,7 @@ function identificarPerfil(usuario) {
 }
 
 function useUsuario() {
-    const [usuario, setUsuario] = useState(null);
-    const [carregando, setCarregando] = useState(true);
-
-    useEffect(() => {
-        let ativo = true;
-        (async () => {
-            try {
-                const data = await request("/usuario/me");
-                if (ativo) setUsuario(data);
-            } catch (e) {
-                console.error("Falha ao identificar o usuário:", e);
-            } finally {
-                if (ativo) setCarregando(false);
-            }
-        })();
-        return () => {
-            ativo = false;
-        };
-    }, []);
+    const { usuario, carregando } = useAuth();
 
     return { usuario, perfil: useMemo(() => identificarPerfil(usuario), [usuario]), carregando };
 }
@@ -272,7 +217,7 @@ function ApplyModal({ vaga, onClose, onEnviada }) {
         setEnviando(true);
         setErro(null);
         try {
-            const criada = await request("/candidatura", { method: "POST", body: { id_vaga: vaga.id } });
+            const criada = await api("/candidatura", { method: "POST", body: { id_vaga: vaga.id } });
             const statusRetornado = criada?.status ?? "Em análise";
             setStatus(statusRetornado);
             onEnviada?.(vaga.id, statusRetornado);
@@ -351,7 +296,7 @@ function CandidatoView() {
 
         (async () => {
             try {
-                const resposta = await request("/vaga");
+                const resposta = await api("/vaga?per_page=100");
                 if (ativo) setVagas(lista(resposta).map(normalizarVaga));
             } catch {
                 if (ativo) setErro("Não foi possível carregar as vagas.");
@@ -363,7 +308,7 @@ function CandidatoView() {
         // GET /candidatura já vem filtrado pelo usuário do token
         (async () => {
             try {
-                const resposta = await request("/candidatura");
+                const resposta = await api("/candidatura");
                 const mapa = new Map(lista(resposta).map((c) => [String(c.id_vaga), c.status ?? "Em análise"]));
                 if (ativo) setMinhasCandidaturas(mapa);
             } catch (e) {
@@ -521,7 +466,7 @@ function EmpregadorView({ usuario }) {
 
     const carregar = useCallback(async () => {
         try {
-            const resposta = await request("/vaga/minhas");
+            const resposta = await api("/vaga/minhas?per_page=100");
             setVagas(lista(resposta).map(normalizarVaga));
         } catch {
             setErro("Não foi possível carregar suas vagas.");
@@ -537,7 +482,7 @@ function EmpregadorView({ usuario }) {
     const excluir = async (vaga) => {
         if (!window.confirm(`Excluir a vaga "${vaga.titulo}"? As candidaturas recebidas também serão apagadas.`)) return;
         try {
-            await request(`/vaga/${vaga.id}`, { method: "DELETE" });
+            await api(`/vaga/${vaga.id}`, { method: "DELETE" });
             setVagas((v) => v.filter((item) => item.id !== vaga.id));
         } catch (e) {
             window.alert(e.message || "Não foi possível excluir a vaga.");

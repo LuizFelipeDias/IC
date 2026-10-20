@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // <-- Importamos o useNavigate
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { api, ApiError } from "../../services/api";
 import { MenuItem, Select, Collapse } from "@mui/material";
 
 // --- FUNÇÕES DE MÁSCARA ---
@@ -45,6 +47,8 @@ const CustomInput = ({ label, placeholder, type = "text", value, onChange }) => 
 );
 
 export default function CadastroUsuario() {
+    const { entrar } = useAuth();
+
     // 1. Dados Básicos
     const [nome, setNome] = useState("");
     const [telefone, setTelefone] = useState("");
@@ -114,23 +118,8 @@ export default function CadastroUsuario() {
             ...(isEmpresa && { cnpj })
         };
 
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        };
-
         try {
-            const response = await fetch('http://localhost:8000/api/usuario', requestOptions);
-            const isJson = response.headers.get('content-type')?.includes('application/json');
-            const data = isJson ? await response.json() : null;
-
-            if (!response.ok) {
-                const errorMsg = (data && data.message) || "Erro ao realizar cadastro. Verifique os dados.";
-                setErro(true);
-                setMensagem(errorMsg);
-                return;
-            }
+            const data = await api('/usuario', { method: 'POST', body: payload, auth: false });
 
             // Sucesso no Cadastro!
             setMensagem("Cadastro realizado com sucesso!");
@@ -139,18 +128,17 @@ export default function CadastroUsuario() {
             // 1. Limpa os campos por segurança
             setNome(""); setTelefone(""); setEmail(""); setConfirmarEmail(""); setSenha(""); setConfirmarSenha(""); setCPF(""); setCnpj(""); setProfissao(""); setSexo("");
 
-            // 2. Se o backend retornou o token (Auto-Login), salvamos no cofre do navegador
-            if (data && data.token) {
-                localStorage.setItem('@hub:token', data.token);
+            // 2. O backend devolve o token: auto-login
+            if (data?.token) {
+                entrar(data.token);
             }
 
             // 3. Redireciona imediatamente para a home
             navigate('/home');
 
         } catch (error) {
-            console.error('Erro na requisição:', error);
             setErro(true);
-            setMensagem(error.message || error.toString());
+            setMensagem(error instanceof ApiError ? error.message : "Erro ao realizar cadastro. Verifique os dados.");
         } finally {
             setLoading(false);
         }

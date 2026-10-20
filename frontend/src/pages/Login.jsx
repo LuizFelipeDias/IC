@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { api, ApiError } from "../services/api";
 
 // Componente para o ícone da Microsoft
 const MicrosoftIcon = () => (
@@ -31,6 +33,7 @@ export default function Layout() {
 
     // Hook para gerenciar o redirecionamento de rotas
     const navigate = useNavigate();
+    const { entrar } = useAuth();
 
     // Função executada ao enviar o formulário de login
     const handleLogin = async (e) => {
@@ -41,40 +44,23 @@ export default function Layout() {
         setErro(false);
         setLoading(true);
 
-        const payload = { email, senha };
-
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        };
-
         try {
-            // Comunicação com a API do Laravel
-            const response = await fetch('http://localhost:8000/api/login', requestOptions);
-            const isJson = response.headers.get('content-type')?.includes('application/json');
-            const data = isJson ? await response.json() : null;
+            const data = await api('/login', { method: 'POST', body: { email, senha }, auth: false });
 
-            if (!response.ok) {
-                const errorMsg = (data && data.Mensagem) || "Erro ao realizar login. Verifique seus dados.";
+            if (!data?.token) {
                 setErro(true);
-                setMensagem(errorMsg);
+                setMensagem("Falha de segurança: Token não fornecido pelo servidor.");
                 return;
             }
 
-            // Validação e armazenamento do token de acesso do Sanctum
-            if (data && data.token) {
-                localStorage.setItem('@hub:token', data.token);
-                // Redireciona limpando o histórico para bloquear o botão de voltar
-                navigate('/home', { replace: true });
-            } else {
-                setErro(true);
-                setMensagem("Falha de segurança: Token não fornecido pelo servidor.");
-            }
-
+            entrar(data.token);
+            // Redireciona limpando o histórico para bloquear o botão de voltar
+            navigate('/home', { replace: true });
         } catch (error) {
             setErro(true);
-            setMensagem("Erro de conexão com o servidor.");
+            setMensagem(error instanceof ApiError && error.status !== 0
+                ? error.message
+                : "Erro de conexão com o servidor.");
         } finally {
             setLoading(false);
         }
