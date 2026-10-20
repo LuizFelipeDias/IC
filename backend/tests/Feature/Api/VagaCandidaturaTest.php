@@ -92,3 +92,25 @@ it('só o candidato desiste da própria candidatura', function () {
     Sanctum::actingAs($candidatura->usuario);
     $this->deleteJson("/api/candidatura/{$candidatura->id}")->assertNoContent();
 });
+
+it('só pessoa jurídica (empresa, escola, laboratório) publica vagas', function () {
+    Sanctum::actingAs(Usuario::factory()->create());
+    $this->postJson('/api/vaga', ['titulo' => 'Vaga', 'texto' => 'Texto'])->assertForbidden();
+    $this->getJson('/api/vaga/minhas')->assertForbidden();
+
+    foreach (['empresa', 'escola', 'laboratorio'] as $tipo) {
+        Sanctum::actingAs(Usuario::factory()->{$tipo}()->create());
+        $this->postJson('/api/vaga', ['titulo' => "Vaga {$tipo}", 'texto' => 'Texto'])->assertCreated();
+    }
+});
+
+it('só pessoa física se candidata', function () {
+    $vaga = Vaga::factory()->create();
+
+    Sanctum::actingAs(Usuario::factory()->empresa()->create());
+    $this->postJson('/api/candidatura', ['id_vaga' => $vaga->id])->assertForbidden();
+    $this->getJson('/api/candidatura')->assertForbidden();
+
+    Sanctum::actingAs(Usuario::factory()->prestador()->create());
+    $this->postJson('/api/candidatura', ['id_vaga' => $vaga->id])->assertCreated();
+});

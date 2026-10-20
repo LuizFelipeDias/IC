@@ -35,11 +35,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/usuario/me', [UsuarioController::class, 'destroy']);
     Route::get('/usuario/{usuario}', [UsuarioController::class, 'show']);
 
-    Route::get('/vaga/minhas', [VagaController::class, 'minhas']);
-    Route::get('/vaga/{vaga}/candidaturas', [CandidaturaController::class, 'porVaga']);
-    Route::apiResource('vaga', VagaController::class)->except(['index', 'show']);
-
-    Route::apiResource('candidatura', CandidaturaController::class)->except(['show']);
+    // Vagas: só quem contrata (CNPJ/instituição) publica; só pessoa física se candidata.
+    // Os triggers do banco repetem essas duas regras como última barreira.
+    Route::middleware('perfil:contratante')->group(function () {
+        Route::get('/vaga/minhas', [VagaController::class, 'minhas']);
+        Route::get('/vaga/{vaga}/candidaturas', [CandidaturaController::class, 'porVaga']);
+        Route::apiResource('vaga', VagaController::class)->except(['index', 'show']);
+        Route::match(['put', 'patch'], '/candidatura/{candidatura}', [CandidaturaController::class, 'update']);
+    });
+    Route::middleware('perfil:candidato')->group(function () {
+        Route::get('/candidatura', [CandidaturaController::class, 'index']);
+        Route::post('/candidatura', [CandidaturaController::class, 'store']);
+        Route::delete('/candidatura/{candidatura}', [CandidaturaController::class, 'destroy']);
+    });
     Route::apiResource('noticia', NoticiaController::class)->except(['index', 'show'])->parameters(['noticia' => 'noticia']);
     Route::apiResource('projeto', ProjetoController::class)->except(['index', 'show']);
     // Chamados: escolas/empresas abrem; laboratórios e makers/voluntários atendem.
