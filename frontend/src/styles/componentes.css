@@ -662,3 +662,30 @@ select.entrada {
     max-width: 60ch;
     color: var(--cor-texto-suave);
 }
+
+/* Busca em pílula — vagas */
+.busca-grande {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    max-width: 640px;
+    margin: var(--esp-8) auto 0;
+    padding: 6px 6px 6px var(--esp-5);
+    border: 1px solid var(--cor-borda-forte);
+    border-radius: var(--raio-pilula);
+    background: var(--cor-superficie);
+    box-shadow: var(--sombra-2);
+}
+
+.busca-grande svg {
+    flex-shrink: 0;
+    color: var(--cor-texto-fraco);
+}
+
+.busca-grande input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+}
