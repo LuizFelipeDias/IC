@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CircleDot, ClipboardList, Hourglass, Inbox, Plus, Search, XCircle } from "lucide-react";
+import { ArrowRight, Check, ClipboardList, Inbox, MapPin, Search } from "lucide-react";
 import { Aviso, Campo, Carregando, Chip, Dialogo, errosPorCampo, Vazio } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { api, ApiError, lista } from "../services/api";
@@ -11,6 +11,12 @@ import "../styles/pages/chamados.css";
  *   solicitante (escola/empresa verificada): abre, acompanha, edita enquanto aberto e cancela
  *   prestador (laboratório/maker): vê os abertos, escolhe o local de atendimento e aceita; conclui
  *   moderador: acompanha todos
+ *
+ * Visual: "Browse templates" do arquivo Website Templates — Squarespace
+ * (título de 64 px + texto à direita, colunas de filtro com caixas de
+ * seleção, linha de resultados sublinhada, cartões com borda #E8E4E4 e
+ * sombra, faixa preta com botão branco) + estrutura de painel do Mockfit
+ * (barra lateral, KPIs "00.000", gráfico grande e lista de linhas).
  * ================================================================== */
 
 const ETAPAS = ["Aberto", "Em Atendimento", "Resolvido"];
@@ -98,6 +104,102 @@ function NovoChamado({ opcoes, aberto, aoFechar, aoCriar }) {
     );
 }
 
+const KPIS = [
+    ["Aberto", "Abertos"],
+    ["Em Atendimento", "Em atendimento"],
+    ["Resolvido", "Resolvidos"],
+    ["Cancelado", "Cancelados"],
+];
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+// KPI no formato do Mockfit ("00,000"), com separador brasileiro.
+const numeroPainel = (n) => n.toLocaleString("pt-BR", { minimumIntegerDigits: 5 });
+
+const codigo = (id) => `CH-${String(id).padStart(5, "0")}`;
+
+/* Caixa de seleção quadrada de 14 px do template (cinza #CCC quando marcada). */
+function OpcaoCaixa({ marcada, aoMarcar, children }) {
+    return (
+        <button type="button" role="radio" aria-checked={marcada} className="sq-caixa" onClick={aoMarcar}>
+            <span className="sq-caixa__quadro" aria-hidden="true">{marcada && <Check size={12} strokeWidth={3} />}</span>
+            {children}
+        </button>
+    );
+}
+
+/* Item de lista com seta (coluna "TOPIC" do template). */
+function OpcaoSeta({ marcada, aoMarcar, children }) {
+    return (
+        <button type="button" role="radio" aria-checked={marcada} className="sq-seta" onClick={aoMarcar}>
+            {marcada && <ArrowRight size={14} aria-hidden="true" />}
+            {children}
+        </button>
+    );
+}
+
+/* Gráfico de barras em SVG puro: chamados por mês (últimos 6) ou por tipo de serviço. */
+function Grafico({ chamados, opcoes }) {
+    const [modo, setModo] = useState("mes");
+
+    const dados = useMemo(() => {
+        if (modo === "tipo") {
+            return opcoes.tipos_servico.map((t) => ({ rotulo: t.rotulo, valor: chamados.filter((c) => c.tipo_servico === t.valor).length }));
+        }
+        const hoje = new Date();
+        return Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(hoje.getFullYear(), hoje.getMonth() - 5 + i, 1);
+            const valor = chamados.filter((c) => {
+                const criado = new Date(c.data_criacao);
+                return criado.getFullYear() === d.getFullYear() && criado.getMonth() === d.getMonth();
+            }).length;
+            return { rotulo: `${MESES[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, valor };
+        });
+    }, [modo, chamados, opcoes]);
+
+    const L = 720, A = 280, base = 240, topo = 24;
+    const maximo = Math.max(1, ...dados.map((d) => d.valor));
+    const passo = L / dados.length;
+    const largura = Math.min(64, passo * 0.5);
+    const linhas = [0, 0.25, 0.5, 0.75, 1];
+
+    return (
+        <section className="sq-cartao sq-grafico" aria-labelledby="titulo-grafico">
+            <div className="sq-grafico__topo">
+                <p className="sq-rotulo" id="titulo-grafico">{modo === "mes" ? "CHAMADOS POR MÊS" : "CHAMADOS POR TIPO DE SERVIÇO"}</p>
+                <div className="sq-abas" role="tablist" aria-label="Agrupar gráfico">
+                    <button type="button" role="tab" aria-selected={modo === "mes"} onClick={() => setModo("mes")}>Por mês</button>
+                    <button type="button" role="tab" aria-selected={modo === "tipo"} onClick={() => setModo("tipo")}>Por serviço</button>
+                </div>
+            </div>
+            <svg viewBox={`0 0 ${L} ${A + 30}`} className="sq-grafico__svg" role="img" aria-label={dados.map((d) => `${d.rotulo}: ${d.valor}`).join(", ")}>
+                {linhas.map((f) => {
+                    const y = base - f * (base - topo);
+                    return (
+                        <g key={f}>
+                            <line x1="0" x2={L} y1={y} y2={y} className="sq-grafico__grade" />
+                            <text x="0" y={y - 6} className="sq-grafico__eixo">{Math.round(f * maximo)}</text>
+                        </g>
+                    );
+                })}
+                {dados.map((d, i) => {
+                    const h = (d.valor / maximo) * (base - topo);
+                    const x = i * passo + (passo - largura) / 2;
+                    return (
+                        <g key={d.rotulo}>
+                            <rect x={x} y={base - h} width={largura} height={Math.max(h, d.valor ? 2 : 0)} className="sq-grafico__barra" />
+                            {d.valor > 0 && <text x={x + largura / 2} y={base - h - 8} textAnchor="middle" className="sq-grafico__valor">{d.valor}</text>}
+                            <text x={i * passo + passo / 2} y={base + 24} textAnchor="middle" className="sq-grafico__eixo">
+                                {d.rotulo.length > 18 ? `${d.rotulo.slice(0, 17)}…` : d.rotulo}
+                            </text>
+                        </g>
+                    );
+                })}
+            </svg>
+        </section>
+    );
+}
+
 function PainelChamado({ chamado, usuario, pode, opcoes, aoAtualizar, aoRemover }) {
     const [local, setLocal] = useState("");
     const [erro, setErro] = useState("");
@@ -136,49 +238,43 @@ function PainelChamado({ chamado, usuario, pode, opcoes, aoAtualizar, aoRemover 
     };
 
     const contato = chamado.contato && (souPrestador ? chamado.contato.solicitante : chamado.contato.prestador);
-    const temAcoes = (pode("prestador") && aberto && !souSolicitante) || (souPrestador && emAtendimento) || (souSolicitante && (aberto || emAtendimento));
+    const podeAceitar = pode("prestador") && aberto && !souSolicitante;
+    const temAcoes = podeAceitar || (souPrestador && emAtendimento) || (souSolicitante && (aberto || emAtendimento));
 
     return (
-        <aside className="cartao painel" aria-label="Detalhes do chamado">
-            <div className="painel__cabecalho">
-                <div className="linha linha--entre">
-                    <span className="codigo">CH-{String(chamado.id).padStart(5, "0")}</span>
+        <aside className="sq-detalhe" aria-label="Detalhes do chamado">
+            <div className="sq-cartao sq-detalhe__capa">
+                <div className="sq-detalhe__topo">
                     <Chip tom={STATUS_CHAMADO[chamado.status]} ponto>{chamado.status}</Chip>
+                    <span className="sq-rotulo">{chamado.tipo_servico_rotulo ?? "Serviço"}</span>
                 </div>
-                <h2>{chamado.titulo}</h2>
-                <div style={{ marginTop: "var(--esp-4)" }}>
-                    <Etapas status={chamado.status} />
-                </div>
+                <h3>{chamado.titulo}</h3>
+                <Etapas status={chamado.status} />
+            </div>
+            <div className="sq-legenda">
+                <span>{codigo(chamado.id)}</span>
+                <span className="sq-legenda__icone" title={[chamado.cidade, chamado.uf].filter(Boolean).join(" / ")}>
+                    <MapPin size={20} aria-hidden="true" />
+                </span>
             </div>
 
-            <div className="painel__corpo">
-                <section className="painel__secao">
-                    <h3>Pedido</h3>
-                    <dl className="ficha-grade">
-                        <div><dt>Tipo de serviço</dt><dd>{chamado.tipo_servico_rotulo ?? "—"}</dd></div>
-                        <div><dt>Prazo</dt><dd>{formatarDia(chamado.data_limite)}</dd></div>
-                        <div><dt>Solicitante</dt><dd>{chamado.usuario?.nome ?? "—"}</dd></div>
-                        <div><dt>Local</dt><dd>{[chamado.cidade, chamado.uf].filter(Boolean).join(" / ") || "—"}</dd></div>
-                        <div><dt>Aberto em</dt><dd>{formatarData(chamado.data_criacao)}</dd></div>
-                    </dl>
-                </section>
+            <div className="sq-detalhe__corpo">
+                <dl className="sq-ficha">
+                    <div><dt>PRAZO</dt><dd>{formatarDia(chamado.data_limite)}</dd></div>
+                    <div><dt>SOLICITANTE</dt><dd>{chamado.usuario?.nome ?? "—"}</dd></div>
+                    <div><dt>LOCAL</dt><dd>{[chamado.cidade, chamado.uf].filter(Boolean).join(" / ") || "—"}</dd></div>
+                    <div><dt>ABERTO EM</dt><dd>{formatarData(chamado.data_criacao)}</dd></div>
+                    {chamado.prestador && (
+                        <>
+                            <div><dt>PRESTADOR</dt><dd>{chamado.prestador.nome}</dd></div>
+                            <div><dt>ONDE</dt><dd>{chamado.local_atendimento_rotulo}</dd></div>
+                            <div><dt>ACEITO EM</dt><dd>{formatarData(chamado.aceito_em)}</dd></div>
+                            {chamado.concluido_em && <div><dt>CONCLUÍDO EM</dt><dd>{formatarData(chamado.concluido_em)}</dd></div>}
+                        </>
+                    )}
+                </dl>
 
-                <section className="painel__secao">
-                    <h3>Descrição</h3>
-                    <p style={{ whiteSpace: "pre-line", fontSize: "var(--texto-sm)" }}>{chamado.descricao}</p>
-                </section>
-
-                {chamado.prestador && (
-                    <section className="painel__secao">
-                        <h3>Atendimento</h3>
-                        <dl className="ficha-grade">
-                            <div><dt>Prestador</dt><dd>{chamado.prestador.nome}</dd></div>
-                            <div><dt>Onde</dt><dd>{chamado.local_atendimento_rotulo}</dd></div>
-                            <div><dt>Aceito em</dt><dd>{formatarData(chamado.aceito_em)}</dd></div>
-                            {chamado.concluido_em && <div><dt>Concluído em</dt><dd>{formatarData(chamado.concluido_em)}</dd></div>}
-                        </dl>
-                    </section>
-                )}
+                <p className="sq-detalhe__descricao">{chamado.descricao}</p>
 
                 {contato && (
                     <Aviso tom="info">
@@ -186,39 +282,40 @@ function PainelChamado({ chamado, usuario, pode, opcoes, aoAtualizar, aoRemover 
                     </Aviso>
                 )}
                 {erro && <Aviso tom="perigo">{erro}</Aviso>}
-            </div>
 
-            {temAcoes && (
-                <div className="painel__rodape">
-                    {pode("prestador") && aberto && !souSolicitante && (
-                        <>
-                            <fieldset className="opcoes-local" style={{ border: 0, padding: 0, margin: 0 }}>
-                                <legend className="campo__rotulo" style={{ marginBottom: "var(--esp-2)" }}>Onde você vai atender?</legend>
-                                {opcoes.locais_atendimento.map((opcao) => (
-                                    <label key={opcao.valor}>
-                                        <input type="radio" name={`local-${chamado.id}`} value={opcao.valor} checked={local === opcao.valor} onChange={() => setLocal(opcao.valor)} />
-                                        {opcao.rotulo}
-                                    </label>
-                                ))}
-                            </fieldset>
-                            <button type="button" className="botao botao--bloco" disabled={!local || processando} onClick={() => executar("aceitar", { local_atendimento: local })}>
-                                Aceitar chamado
+                {temAcoes && (
+                    <div className="sq-detalhe__acoes">
+                        {podeAceitar && (
+                            <>
+                                <fieldset className="sq-locais">
+                                    <legend className="sq-rotulo">ONDE VOCÊ VAI ATENDER?</legend>
+                                    {opcoes.locais_atendimento.map((opcao) => (
+                                        <label key={opcao.valor} className="sq-caixa">
+                                            <input type="radio" name={`local-${chamado.id}`} value={opcao.valor} checked={local === opcao.valor} onChange={() => setLocal(opcao.valor)} />
+                                            <span className="sq-caixa__quadro" aria-hidden="true">{local === opcao.valor && <Check size={12} strokeWidth={3} />}</span>
+                                            {opcao.rotulo}
+                                        </label>
+                                    ))}
+                                </fieldset>
+                                <button type="button" className="sq-botao sq-botao--preto" disabled={!local || processando} onClick={() => executar("aceitar", { local_atendimento: local })}>
+                                    ACEITAR CHAMADO
+                                </button>
+                            </>
+                        )}
+                        {souPrestador && emAtendimento && (
+                            <button type="button" className="sq-botao sq-botao--preto" disabled={processando} onClick={() => executar("concluir")}>
+                                MARCAR COMO CONCLUÍDO (+50 PONTOS)
                             </button>
-                        </>
-                    )}
-                    {souPrestador && emAtendimento && (
-                        <button type="button" className="botao botao--eco botao--bloco" disabled={processando} onClick={() => executar("concluir")}>
-                            <CheckCircle2 size={16} aria-hidden="true" /> Marcar como concluído (+50 pontos)
-                        </button>
-                    )}
-                    {souSolicitante && (aberto || emAtendimento) && (
-                        <div className="linha">
-                            <button type="button" className="botao botao--secundario" disabled={processando} onClick={() => executar("cancelar")}>Cancelar chamado</button>
-                            {aberto && <button type="button" className="botao botao--perigo" onClick={excluir}>Excluir</button>}
-                        </div>
-                    )}
-                </div>
-            )}
+                        )}
+                        {souSolicitante && (aberto || emAtendimento) && (
+                            <div className="sq-linha">
+                                <button type="button" className="sq-botao" disabled={processando} onClick={() => executar("cancelar")}>CANCELAR CHAMADO</button>
+                                {aberto && <button type="button" className="sq-botao sq-botao--perigo" onClick={excluir}>EXCLUIR</button>}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </aside>
     );
 }
@@ -253,6 +350,7 @@ export default function Chamados() {
     }, [carregar]);
 
     const ehPrestador = pode("prestador");
+    const ehSolicitante = pode("solicitante");
 
     const visiveis = useMemo(() => {
         const termo = busca.trim().toLowerCase();
@@ -271,131 +369,180 @@ export default function Chamados() {
     const substituir = (novo) => setChamados((itens) => itens.map((c) => (c.id === novo.id ? novo : c)));
 
     return (
-        <div className="container">
-            <section className="chamados-topo">
-                <div className="chamados-topo__texto">
-                    <span className="sobrelinha">{pode("solicitante") ? "Pedidos da sua instituição" : ehPrestador ? "Demandas de escolas e empresas" : "Acompanhamento"}</span>
-                    <h1>
-                        Chamados <span>{pode("solicitante") ? "que sua escola precisa" : ehPrestador ? "esperando por você" : "da rede"}</span>
-                    </h1>
+        <div className="sq">
+            {/* Section 01 — título + texto e colunas de filtro */}
+            <section className="sq-secao sq-topo">
+                <div className="sq-topo__titulo">
+                    <h1>Meu painel de chamados.</h1>
                     <p>
-                        {pode("solicitante")
-                            ? "Peça treinamento, modelagem, digitalização ou impressão. Laboratórios e makers voluntários respondem."
-                            : "Escolha um chamado aberto, defina onde vai atender e aceite."}
+                        {ehSolicitante
+                            ? "Peça treinamento, modelagem, digitalização ou impressão 3D para a sua instituição. Laboratórios e makers voluntários da rede respondem e você acompanha cada etapa por aqui."
+                            : ehPrestador
+                              ? "Pedidos de escolas públicas e empresas esperando atendimento. Escolha um chamado aberto, diga onde vai atender e aceite."
+                              : "Acompanhamento de todos os chamados da rede EcoHub 3D."}
                     </p>
-                    {pode("solicitante") && (
-                        <button type="button" className="botao botao--grande" onClick={() => setNovoAberto(true)}>
-                            <Plus size={18} aria-hidden="true" /> Novo chamado
+                </div>
+
+                <div className="sq-filtros">
+                    {ehPrestador && (
+                        <div className="sq-filtros__coluna" role="radiogroup" aria-label="Visão">
+                            <p className="sq-rotulo">VISÃO</p>
+                            {[["todos", "Todos os chamados"], ["disponiveis", "Disponíveis"], ["meus", "Meus atendimentos"]].map(([valor, rotulo]) => (
+                                <OpcaoSeta key={valor} marcada={aba === valor} aoMarcar={() => setAba(valor)}>{rotulo}</OpcaoSeta>
+                            ))}
+                        </div>
+                    )}
+                    <div className="sq-filtros__coluna" role="radiogroup" aria-label="Status">
+                        <p className="sq-rotulo">STATUS</p>
+                        <OpcaoCaixa marcada={status === ""} aoMarcar={() => setStatus("")}>Todos</OpcaoCaixa>
+                        {Object.keys(STATUS_CHAMADO).map((s) => (
+                            <OpcaoCaixa key={s} marcada={status === s} aoMarcar={() => setStatus(s)}>{s}</OpcaoCaixa>
+                        ))}
+                    </div>
+                    <div className="sq-filtros__coluna" role="radiogroup" aria-label="Tipo de serviço">
+                        <p className="sq-rotulo">SERVIÇO</p>
+                        <OpcaoSeta marcada={tipo === ""} aoMarcar={() => setTipo("")}>Todos os serviços</OpcaoSeta>
+                        {opcoes.tipos_servico.map((t) => (
+                            <OpcaoSeta key={t.valor} marcada={tipo === t.valor} aoMarcar={() => setTipo(t.valor)}>{t.rotulo}</OpcaoSeta>
+                        ))}
+                    </div>
+                    <div className="sq-filtros__coluna">
+                        <label className="sq-rotulo" htmlFor="busca-chamados">BUSCAR</label>
+                        <span className="sq-busca">
+                            <Search size={14} aria-hidden="true" />
+                            <input id="busca-chamados" placeholder="Título, cidade ou solicitante" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                        </span>
+                    </div>
+                    <div className="sq-filtros__acoes">
+                        <p className="sq-rotulo">TAXA DE ATENDIMENTO · {chamados ? `${taxa}%` : "—"}</p>
+                        {ehSolicitante && (
+                            <button type="button" className="sq-botao" onClick={() => setNovoAberto(true)}>
+                                NOVO CHAMADO
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 02 — linha de resultados */}
+            <section className="sq-secao sq-resultados">
+                <p>
+                    <strong>{visiveis.length} {visiveis.length === 1 ? "chamado encontrado" : "chamados encontrados"}</strong>
+                    {KPIS.map(([valor, rotulo], i) => (
+                        <React.Fragment key={valor}>
+                            {i > 0 && ", "}
+                            <button type="button" className="sq-link" onClick={() => setStatus(status === valor ? "" : valor)}>
+                                {rotulo} ({contagem(valor)})
+                            </button>
+                        </React.Fragment>
+                    ))}
+                </p>
+            </section>
+
+            {/* Painel (Mockfit): barra lateral + conteúdo */}
+            <div className="sq-secao sq-painel">
+                <nav className="sq-lateral" aria-label="Seções do painel">
+                    <p className="sq-rotulo">PAINEL</p>
+                    <a href="#visao-geral">Visão geral</a>
+                    <a href="#lista-chamados">Chamados</a>
+                    <a href="#como-funciona">Como funciona</a>
+                    <div className="sq-lateral__taxa">
+                        <span className="sq-rotulo">ATENDIDOS</span>
+                        <strong>{chamados ? `${taxa}%` : "—"}</strong>
+                        <span className="sq-lateral__barra"><span style={{ width: `${taxa}%` }} /></span>
+                    </div>
+                </nav>
+
+                <div className="sq-principal">
+                    <h2 className="sq-titulo-secao" id="visao-geral">Visão geral</h2>
+                    <div className="sq-kpis">
+                        {KPIS.map(([valor, rotulo]) => (
+                            <div key={valor} className="sq-cartao sq-kpi">
+                                <span className="sq-rotulo">{rotulo.toUpperCase()}</span>
+                                <strong>{chamados ? numeroPainel(contagem(valor)) : "—"}</strong>
+                            </div>
+                        ))}
+                    </div>
+
+                    {chamados !== null && <Grafico chamados={chamados} opcoes={opcoes} />}
+
+                    <h2 className="sq-titulo-secao" id="lista-chamados">Chamados ({visiveis.length})</h2>
+
+                    {erro && <Aviso tom="perigo">{erro}</Aviso>}
+                    {chamados === null && <Carregando texto="Carregando chamados..." />}
+                    {chamados !== null && visiveis.length === 0 && (
+                        <Vazio icone={chamados.length ? Inbox : ClipboardList} titulo={chamados.length ? "Nenhum chamado com esses filtros" : "Nenhum chamado ainda"}>
+                            {ehSolicitante ? "Abra o primeiro pedido da sua instituição." : "Quando escolas e empresas abrirem pedidos, eles aparecem aqui."}
+                        </Vazio>
+                    )}
+
+                    {visiveis.length > 0 && atual && (
+                        <div className="sq-mestre">
+                            <ul className="sq-cartao sq-lista">
+                                {visiveis.map((c) => (
+                                    <li key={c.id}>
+                                        <button type="button" className="sq-linha-item" aria-current={c.id === atual.id} onClick={() => setSelecionado(c.id)}>
+                                            <span className="sq-linha-item__marca" aria-hidden="true">{c.tipo_servico_rotulo?.[0] ?? "C"}</span>
+                                            <span className="sq-linha-item__texto">
+                                                <strong>{c.titulo}</strong>
+                                                <span>{codigo(c.id)} · {c.usuario?.nome} · {[c.cidade, c.uf].filter(Boolean).join(" / ")}</span>
+                                            </span>
+                                            <span className="sq-linha-item__valor">
+                                                <Chip tom={STATUS_CHAMADO[c.status]} ponto>{c.status}</Chip>
+                                                <span>{formatarDia(c.data_limite)}</span>
+                                            </span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <PainelChamado
+                                chamado={atual}
+                                usuario={usuario}
+                                pode={pode}
+                                opcoes={opcoes}
+                                aoAtualizar={substituir}
+                                aoRemover={(id) => setChamados((itens) => itens.filter((c) => c.id !== id))}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Section 04 — faixa preta com botão branco + painel claro */}
+            <section className="sq-secao sq-faixa" id="como-funciona">
+                <div className="sq-faixa__preta">
+                    <div>
+                        <h2>{ehPrestador ? "Atenda escolas da sua região" : "Precisa de impressão 3D na escola?"}</h2>
+                        <p>
+                            {ehPrestador
+                                ? "Laboratórios e makers voluntários levam treinamento, modelagem e peças impressas para quem mais precisa — e cada atendimento concluído rende pontos e selos no ranking."
+                                : "Descreva o que sua instituição precisa, defina um prazo e acompanhe o atendimento do aceite à conclusão. O contato do prestador aparece assim que ele aceitar."}
+                        </p>
+                    </div>
+                    {ehSolicitante && (
+                        <button type="button" className="sq-botao sq-botao--branco" onClick={() => setNovoAberto(true)}>ABRIR CHAMADO</button>
+                    )}
+                    {ehPrestador && !ehSolicitante && (
+                        <button type="button" className="sq-botao sq-botao--branco" onClick={() => { setAba("disponiveis"); document.getElementById("lista-chamados")?.scrollIntoView({ behavior: "smooth" }); }}>
+                            VER DISPONÍVEIS
                         </button>
                     )}
                 </div>
-
-                <aside className="resumo-chamados" aria-label="Taxa de atendimento">
-                    <div className="resumo-chamados__anel" style={{ "--progresso": `${taxa}%` }}>
-                        <strong>{chamados ? `${taxa}%` : "—"}</strong>
-                        <span>atendidos</span>
-                    </div>
-                    <div>
-                        <span className="resumo-chamados__rotulo">Taxa de atendimento</span>
-                        <p>
-                            {chamados ? `${contagem("Resolvido")} de ${ativos} pedidos válidos já foram resolvidos.` : "Calculando..."}
-                        </p>
-                        <span className="resumo-chamados__total">{chamados?.length ?? 0} chamados no total</span>
-                    </div>
-                </aside>
+                <ol className="sq-faixa__passos">
+                    {[
+                        ["01", "Abrir", "A escola ou empresa verificada descreve o pedido, o tipo de serviço e o prazo."],
+                        ["02", "Aceitar", "Um laboratório ou maker escolhe onde vai atender e assume o chamado."],
+                        ["03", "Concluir", "O prestador marca como resolvido e ganha 50 pontos no ranking."],
+                    ].map(([n, titulo, texto]) => (
+                        <li key={n}>
+                            <span>{n}</span>
+                            <strong>{titulo}</strong>
+                            <p>{texto}</p>
+                        </li>
+                    ))}
+                </ol>
             </section>
-
-            <div className="indicadores">
-                {[
-                    ["Abertos", contagem("Aberto"), "info", CircleDot],
-                    ["Em atendimento", contagem("Em Atendimento"), "alerta", Hourglass],
-                    ["Resolvidos", contagem("Resolvido"), "sucesso", CheckCircle2],
-                    ["Cancelados", contagem("Cancelado"), "neutro", XCircle],
-                ].map(([rotulo, valor, tom, Icone]) => (
-                    <div key={rotulo} className={`indicador indicador--${tom}`}>
-                        <span className="indicador__rotulo">
-                            <Icone size={16} aria-hidden="true" /> {rotulo}
-                        </span>
-                        <span className="indicador__valor">{chamados ? valor : "—"}</span>
-                        <span className="indicador__barra" aria-hidden="true">
-                            <span style={{ width: `${chamados?.length ? (valor / chamados.length) * 100 : 0}%` }} />
-                        </span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="barra-ferramentas">
-                {ehPrestador && (
-                    <div className="segmentado" role="tablist">
-                        {[["todos", "Todos"], ["disponiveis", "Disponíveis"], ["meus", "Meus atendimentos"]].map(([valor, rotulo]) => (
-                            <button key={valor} type="button" role="tab" aria-selected={aba === valor} onClick={() => setAba(valor)}>{rotulo}</button>
-                        ))}
-                    </div>
-                )}
-                <label className="busca">
-                    <Search size={16} aria-hidden="true" />
-                    <span className="sr-only">Buscar</span>
-                    <input className="entrada" placeholder="Buscar por título, cidade ou solicitante" value={busca} onChange={(e) => setBusca(e.target.value)} />
-                </label>
-                <label className="sr-only" htmlFor="filtro-status">Status</label>
-                <select id="filtro-status" className="entrada" value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="">Todos os status</option>
-                    {Object.keys(STATUS_CHAMADO).map((s) => <option key={s}>{s}</option>)}
-                </select>
-                <label className="sr-only" htmlFor="filtro-tipo">Tipo de serviço</label>
-                <select id="filtro-tipo" className="entrada" value={tipo} onChange={(e) => setTipo(e.target.value)}>
-                    <option value="">Todos os serviços</option>
-                    {opcoes.tipos_servico.map((t) => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
-                </select>
-            </div>
-
-            {erro && <Aviso tom="perigo">{erro}</Aviso>}
-            {chamados === null && <Carregando texto="Carregando chamados..." />}
-            {chamados !== null && visiveis.length === 0 && (
-                <Vazio icone={chamados.length ? Inbox : ClipboardList} titulo={chamados.length ? "Nenhum chamado com esses filtros" : "Nenhum chamado ainda"}>
-                    {pode("solicitante") ? "Abra o primeiro pedido da sua instituição." : "Quando escolas e empresas abrirem pedidos, eles aparecem aqui."}
-                </Vazio>
-            )}
-
-            {visiveis.length > 0 && atual && (
-                <div className="mestre-detalhe">
-                    <div className="tabela-container">
-                        <table className="tabela">
-                            <thead>
-                                <tr>
-                                    <th>Chamado</th>
-                                    <th>Solicitante</th>
-                                    <th>Prazo</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {visiveis.map((c) => (
-                                    <tr key={c.id} aria-selected={c.id === atual.id} onClick={() => setSelecionado(c.id)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setSelecionado(c.id)}>
-                                        <td className="celula-titulo">
-                                            <span className="codigo">CH-{String(c.id).padStart(5, "0")}</span>
-                                            <strong>{c.titulo}</strong>
-                                            <span>{c.tipo_servico_rotulo}</span>
-                                        </td>
-                                        <td>{c.usuario?.nome}<br /><span className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>{[c.cidade, c.uf].filter(Boolean).join(" / ")}</span></td>
-                                        <td style={{ whiteSpace: "nowrap" }}>{formatarDia(c.data_limite)}</td>
-                                        <td><Chip tom={STATUS_CHAMADO[c.status]} ponto>{c.status}</Chip></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <PainelChamado
-                        chamado={atual}
-                        usuario={usuario}
-                        pode={pode}
-                        opcoes={opcoes}
-                        aoAtualizar={substituir}
-                        aoRemover={(id) => setChamados((itens) => itens.filter((c) => c.id !== id))}
-                    />
-                </div>
-            )}
 
             <NovoChamado
                 opcoes={opcoes}

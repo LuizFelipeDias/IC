@@ -689,3 +689,36 @@ select.entrada {
     outline: none;
     background: transparent;
 }
+
+/* Código de registro e barra de ferramentas — chamados, vagas, lotes e moderação */
+.codigo {
+    font-family: var(--fonte-mono);
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+.barra-ferramentas {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    flex-wrap: wrap;
+    margin: var(--esp-8) 0 var(--esp-4);
+}
+
+.barra-ferramentas .busca {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.barra-ferramentas .busca svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--cor-texto-fraco);
+}
+
+.barra-ferramentas .busca .entrada {
+    padding-left: 40px;
+}
