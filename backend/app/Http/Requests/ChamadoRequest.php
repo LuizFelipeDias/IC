@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Chamado;
+use App\Enums\TipoServico;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Dados do chamado. O status muda apenas pelas ações aceitar/concluir/cancelar.
+ */
 class ChamadoRequest extends FormRequest
 {
     public function authorize(): bool
@@ -20,8 +23,17 @@ class ChamadoRequest extends FormRequest
         return [
             'titulo' => [$obrigatorio, 'string', 'max:255'],
             'descricao' => [$obrigatorio, 'string', 'max:10000'],
+            'tipo_servico' => [$obrigatorio, Rule::enum(TipoServico::class)],
             'data_limite' => [$obrigatorio, 'date', 'after_or_equal:today'],
-            'status' => ['sometimes', Rule::in(Chamado::STATUS)],
+            'cidade' => ['nullable', 'string', 'max:100'],
+            'uf' => ['nullable', 'string', 'size:2', 'alpha'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('uf'))) {
+            $this->merge(['uf' => mb_strtoupper($this->input('uf'))]);
+        }
     }
 }

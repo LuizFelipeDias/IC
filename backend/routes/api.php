@@ -42,6 +42,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('candidatura', CandidaturaController::class)->except(['show']);
     Route::apiResource('noticia', NoticiaController::class)->except(['index', 'show'])->parameters(['noticia' => 'noticia']);
     Route::apiResource('projeto', ProjetoController::class)->except(['index', 'show']);
-    Route::apiResource('chamado', ChamadoController::class);
+    // Chamados: escolas/empresas abrem; laboratórios e makers/voluntários atendem.
+    Route::middleware('perfil:solicitante,prestador,moderador')->group(function () {
+        Route::get('/chamado', [ChamadoController::class, 'index']);
+        Route::get('/chamado/opcoes', [ChamadoController::class, 'opcoes']);
+        Route::get('/chamado/{chamado}', [ChamadoController::class, 'show']);
+    });
+    Route::middleware('perfil:solicitante')->group(function () {
+        Route::post('/chamado', [ChamadoController::class, 'store']);
+        Route::match(['put', 'patch'], '/chamado/{chamado}', [ChamadoController::class, 'update']);
+        Route::delete('/chamado/{chamado}', [ChamadoController::class, 'destroy']);
+        Route::post('/chamado/{chamado}/cancelar', [ChamadoController::class, 'cancelar']);
+    });
+    Route::middleware('perfil:prestador')->group(function () {
+        Route::post('/chamado/{chamado}/aceitar', [ChamadoController::class, 'aceitar']);
+        Route::post('/chamado/{chamado}/concluir', [ChamadoController::class, 'concluir']);
+    });
     Route::apiResource('curriculo', CurriculoController::class);
 });

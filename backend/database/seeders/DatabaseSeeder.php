@@ -31,12 +31,33 @@ class DatabaseSeeder extends Seeder
             'email' => 'empresa@ecohub3d.test',
         ]);
 
+        $escola = Usuario::factory()->escola()->create([
+            'nome' => 'Escola Estadual Demo',
+            'email' => 'escola@ecohub3d.test',
+        ]);
+
+        Usuario::factory()->laboratorio()->create([
+            'nome' => 'Laboratório de Polímeros Demo',
+            'email' => 'laboratorio@ecohub3d.test',
+        ]);
+
+        $maker = Usuario::factory()->prestador()->create([
+            'nome' => 'Maker Voluntário Demo',
+            'email' => 'maker@ecohub3d.test',
+        ]);
+
+        Usuario::factory()->moderador()->create([
+            'nome' => 'Moderação Demo',
+            'email' => 'moderador@ecohub3d.test',
+        ]);
+
         $vagas = Vaga::factory(6)->for($empresa, 'usuario')->create();
         Candidatura::factory()->for($estudante, 'usuario')->for($vagas->first(), 'vaga')->create();
 
         Curriculo::factory()->for($estudante, 'usuario')->create();
         Noticia::factory(6)->for($empresa, 'usuario')->create();
         Projeto::factory(6)->for($estudante, 'usuario')->create();
-        Chamado::factory(5)->for($estudante, 'usuario')->create();
+        Chamado::factory(4)->for($escola, 'usuario')->create();
+        Chamado::factory()->for($escola, 'usuario')->emAtendimento($maker)->create();
     }
 }
