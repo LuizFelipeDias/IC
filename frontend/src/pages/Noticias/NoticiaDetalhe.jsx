@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Heart, Lightbulb, Pencil, ThumbsUp, Trash2 } from "lucide-react";
 import { BotaoDenunciar, BotoesModeracao } from "../../components/Curadoria";
-import { Aviso, Carregando } from "../../components/ui";
+import { Aviso } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, lista } from "../../services/api";
 import { formatarData, iniciais, STATUS_PUBLICACAO, tempoRelativo } from "../../utils/formatar";
@@ -15,6 +15,62 @@ const REACOES = [
     { tipo: "inspirador", rotulo: "Inspirador", icone: Lightbulb },
 ];
 
+/** Barra fina no topo da janela que acompanha a leitura da matéria. */
+function BarraLeitura({ alvo }) {
+    const [progresso, setProgresso] = useState(0);
+
+    useEffect(() => {
+        let quadro = 0;
+        const medir = () => {
+            quadro = 0;
+            const el = alvo.current;
+            if (!el) return;
+            const caixa = el.getBoundingClientRect();
+            const percurso = caixa.height - window.innerHeight * 0.6;
+            const lido = Math.min(1, Math.max(0, -caixa.top / Math.max(percurso, 1)));
+            setProgresso(lido);
+        };
+        const agendar = () => {
+            if (!quadro) quadro = requestAnimationFrame(medir);
+        };
+        medir();
+        window.addEventListener("scroll", agendar, { passive: true });
+        window.addEventListener("resize", agendar);
+        return () => {
+            window.removeEventListener("scroll", agendar);
+            window.removeEventListener("resize", agendar);
+            if (quadro) cancelAnimationFrame(quadro);
+        };
+    }, [alvo]);
+
+    return (
+        <div className="nyt-progresso" role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progresso * 100)}>
+            <span style={{ transform: `scaleX(${progresso})` }} />
+        </div>
+    );
+}
+
+function EsqueletoMateria() {
+    return (
+        <div className="nyt">
+            <div className="nyt__pagina">
+                <div className="nyt-materia nyt-esqueleto" aria-busy="true" aria-label="Carregando matéria">
+                    <div className="nyt-materia__artigo">
+                        <span className="esqueleto" style={{ height: 14, width: 120 }} />
+                        <span className="esqueleto" style={{ height: 40, width: "95%" }} />
+                        <span className="esqueleto" style={{ height: 40, width: "70%" }} />
+                        <span className="esqueleto" style={{ height: 16, width: "40%" }} />
+                        <span className="esqueleto nyt-esqueleto__foto" />
+                        {[92, 100, 96, 88, 60].map((largura, i) => (
+                            <span key={i} className="esqueleto" style={{ height: 14, width: `${largura}%` }} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function NoticiaDetalhe() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -25,6 +81,7 @@ export default function NoticiaDetalhe() {
     const [erro, setErro] = useState("");
     const [outras, setOutras] = useState([]);
     const [temas, setTemas] = useState([]);
+    const artigo = useRef(null);
 
     const carregarReacoes = useCallback(() => api(`/noticia/${id}/reacoes?per_page=50`).then(setReacoes).catch(() => {}), [id]);
 
@@ -41,7 +98,7 @@ export default function NoticiaDetalhe() {
     }, [id, carregarReacoes]);
 
     if (erro) return <div className="container" style={{ paddingTop: 40 }}><Aviso tom="perigo">{erro}</Aviso></div>;
-    if (!noticia) return <Carregando />;
+    if (!noticia) return <EsqueletoMateria />;
 
     const minhaReacao = reacoes.reacoes.data.find((r) => r.id_usuario === usuario?.id);
     const autor = noticia.id_usuario === usuario?.id;
@@ -65,11 +122,12 @@ export default function NoticiaDetalhe() {
 
     return (
         <div className="nyt">
+            <BarraLeitura alvo={artigo} />
             <div className="nyt__pagina">
                 <Cabecalho temas={temas} />
 
                 <div className="nyt-materia">
-                    <article className="nyt-materia__artigo">
+                    <article className="nyt-materia__artigo nyt-materia__artigo--entrada" ref={artigo}>
                         <Link to="/noticias" className="nyt-materia__voltar">
                             <ArrowLeft size={12} aria-hidden="true" /> TODAS AS NOTÍCIAS
                         </Link>
@@ -118,7 +176,7 @@ export default function NoticiaDetalhe() {
                             </div>
                         )}
 
-                        <figure className="nyt-foto">
+                        <figure className="nyt-foto nyt-materia__foto">
                             <img src={imagemDe(noticia)} alt="" />
                             <figcaption>{noticia.usuario?.nome ?? "Redação EcoHub"}/EcoHub Notícias</figcaption>
                         </figure>
@@ -126,7 +184,7 @@ export default function NoticiaDetalhe() {
                         <div className="nyt-materia__corpo materia__corpo">{noticia.texto}</div>
 
                         {noticia.status === "publicado" && (
-                            <section className="nyt-reacoes" aria-labelledby="titulo-reacoes">
+                            <section className="nyt-reacoes" aria-labelledby="titulo-reacoes" data-revelar>
                                 <h2 id="titulo-reacoes" className="nyt-rotulo">Reações e comentários</h2>
                                 <div className="nyt-reacoes__botoes">
                                     {REACOES.map(({ tipo, rotulo, icone: Icone }) => (
@@ -144,8 +202,8 @@ export default function NoticiaDetalhe() {
                                     </button>
                                 </div>
                                 <ul className="nyt-comentarios">
-                                    {reacoes.reacoes.data.filter((r) => r.comentarios).map((r) => (
-                                        <li key={r.id}>
+                                    {reacoes.reacoes.data.filter((r) => r.comentarios).map((r, i) => (
+                                        <li key={r.id} style={{ "--i": Math.min(i, 8) }}>
                                             <strong>{r.usuario?.nome}</strong> <span>· {tempoRelativo(r.data_reacao)}</span>
                                             <p>{r.comentarios}</p>
                                         </li>
@@ -156,11 +214,11 @@ export default function NoticiaDetalhe() {
                     </article>
 
                     <aside className="nyt__lateral" aria-label="Mais notícias">
-                        <section className="nyt-perdido">
+                        <section className="nyt-perdido" data-revelar="direita">
                             <h2 className="nyt-rotulo">Você pode ter perdido</h2>
                             <p className="nyt-perdido__sub">Seleção da redação do EcoHub para você</p>
                             {outras.map((outra, i) => (
-                                <article key={outra.id} className="nyt-coluna nyt-coluna--alta">
+                                <article key={outra.id} className="nyt-coluna nyt-coluna--alta" style={{ "--i": i }}>
                                     <div>
                                         <h3>
                                             <Link to={`/noticias/${outra.id}`}>{outra.titulo}</Link>

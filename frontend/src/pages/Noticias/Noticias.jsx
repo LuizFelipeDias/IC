@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Play, QrCode, Volume2 } from "lucide-react";
-import { Carregando, Vazio } from "../../components/ui";
+import { Vazio } from "../../components/ui";
 import { api, lista } from "../../services/api";
 import { AREAS_PROJETO, iniciais, tempoRelativo } from "../../utils/formatar";
 import { Cabecalho, doisParagrafos, imagemDe, minutosDeLeitura, resumir, Tag } from "./Jornal";
@@ -30,7 +30,7 @@ function Foto({ noticia, indice, legenda = true, className = "" }) {
 function Manchete({ noticia, indice, grande = false }) {
     const [p1, p2] = doisParagrafos(resumir(noticia.texto, 420));
     return (
-        <article className={`nyt-manchete ${grande ? "nyt-manchete--grande" : ""}`}>
+        <article className={`nyt-manchete ${grande ? "nyt-manchete--grande" : ""}`} data-revelar>
             <div className="nyt-manchete__texto">
                 <h2>
                     <Link to={urlDe(noticia)}>{noticia.titulo}</Link>
@@ -49,7 +49,7 @@ function Manchete({ noticia, indice, grande = false }) {
 /** "Audio Headline": miniatura 96 px, etiquetas e título em uma linha. */
 function Destaque({ noticia, indice }) {
     return (
-        <section className="nyt-destaque">
+        <section className="nyt-destaque" data-revelar>
             <img src={imagemDe(noticia, indice)} alt="" />
             <div>
                 <p className="nyt-tags">
@@ -68,16 +68,74 @@ function Destaque({ noticia, indice }) {
     );
 }
 
-/** Bloco "Live": links da cobertura, selo AO VIVO e carrossel com pontos e setas. */
+const INTERVALO_VIVO = 7000;
+
+/** Bloco "Live": links da cobertura, selo AO VIVO e carrossel com pontos e setas (avança sozinho; pausa no hover/foco). */
 function AoVivo({ titulo, links, noticias, deslocamento = 0 }) {
     const [indice, setIndice] = useState(0);
+    const [direcao, setDirecao] = useState(1);
+    const [pausado, setPausado] = useState(false);
     const total = noticias.length;
+    const semMovimento = useRef(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+
+    useEffect(() => {
+        if (total < 2 || pausado || semMovimento.current) return undefined;
+        const id = setTimeout(() => {
+            setDirecao(1);
+            setIndice((i) => (i + 1) % total);
+        }, INTERVALO_VIVO);
+        return () => clearTimeout(id);
+    }, [indice, pausado, total]);
+
+    const arrasto = useRef(null);
+
     if (!total) return null;
     const atual = noticias[(indice + deslocamento) % total];
-    const ir = (passo) => setIndice((i) => (i + passo + total) % total);
+    const ir = (passo) => {
+        setDirecao(passo);
+        setIndice((i) => (i + passo + total) % total);
+    };
+
+    // Toque e arraste (dedo ou mouse): um gesto horizontal de 50 px troca de matéria.
+    const iniciarArrasto = (evento) => {
+        arrasto.current = { x: evento.clientX, y: evento.clientY, gesto: false };
+    };
+    const terminarArrasto = (evento) => {
+        const inicio = arrasto.current;
+        if (!inicio) return;
+        const dx = evento.clientX - inicio.x;
+        const dy = evento.clientY - inicio.y;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+            inicio.gesto = true;
+            ir(dx < 0 ? 1 : -1);
+        }
+        arrasto.current = inicio.gesto ? { gesto: true } : null;
+    };
+    // Um arrasto não deve virar clique no link da matéria.
+    const bloquearCliqueAposArrasto = (evento) => {
+        if (arrasto.current?.gesto) {
+            evento.preventDefault();
+            evento.stopPropagation();
+        }
+        arrasto.current = null;
+    };
+    const teclado = (evento) => {
+        if (evento.key === "ArrowRight") ir(1);
+        if (evento.key === "ArrowLeft") ir(-1);
+    };
 
     return (
-        <section className="nyt-vivo" aria-roledescription="carrossel" aria-label={titulo}>
+        <section
+            className={`nyt-vivo ${pausado ? "nyt-vivo--pausado" : ""}`}
+            aria-roledescription="carrossel"
+            aria-label={titulo}
+            data-revelar
+            style={{ "--intervalo": `${INTERVALO_VIVO}ms` }}
+            onMouseEnter={() => setPausado(true)}
+            onMouseLeave={() => setPausado(false)}
+            onFocus={() => setPausado(true)}
+            onBlur={() => setPausado(false)}
+        >
             <nav className="nyt-vivo__links">
                 <strong>{titulo}</strong>
                 {links.map((link) => (
@@ -87,7 +145,18 @@ function AoVivo({ titulo, links, noticias, deslocamento = 0 }) {
                 ))}
             </nav>
 
-            <div className="nyt-vivo__corpo">
+            <div
+                className={`nyt-vivo__corpo ${direcao > 0 ? "nyt-vivo__corpo--avanca" : "nyt-vivo__corpo--volta"}`}
+                key={`${atual.id}-${indice}`}
+                aria-live="polite"
+                tabIndex={0}
+                onKeyDown={teclado}
+                onPointerDown={iniciarArrasto}
+                onPointerUp={terminarArrasto}
+                onPointerCancel={() => (arrasto.current = null)}
+                onClickCapture={bloquearCliqueAposArrasto}
+                onDragStart={(evento) => evento.preventDefault()}
+            >
                 <div className="nyt-vivo__texto">
                     <p className="nyt-vivo__selo">
                         <strong>AO VIVO</strong> {tempoRelativo(atual.data_publicacao)}
@@ -108,7 +177,18 @@ function AoVivo({ titulo, links, noticias, deslocamento = 0 }) {
             <div className="nyt-vivo__controles">
                 <div className="nyt-vivo__pontos" role="tablist" aria-label="Escolher matéria">
                     {noticias.map((n, i) => (
-                        <button key={n.id} type="button" role="tab" aria-selected={i === (indice + deslocamento) % total} aria-label={`Matéria ${i + 1}`} onClick={() => setIndice((i - deslocamento + total) % total)} />
+                        <button
+                            key={n.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={i === (indice + deslocamento) % total}
+                            aria-label={`Matéria ${i + 1}`}
+                            onClick={() => {
+                                const destino = (i - deslocamento + total) % total;
+                                setDirecao(destino >= indice ? 1 : -1);
+                                setIndice(destino);
+                            }}
+                        />
                     ))}
                 </div>
                 <div className="nyt-vivo__setas">
@@ -129,7 +209,7 @@ function Fileira({ temas, noticias }) {
     const [aba, setAba] = useState("");
     const itens = (aba ? noticias.filter((n) => n.tema === aba) : noticias).slice(0, 5);
     return (
-        <section className="nyt-fileira">
+        <section className="nyt-fileira" data-revelar>
             <div className="nyt-abas" role="tablist" aria-label="Filtrar a fileira">
                 {["", ...temas.slice(0, 3)].map((tema) => (
                     <button key={tema || "destaques"} type="button" role="tab" aria-selected={aba === tema} onClick={() => setAba(tema)}>
@@ -137,9 +217,9 @@ function Fileira({ temas, noticias }) {
                     </button>
                 ))}
             </div>
-            <div className="nyt-fileira__itens">
+            <div className="nyt-fileira__itens" key={aba || "destaques"}>
                 {itens.map((noticia, i) => (
-                    <Link key={noticia.id} to={urlDe(noticia)} className="nyt-mini">
+                    <Link key={noticia.id} to={urlDe(noticia)} className="nyt-mini" style={{ "--i": i }}>
                         <img src={imagemDe(noticia, i)} alt="" loading="lazy" />
                         <h4>{noticia.titulo}</h4>
                     </Link>
@@ -153,7 +233,7 @@ function Fileira({ temas, noticias }) {
 /** Coluna de opinião: autor, título, tempo de leitura e foto ou avatar. */
 function Coluna({ noticia, indice, variante }) {
     return (
-        <article className={`nyt-coluna nyt-coluna--${variante}`}>
+        <article className={`nyt-coluna nyt-coluna--${variante}`} data-revelar="fade" style={{ "--atraso": `${(indice % 6) * 70}ms` }}>
             <div>
                 <p className="nyt-coluna__autor">{autorDe(noticia).toUpperCase()}</p>
                 <h3>
@@ -176,10 +256,10 @@ function Grade({ titulo, itens }) {
     if (!itens.length) return null;
     return (
         <section className="nyt-grade">
-            <h2>{titulo}</h2>
+            <h2 data-revelar>{titulo}</h2>
             <div className="nyt-grade__itens">
-                {itens.map((item) => (
-                    <Link key={item.chave} to={item.url} className="nyt-grade__item">
+                {itens.map((item, i) => (
+                    <Link key={item.chave} to={item.url} className="nyt-grade__item" data-revelar style={{ "--atraso": `${i * 90}ms` }}>
                         <figure className="nyt-foto">
                             <img src={item.imagem} alt="" loading="lazy" />
                             <figcaption>{item.credito}</figcaption>
@@ -189,6 +269,33 @@ function Grade({ titulo, itens }) {
                 ))}
             </div>
         </section>
+    );
+}
+
+/** Esqueleto da capa enquanto a edição carrega. */
+function EsqueletoEdicao() {
+    return (
+        <div className="nyt__capa nyt-esqueleto" aria-busy="true" aria-label="Montando a edição">
+            <div className="nyt__principal">
+                {[0, 1].map((i) => (
+                    <div key={i} className="nyt-esqueleto__manchete">
+                        <div>
+                            <span className="esqueleto" style={{ height: 28, width: "92%" }} />
+                            <span className="esqueleto" style={{ height: 28, width: "70%" }} />
+                            <span className="esqueleto" style={{ height: 14, width: "100%" }} />
+                            <span className="esqueleto" style={{ height: 14, width: "86%" }} />
+                            <span className="esqueleto" style={{ height: 14, width: "60%" }} />
+                        </div>
+                        <span className="esqueleto nyt-esqueleto__foto" />
+                    </div>
+                ))}
+            </div>
+            <div className="nyt__lateral">
+                <span className="esqueleto nyt-esqueleto__foto" />
+                <span className="esqueleto" style={{ height: 24, width: "90%" }} />
+                <span className="esqueleto" style={{ height: 14, width: "80%" }} />
+            </div>
+        </div>
     );
 }
 
@@ -237,7 +344,7 @@ export default function Noticias() {
             <div className="nyt__pagina">
                 <Cabecalho temas={temas} tema={tema} aoEscolherTema={setTema} busca={busca} aoBuscar={setBusca} total={noticias.length} />
 
-                {carregando && <Carregando texto="Montando a edição..." />}
+                {carregando && <EsqueletoEdicao />}
                 {!carregando && filtradas.length === 0 && (
                     <Vazio titulo="Nenhuma notícia encontrada">As notícias aparecem aqui depois de aprovadas pela curadoria.</Vazio>
                 )}
@@ -275,7 +382,7 @@ export default function Noticias() {
                         </main>
 
                         <aside className="nyt__lateral" aria-label="Mais notícias">
-                            <article className="nyt-lateral-principal">
+                            <article className="nyt-lateral-principal" data-revelar="direita">
                                 <Link to={urlDe(n(4))} tabIndex={-1} aria-hidden="true">
                                     <img src={imagemDe(n(4), 4)} alt="" />
                                 </Link>
@@ -286,7 +393,7 @@ export default function Noticias() {
                                 <Tag>{minutosDeLeitura(n(4).texto)}</Tag>
                             </article>
 
-                            <div className="nyt-par">
+                            <div className="nyt-par" data-revelar>
                                 {[5, 6].map((i) => (
                                     <Link key={i} to={urlDe(n(i))} className="nyt-mini">
                                         <img src={imagemDe(n(i), i)} alt="" loading="lazy" />
@@ -306,7 +413,7 @@ export default function Noticias() {
                                 <Coluna noticia={n(12)} indice={12} variante="grande" />
                             </section>
 
-                            <section className="nyt-rastreio">
+                            <section className="nyt-rastreio" data-revelar>
                                 <Link to="/rastreio" className="nyt-rastreio__cartao">
                                     <p className="nyt-tags">
                                         <Tag forte>O RASTREIO</Tag>
@@ -329,10 +436,10 @@ export default function Noticias() {
                             </section>
 
                             <section className="nyt-perdido">
-                                <h2 className="nyt-rotulo">Você pode ter perdido</h2>
+                                <h2 className="nyt-rotulo" data-revelar>Você pode ter perdido</h2>
                                 <p className="nyt-perdido__sub">Seleção da redação do EcoHub para você</p>
                                 {[13, 14, 15].map((i) => (
-                                    <article key={i} className="nyt-coluna nyt-coluna--alta">
+                                    <article key={i} className="nyt-coluna nyt-coluna--alta" data-revelar="fade" style={{ "--atraso": `${(i - 13) * 90}ms` }}>
                                         <div>
                                             <h3>
                                                 <Link to={urlDe(n(i))}>{n(i).titulo}</Link>
@@ -352,13 +459,13 @@ export default function Noticias() {
 
             {filtradas.length > 0 && (
                 <>
-                    <div className="nyt-faixa">ESPAÇO DOS PARCEIROS</div>
+                    <div className="nyt-faixa" data-revelar="fade">ESPAÇO DOS PARCEIROS</div>
                     <div className="nyt__pagina">
                         <Grade titulo="Educação e oficinas" itens={oficinas} />
                     </div>
                     <section className="nyt-banner">
                         <p className="nyt-banner__rotulo">PARTICIPE</p>
-                        <div className="nyt-banner__caixa">
+                        <div className="nyt-banner__caixa" data-revelar="escala">
                             <p className="nyt-banner__logo">EcoHub Notícias</p>
                             <h2>Toda a rede. Numa só conta.</h2>
                             <p className="nyt-banner__oferta">Gratuito para makers, escolas públicas, laboratórios e empresas</p>

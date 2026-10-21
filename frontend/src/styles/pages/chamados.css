@@ -340,8 +340,14 @@
 
 .sq-lateral__barra span {
     display: block;
+    width: var(--taxa, 0%);
     height: 100%;
     background: var(--sq-preto);
+    transition: width 1.2s var(--curva-suave, ease) 0.3s;
+}
+
+.sq-lateral:not(.visivel) .sq-lateral__barra span {
+    width: 0;
 }
 
 .sq-principal {
@@ -865,4 +871,431 @@
     .sq-faixa__preta {
         padding: 28px 24px;
     }
+}
+
+/* ==========================================================================
+   Movimento e micro-interações (sobre o layout clonado, sem alterá-lo)
+   ========================================================================== */
+
+/* Botões do template: preenchimento que corre da esquerda no hover */
+.sq-botao {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    transition:
+        border-color 0.25s var(--curva-suave),
+        color 0.35s var(--curva-suave),
+        transform 0.25s var(--curva-suave);
+}
+
+.sq-botao::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sq-preto);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.45s var(--curva-suave);
+}
+
+.sq-botao:hover:not(:disabled) {
+    color: #fff;
+}
+
+.sq-botao:hover:not(:disabled)::before {
+    transform: scaleX(1);
+}
+
+.sq-botao:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.sq-botao--preto::before {
+    background: #333;
+}
+
+.sq-botao--branco::before {
+    background: var(--sq-platina);
+}
+
+.sq-botao--branco:hover:not(:disabled) {
+    color: var(--sq-preto);
+}
+
+.sq-botao--perigo::before {
+    background: #c5221f;
+}
+
+/* Links sublinhados com traço que cresce */
+.sq-link,
+.sq-lateral a {
+    text-decoration: none;
+    background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat;
+    transition: background-size 0.35s var(--curva-suave), color 0.2s;
+}
+
+.sq-lateral a {
+    background-size: 0 1px;
+}
+
+.sq-link:hover {
+    background-size: 0 1px;
+}
+
+.sq-lateral a:hover {
+    text-decoration: none;
+    background-size: 100% 1px;
+}
+
+/* Caixas de seleção e lista com seta */
+.sq-caixa__quadro {
+    transition: background 0.2s, border-color 0.2s, transform 0.25s var(--curva-mola);
+}
+
+.sq-caixa:hover .sq-caixa__quadro {
+    border-color: var(--sq-preto);
+}
+
+.sq-caixa[aria-checked="true"] .sq-caixa__quadro,
+.sq-caixa input:checked + .sq-caixa__quadro {
+    animation: sq-marcar 0.35s var(--curva-mola);
+}
+
+@keyframes sq-marcar {
+    50% {
+        transform: scale(1.25);
+    }
+}
+
+.sq-seta {
+    transition: color 0.2s, transform 0.3s var(--curva-suave);
+}
+
+.sq-seta:hover {
+    transform: translateX(4px);
+}
+
+.sq-seta svg {
+    animation: sq-seta-entra 0.35s var(--curva-suave);
+}
+
+@keyframes sq-seta-entra {
+    from {
+        opacity: 0;
+        transform: translateX(-6px);
+    }
+}
+
+/* KPIs */
+.sq-kpi {
+    transition: transform 0.35s var(--curva-suave), box-shadow 0.35s var(--curva-suave);
+}
+
+.sq-kpi:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.1), 0 24px 64px -8px rgba(0, 0, 0, 0.2);
+}
+
+/* Gráfico: barras crescem de baixo, escalonadas; dica no hover */
+.sq-grafico__area {
+    position: relative;
+}
+
+.sq-grafico__barra {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    transform: scaleY(0);
+    transition: fill 0.2s, opacity 0.2s;
+}
+
+.sq-grafico__valor {
+    opacity: 0;
+}
+
+.sq-grafico.visivel .sq-grafico__barra {
+    animation: sq-barra-cresce 0.9s var(--curva-suave) forwards;
+    animation-delay: calc(var(--i, 0) * 90ms + 150ms);
+}
+
+.sq-grafico.visivel .sq-grafico__valor {
+    animation: sq-valor-surge 0.4s ease forwards;
+    animation-delay: calc(var(--i, 0) * 90ms + 700ms);
+}
+
+@keyframes sq-barra-cresce {
+    from {
+        transform: scaleY(0);
+    }
+    to {
+        transform: scaleY(1);
+    }
+}
+
+@keyframes sq-valor-surge {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.sq-grafico__alvo {
+    fill: transparent;
+    cursor: pointer;
+}
+
+.sq-grafico__coluna--foco .sq-grafico__alvo {
+    fill: rgba(0, 0, 0, 0.03);
+}
+
+.sq-grafico__svg:has(.sq-grafico__coluna--foco) .sq-grafico__coluna:not(.sq-grafico__coluna--foco) .sq-grafico__barra {
+    opacity: 0.35;
+}
+
+.sq-grafico__dica {
+    position: absolute;
+    z-index: 2;
+    padding: 8px 12px;
+    background: var(--sq-preto);
+    font-size: 13px;
+    color: #fff;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 14px));
+    animation: sq-dica 0.2s var(--curva-suave);
+}
+
+.sq-grafico__dica::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 10px;
+    height: 10px;
+    background: inherit;
+    transform: translateX(-50%) rotate(45deg);
+}
+
+@keyframes sq-dica {
+    from {
+        opacity: 0;
+        transform: translate(-50%, calc(-100% - 6px));
+    }
+}
+
+.sq-abas button {
+    transition: color 0.2s, border-color 0.3s;
+}
+
+/* Lista: linhas entram escalonadas; hover e seleção suaves */
+.sq-lista__item {
+    opacity: 0;
+    transform: translateY(14px);
+}
+
+.sq-lista.visivel .sq-lista__item {
+    animation: sq-linha-entra 0.55s var(--curva-suave) forwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes sq-linha-entra {
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.sq-linha-item {
+    transition:
+        background 0.25s,
+        border-color 0.35s var(--curva-suave),
+        padding 0.35s var(--curva-suave);
+}
+
+.sq-linha-item:hover {
+    padding-left: 26px;
+}
+
+.sq-linha-item__marca {
+    transition: background 0.3s, color 0.3s, transform 0.35s var(--curva-mola);
+}
+
+.sq-linha-item:hover .sq-linha-item__marca,
+.sq-linha-item[aria-current="true"] .sq-linha-item__marca {
+    background: var(--sq-preto);
+    color: #fff;
+}
+
+.sq-linha-item:hover .sq-linha-item__marca {
+    transform: rotate(-6deg) scale(1.05);
+}
+
+/* Painel de detalhe: entra deslizando ao trocar de chamado */
+.sq-detalhe--troca {
+    animation: sq-detalhe-entra 0.5s var(--curva-suave);
+}
+
+@keyframes sq-detalhe-entra {
+    from {
+        opacity: 0;
+        transform: translateX(18px);
+    }
+}
+
+.sq-detalhe--troca .sq-detalhe__corpo > * {
+    animation: surgir 0.5s var(--curva-suave) both;
+}
+
+.sq-detalhe--troca .sq-detalhe__corpo > *:nth-child(2) {
+    animation-delay: 60ms;
+}
+
+.sq-detalhe--troca .sq-detalhe__corpo > *:nth-child(3) {
+    animation-delay: 120ms;
+}
+
+.sq-detalhe--troca .sq-detalhe__corpo > *:nth-child(n + 4) {
+    animation-delay: 180ms;
+}
+
+.sq-legenda__icone {
+    transition: transform 0.35s var(--curva-mola);
+}
+
+.sq-legenda__icone:hover {
+    transform: translateY(-3px);
+}
+
+/* Etapas: a barra de cada passo se preenche em sequência */
+.sq .etapa::before {
+    background:
+        linear-gradient(var(--etapa-cor, transparent), var(--etapa-cor, transparent)) 0 0 / 0 100% no-repeat,
+        var(--cor-borda);
+}
+
+.sq .etapa--feita::before {
+    --etapa-cor: var(--cor-eco);
+}
+
+.sq .etapa--atual::before {
+    --etapa-cor: var(--cor-primaria);
+}
+
+.sq-detalhe--troca .etapa--feita::before,
+.sq-detalhe--troca .etapa--atual::before {
+    animation: sq-etapa-enche 0.6s var(--curva-suave) forwards;
+}
+
+.sq-detalhe--troca .etapa:nth-child(2)::before {
+    animation-delay: 0.25s;
+}
+
+.sq-detalhe--troca .etapa:nth-child(3)::before {
+    animation-delay: 0.5s;
+}
+
+@keyframes sq-etapa-enche {
+    to {
+        background-size: 100% 100%, auto;
+    }
+}
+
+/* Faixa final: passos entram em sequência */
+.sq-faixa__passos li {
+    opacity: 0;
+    transform: translateY(16px);
+}
+
+.sq-faixa__passos.visivel li {
+    animation: sq-linha-entra 0.6s var(--curva-suave) forwards;
+    animation-delay: calc(var(--i, 0) * 140ms + 200ms);
+}
+
+.sq-faixa__passos span {
+    transition: transform 0.4s var(--curva-mola);
+}
+
+.sq-faixa__passos li:hover span {
+    transform: translateX(6px);
+}
+
+/* Diálogo de novo chamado: sobe e cresce levemente */
+.sq .dialogo {
+    animation: sq-dialogo-entra 0.45s var(--curva-mola);
+}
+
+@keyframes sq-dialogo-entra {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.97);
+    }
+}
+
+/* Esqueleto da lista */
+.sq-esqueleto-linha {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+}
+
+.sq-esqueleto-linha + .sq-esqueleto-linha {
+    border-top: 1px solid var(--sq-platina);
+}
+
+.sq-esqueleto-linha__marca {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 0;
+}
+
+.sq-esqueleto-linha__texto {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sq-esqueleto-linha__texto .esqueleto {
+    height: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sq-grafico__barra {
+        transform: none;
+    }
+
+    .sq-grafico__valor,
+    .sq-lista__item,
+    .sq-faixa__passos li {
+        opacity: 1;
+        transform: none;
+    }
+
+    .sq .etapa--feita::before,
+    .sq .etapa--atual::before {
+        background-size: 100% 100%, auto;
+    }
+
+    .sq-lateral__barra span {
+        width: var(--taxa, 0%) !important;
+    }
+}
+
+/* Itens do grid mestre-detalhe podem encolher (o texto longo das linhas usa reticências) */
+.sq-mestre > *,
+.sq-principal,
+.sq-lista,
+.sq-lista__item {
+    min-width: 0;
+}
+
+/* Entradas laterais (data-revelar esquerda/direita, detalhe deslizando) nunca geram rolagem horizontal */
+.sq {
+    overflow-x: clip;
 }

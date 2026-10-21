@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, ClipboardList, Inbox, MapPin, Search } from "lucide-react";
-import { Aviso, Campo, Carregando, Chip, Dialogo, errosPorCampo, Vazio } from "../components/ui";
+import { Aviso, Campo, Chip, Dialogo, errosPorCampo, Vazio } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { api, ApiError, lista } from "../services/api";
 import { formatarData, formatarDia, STATUS_CHAMADO } from "../utils/formatar";
@@ -118,6 +118,79 @@ const numeroPainel = (n) => n.toLocaleString("pt-BR", { minimumIntegerDigits: 5 
 
 const codigo = (id) => `CH-${String(id).padStart(5, "0")}`;
 
+const semMovimento = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/* Contagem animada (count-up) quando o elemento entra na tela; sem animação se o usuário pediu menos movimento. */
+function useContagem(alvo, duracao = 1100) {
+    const ref = useRef(null);
+    const [valor, setValor] = useState(0);
+    const [visto, setVisto] = useState(false);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el || typeof IntersectionObserver === "undefined") {
+            setVisto(true);
+            return undefined;
+        }
+        const observador = new IntersectionObserver(([entrada]) => {
+            if (entrada.isIntersecting) {
+                setVisto(true);
+                observador.disconnect();
+            }
+        }, { threshold: 0.3 });
+        observador.observe(el);
+        return () => observador.disconnect();
+    }, []);
+
+    useEffect(() => {
+        if (!visto || alvo == null) return undefined;
+        if (semMovimento()) {
+            setValor(alvo);
+            return undefined;
+        }
+        let quadro;
+        const inicio = performance.now();
+        const de = 0;
+        const passo = (agora) => {
+            const t = Math.min(1, (agora - inicio) / duracao);
+            const suave = 1 - Math.pow(1 - t, 3);
+            setValor(Math.round(de + (alvo - de) * suave));
+            if (t < 1) quadro = requestAnimationFrame(passo);
+        };
+        quadro = requestAnimationFrame(passo);
+        return () => cancelAnimationFrame(quadro);
+    }, [visto, alvo, duracao]);
+
+    return [ref, valor];
+}
+
+function Kpi({ rotulo, valor, indice }) {
+    const [ref, exibido] = useContagem(valor);
+    return (
+        <div ref={ref} className="sq-cartao sq-kpi" data-revelar style={{ "--atraso": `${indice * 90}ms` }}>
+            <span className="sq-rotulo">{rotulo.toUpperCase()}</span>
+            <strong>{valor == null ? "—" : numeroPainel(exibido)}</strong>
+        </div>
+    );
+}
+
+/* Esqueleto da lista enquanto os chamados carregam. */
+function EsqueletoLista() {
+    return (
+        <ul className="sq-cartao sq-lista sq-lista--esqueleto" aria-busy="true" aria-label="Carregando chamados">
+            {[0, 1, 2, 3].map((i) => (
+                <li key={i} className="sq-esqueleto-linha">
+                    <span className="esqueleto sq-esqueleto-linha__marca" />
+                    <span className="sq-esqueleto-linha__texto">
+                        <span className="esqueleto" style={{ width: `${70 - i * 8}%` }} />
+                        <span className="esqueleto" style={{ width: `${45 + i * 5}%` }} />
+                    </span>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 /* Caixa de seleção quadrada de 14 px do template (cinza #CCC quando marcada). */
 function OpcaoCaixa({ marcada, aoMarcar, children }) {
     return (
@@ -141,6 +214,7 @@ function OpcaoSeta({ marcada, aoMarcar, children }) {
 /* Gráfico de barras em SVG puro: chamados por mês (últimos 6) ou por tipo de serviço. */
 function Grafico({ chamados, opcoes }) {
     const [modo, setModo] = useState("mes");
+    const [foco, setFoco] = useState(null);
 
     const dados = useMemo(() => {
         if (modo === "tipo") {
@@ -164,7 +238,7 @@ function Grafico({ chamados, opcoes }) {
     const linhas = [0, 0.25, 0.5, 0.75, 1];
 
     return (
-        <section className="sq-cartao sq-grafico" aria-labelledby="titulo-grafico">
+        <section className="sq-cartao sq-grafico" aria-labelledby="titulo-grafico" data-revelar>
             <div className="sq-grafico__topo">
                 <p className="sq-rotulo" id="titulo-grafico">{modo === "mes" ? "CHAMADOS POR MÊS" : "CHAMADOS POR TIPO DE SERVIÇO"}</p>
                 <div className="sq-abas" role="tablist" aria-label="Agrupar gráfico">
@@ -172,7 +246,17 @@ function Grafico({ chamados, opcoes }) {
                     <button type="button" role="tab" aria-selected={modo === "tipo"} onClick={() => setModo("tipo")}>Por serviço</button>
                 </div>
             </div>
-            <svg viewBox={`0 0 ${L} ${A + 30}`} className="sq-grafico__svg" role="img" aria-label={dados.map((d) => `${d.rotulo}: ${d.valor}`).join(", ")}>
+            <div className="sq-grafico__area">
+            {foco !== null && dados[foco] && (
+                <span
+                    className="sq-grafico__dica"
+                    style={{ left: `${((foco * passo + passo / 2) / L) * 100}%`, top: `${((base - (dados[foco].valor / maximo) * (base - topo)) / (A + 30)) * 100}%` }}
+                    role="status"
+                >
+                    <strong>{dados[foco].valor}</strong> {dados[foco].valor === 1 ? "chamado" : "chamados"} · {dados[foco].rotulo}
+                </span>
+            )}
+            <svg key={modo} viewBox={`0 0 ${L} ${A + 30}`} className="sq-grafico__svg" role="img" aria-label={dados.map((d) => `${d.rotulo}: ${d.valor}`).join(", ")}>
                 {linhas.map((f) => {
                     const y = base - f * (base - topo);
                     return (
@@ -186,7 +270,14 @@ function Grafico({ chamados, opcoes }) {
                     const h = (d.valor / maximo) * (base - topo);
                     const x = i * passo + (passo - largura) / 2;
                     return (
-                        <g key={d.rotulo}>
+                        <g
+                            key={d.rotulo}
+                            className={`sq-grafico__coluna ${foco === i ? "sq-grafico__coluna--foco" : ""}`}
+                            style={{ "--i": i }}
+                            onMouseEnter={() => setFoco(i)}
+                            onMouseLeave={() => setFoco(null)}
+                        >
+                            <rect x={i * passo} y={topo} width={passo} height={base - topo} className="sq-grafico__alvo" />
                             <rect x={x} y={base - h} width={largura} height={Math.max(h, d.valor ? 2 : 0)} className="sq-grafico__barra" />
                             {d.valor > 0 && <text x={x + largura / 2} y={base - h - 8} textAnchor="middle" className="sq-grafico__valor">{d.valor}</text>}
                             <text x={i * passo + passo / 2} y={base + 24} textAnchor="middle" className="sq-grafico__eixo">
@@ -196,6 +287,7 @@ function Grafico({ chamados, opcoes }) {
                     );
                 })}
             </svg>
+            </div>
         </section>
     );
 }
@@ -242,7 +334,7 @@ function PainelChamado({ chamado, usuario, pode, opcoes, aoAtualizar, aoRemover 
     const temAcoes = podeAceitar || (souPrestador && emAtendimento) || (souSolicitante && (aberto || emAtendimento));
 
     return (
-        <aside className="sq-detalhe" aria-label="Detalhes do chamado">
+        <aside key={chamado.id} className="sq-detalhe sq-detalhe--troca" aria-label="Detalhes do chamado">
             <div className="sq-cartao sq-detalhe__capa">
                 <div className="sq-detalhe__topo">
                     <Chip tom={STATUS_CHAMADO[chamado.status]} ponto>{chamado.status}</Chip>
@@ -372,7 +464,7 @@ export default function Chamados() {
         <div className="sq">
             {/* Section 01 — título + texto e colunas de filtro */}
             <section className="sq-secao sq-topo">
-                <div className="sq-topo__titulo">
+                <div className="sq-topo__titulo" data-revelar>
                     <h1>Meu painel de chamados.</h1>
                     <p>
                         {ehSolicitante
@@ -383,7 +475,7 @@ export default function Chamados() {
                     </p>
                 </div>
 
-                <div className="sq-filtros">
+                <div className="sq-filtros" data-revelar style={{ "--atraso": "120ms" }}>
                     {ehPrestador && (
                         <div className="sq-filtros__coluna" role="radiogroup" aria-label="Visão">
                             <p className="sq-rotulo">VISÃO</p>
@@ -425,7 +517,7 @@ export default function Chamados() {
             </section>
 
             {/* Section 02 — linha de resultados */}
-            <section className="sq-secao sq-resultados">
+            <section className="sq-secao sq-resultados" data-revelar="fade">
                 <p>
                     <strong>{visiveis.length} {visiveis.length === 1 ? "chamado encontrado" : "chamados encontrados"}</strong>
                     {KPIS.map(([valor, rotulo], i) => (
@@ -441,7 +533,7 @@ export default function Chamados() {
 
             {/* Painel (Mockfit): barra lateral + conteúdo */}
             <div className="sq-secao sq-painel">
-                <nav className="sq-lateral" aria-label="Seções do painel">
+                <nav className="sq-lateral" aria-label="Seções do painel" data-revelar="esquerda">
                     <p className="sq-rotulo">PAINEL</p>
                     <a href="#visao-geral">Visão geral</a>
                     <a href="#lista-chamados">Chamados</a>
@@ -449,27 +541,24 @@ export default function Chamados() {
                     <div className="sq-lateral__taxa">
                         <span className="sq-rotulo">ATENDIDOS</span>
                         <strong>{chamados ? `${taxa}%` : "—"}</strong>
-                        <span className="sq-lateral__barra"><span style={{ width: `${taxa}%` }} /></span>
+                        <span className="sq-lateral__barra"><span style={{ "--taxa": `${taxa}%` }} /></span>
                     </div>
                 </nav>
 
                 <div className="sq-principal">
-                    <h2 className="sq-titulo-secao" id="visao-geral">Visão geral</h2>
+                    <h2 className="sq-titulo-secao" id="visao-geral" data-revelar>Visão geral</h2>
                     <div className="sq-kpis">
-                        {KPIS.map(([valor, rotulo]) => (
-                            <div key={valor} className="sq-cartao sq-kpi">
-                                <span className="sq-rotulo">{rotulo.toUpperCase()}</span>
-                                <strong>{chamados ? numeroPainel(contagem(valor)) : "—"}</strong>
-                            </div>
+                        {KPIS.map(([valor, rotulo], i) => (
+                            <Kpi key={valor} rotulo={rotulo} valor={chamados ? contagem(valor) : null} indice={i} />
                         ))}
                     </div>
 
                     {chamados !== null && <Grafico chamados={chamados} opcoes={opcoes} />}
 
-                    <h2 className="sq-titulo-secao" id="lista-chamados">Chamados ({visiveis.length})</h2>
+                    <h2 className="sq-titulo-secao" id="lista-chamados" data-revelar>Chamados ({visiveis.length})</h2>
 
                     {erro && <Aviso tom="perigo">{erro}</Aviso>}
-                    {chamados === null && <Carregando texto="Carregando chamados..." />}
+                    {chamados === null && <EsqueletoLista />}
                     {chamados !== null && visiveis.length === 0 && (
                         <Vazio icone={chamados.length ? Inbox : ClipboardList} titulo={chamados.length ? "Nenhum chamado com esses filtros" : "Nenhum chamado ainda"}>
                             {ehSolicitante ? "Abra o primeiro pedido da sua instituição." : "Quando escolas e empresas abrirem pedidos, eles aparecem aqui."}
@@ -478,9 +567,9 @@ export default function Chamados() {
 
                     {visiveis.length > 0 && atual && (
                         <div className="sq-mestre">
-                            <ul className="sq-cartao sq-lista">
-                                {visiveis.map((c) => (
-                                    <li key={c.id}>
+                                <ul className="sq-cartao sq-lista" data-revelar>
+                                {visiveis.map((c, i) => (
+                                    <li key={c.id} className="sq-lista__item" style={{ "--i": Math.min(i, 12) }}>
                                         <button type="button" className="sq-linha-item" aria-current={c.id === atual.id} onClick={() => setSelecionado(c.id)}>
                                             <span className="sq-linha-item__marca" aria-hidden="true">{c.tipo_servico_rotulo?.[0] ?? "C"}</span>
                                             <span className="sq-linha-item__texto">
@@ -511,7 +600,7 @@ export default function Chamados() {
 
             {/* Section 04 — faixa preta com botão branco + painel claro */}
             <section className="sq-secao sq-faixa" id="como-funciona">
-                <div className="sq-faixa__preta">
+                <div className="sq-faixa__preta" data-revelar="esquerda">
                     <div>
                         <h2>{ehPrestador ? "Atenda escolas da sua região" : "Precisa de impressão 3D na escola?"}</h2>
                         <p>
@@ -529,13 +618,13 @@ export default function Chamados() {
                         </button>
                     )}
                 </div>
-                <ol className="sq-faixa__passos">
+                <ol className="sq-faixa__passos" data-revelar="direita" style={{ "--atraso": "120ms" }}>
                     {[
                         ["01", "Abrir", "A escola ou empresa verificada descreve o pedido, o tipo de serviço e o prazo."],
                         ["02", "Aceitar", "Um laboratório ou maker escolhe onde vai atender e assume o chamado."],
                         ["03", "Concluir", "O prestador marca como resolvido e ganha 50 pontos no ranking."],
-                    ].map(([n, titulo, texto]) => (
-                        <li key={n}>
+                    ].map(([n, titulo, texto], i) => (
+                        <li key={n} style={{ "--i": i }}>
                             <span>{n}</span>
                             <strong>{titulo}</strong>
                             <p>{texto}</p>

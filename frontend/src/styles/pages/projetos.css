@@ -106,7 +106,16 @@
     right: 0;
     width: 720px;
     height: 629px;
+}
+
+/* A mancha fica num pseudo-elemento para poder "respirar" sem mover a ilustração */
+.pf-intro__imagem::before {
+    content: "";
+    position: absolute;
+    inset: 0;
     background: url("../../assets/projetos/mancha-amarela.svg") no-repeat right top / 100% 100%;
+    transform-origin: 70% 30%;
+    animation: pf-mancha 14s ease-in-out infinite alternate;
 }
 
 .pf-intro__imagem img {
@@ -801,5 +810,340 @@
 
     .pf-onda {
         height: 180px;
+    }
+}
+
+/* ==========================================================================
+   Movimento e micro-interações (sobre o layout clonado, sem alterá-lo)
+   ========================================================================== */
+
+@keyframes pf-mancha {
+    0% {
+        transform: scale(1) rotate(0deg);
+        border-radius: 0;
+    }
+    50% {
+        transform: scale(1.025) rotate(-1.2deg) translate(-6px, 4px);
+    }
+    100% {
+        transform: scale(0.985) rotate(0.8deg) translate(4px, -6px);
+    }
+}
+
+@keyframes pf-flutuar {
+    0%,
+    100% {
+        translate: 0 0;
+    }
+    50% {
+        translate: 0 -12px;
+    }
+}
+
+@keyframes pf-surgir {
+    from {
+        opacity: 0;
+        transform: translateY(22px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.pf-intro__imagem img {
+    animation:
+        pf-surgir 0.9s var(--curva-suave) 0.25s both,
+        pf-flutuar 6s ease-in-out 1.2s infinite;
+}
+
+.pf-intro__imagem::before {
+    animation:
+        pf-mancha-entra 1s var(--curva-suave) both,
+        pf-mancha 14s ease-in-out 1s infinite alternate;
+}
+
+@keyframes pf-mancha-entra {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateX(40px);
+    }
+}
+
+/* Texto da apresentação entra em sequência ao abrir a página */
+.pf-intro__texto--entrada > * {
+    animation: pf-surgir 0.8s var(--curva-suave) both;
+}
+
+.pf-intro__texto--entrada > *:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.pf-intro__texto--entrada > *:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.pf-intro__texto--entrada > *:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+.pf-intro__texto--entrada > *:nth-child(n + 5) {
+    animation-delay: 0.4s;
+}
+
+/* Título de seção: o traço amarelo cresce do centro ao aparecer */
+.pf-titulo span {
+    transform: scaleX(0);
+    transition: transform 0.9s var(--curva-suave) 0.3s;
+}
+
+.pf-titulo.visivel span {
+    transform: scaleX(1);
+}
+
+/* Botões: preenchimento que sobe por baixo e resposta ao clique */
+.pf-botao {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    transition:
+        color 0.35s var(--curva-suave),
+        box-shadow 0.35s var(--curva-suave),
+        transform 0.25s var(--curva-suave),
+        background 0.25s ease;
+}
+
+.pf-botao::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--pf-tinta);
+    transform: translateY(101%);
+    transition: transform 0.4s var(--curva-suave);
+}
+
+.pf-botao--secundario:hover,
+.pf-botao--pilula:hover {
+    background: none;
+}
+
+.pf-botao--secundario:hover::before,
+.pf-botao--pilula:hover::before {
+    transform: none;
+}
+
+.pf-botao--pilula[aria-pressed="true"]::before {
+    transform: none;
+}
+
+.pf-botao--pilula[aria-pressed="true"] {
+    background: none;
+}
+
+.pf-botao--primario::before {
+    background: #ffd666;
+}
+
+.pf-botao--primario:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.pf-botao--primario:hover:not(:disabled)::before {
+    transform: none;
+}
+
+.pf-botao--perigo::before {
+    background: var(--cor-perigo);
+}
+
+.pf-botao--perigo:hover {
+    color: #fff;
+}
+
+.pf-botao--perigo:hover::before {
+    transform: none;
+}
+
+.pf-botao:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.pf-botao--seta span {
+    display: inline-block;
+    transition: transform 0.35s var(--curva-suave);
+}
+
+.pf-botao--seta:hover span,
+.pf-projeto:hover .pf-botao--seta span {
+    transform: translateX(4px);
+}
+
+/* Cartões de projeto: sobem com sombra amarela e a imagem aproxima */
+.pf-projeto {
+    transition:
+        transform 0.45s var(--curva-suave),
+        box-shadow 0.45s var(--curva-suave),
+        opacity var(--duracao-entrada, 0.7s) var(--curva-suave);
+}
+
+.pf-projeto[data-revelar].visivel:hover,
+.pf-projeto:not([data-revelar]):hover {
+    transform: translateY(-8px);
+    box-shadow: 0 28px 60px -28px rgba(112, 144, 176, 0.55), 0 0 0 1px rgba(253, 196, 53, 0.35);
+}
+
+.pf-projeto__imagem img {
+    transition: transform 0.9s var(--curva-suave), filter 0.6s ease;
+}
+
+.pf-projeto:hover .pf-projeto__imagem img {
+    transform: scale(1.07);
+    filter: saturate(1.08);
+}
+
+.pf-projeto h3 {
+    background: linear-gradient(var(--pf-amarelo), var(--pf-amarelo)) 0 88% / 0 30% no-repeat;
+    transition: background-size 0.5s var(--curva-suave);
+}
+
+.pf-projeto:hover h3 {
+    background-size: 100% 30%;
+}
+
+/* Esqueletos */
+.pf-projeto--esqueleto .pf-projeto__info > div {
+    gap: 14px;
+    width: 100%;
+}
+
+.pf-projeto--esqueleto .esqueleto {
+    display: block;
+}
+
+.pf-projeto--esqueleto .pf-projeto__imagem {
+    border-radius: 0;
+}
+
+.pf-sobre--esqueleto .pf-sobre__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 48px;
+}
+
+.pf-sobre--esqueleto .esqueleto {
+    display: block;
+}
+
+.pf-sobre--esqueleto .pf-circulo.esqueleto {
+    border-radius: 50%;
+}
+
+/* Formulário: campos destacam o foco com o amarelo do arquivo */
+.pf-campo input,
+.pf-campo select,
+.pf-campo textarea {
+    transition: border-color 0.25s ease, box-shadow 0.35s var(--curva-suave);
+}
+
+.pf-campo :focus {
+    box-shadow: 0 0 0 4px rgba(253, 196, 53, 0.35);
+}
+
+.pf-campo label {
+    transition: color 0.25s ease, transform 0.3s var(--curva-suave);
+}
+
+.pf-campo:focus-within label {
+    color: var(--pf-tinta);
+    transform: translateX(2px);
+}
+
+/* Rodapé do portfólio: ícones em sequência e onda ondulando */
+.pf-icones a {
+    transition: color 0.2s ease, transform 0.35s var(--curva-mola);
+}
+
+.pf-icones a:hover {
+    transform: translateY(-4px) rotate(-6deg);
+}
+
+.pf-icones.visivel a {
+    animation: pf-surgir 0.6s var(--curva-suave) both;
+}
+
+.pf-icones.visivel a:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.pf-icones.visivel a:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.pf-onda {
+    left: -4%;
+    right: -4%;
+    transform-origin: center bottom;
+    animation: pf-onda 9s ease-in-out infinite alternate;
+}
+
+@keyframes pf-onda {
+    0% {
+        transform: translateX(0) scaleY(1);
+    }
+    50% {
+        transform: translateX(-2%) scaleY(1.04);
+    }
+    100% {
+        transform: translateX(2%) scaleY(0.97);
+    }
+}
+
+/* Detalhe: círculo entra em escala e a imagem troca com fade */
+.pf-circulo img {
+    animation: pf-imagem-troca 0.6s ease both;
+}
+
+@keyframes pf-imagem-troca {
+    from {
+        opacity: 0;
+    }
+}
+
+.pf-circulo {
+    transition: transform 0.6s var(--curva-suave), box-shadow 0.6s var(--curva-suave);
+}
+
+.pf-sobre__imagem:hover .pf-circulo {
+    transform: scale(1.02);
+    box-shadow: 0 30px 60px -30px rgba(185, 133, 0, 0.55);
+}
+
+.pf-miniaturas button {
+    transition: border-color 0.25s ease, transform 0.35s var(--curva-mola);
+}
+
+.pf-miniaturas button:hover {
+    transform: translateY(-3px) scale(1.06);
+}
+
+.lista-arquivos li {
+    transition: background 0.25s ease, transform 0.35s var(--curva-suave);
+}
+
+.lista-arquivos li:hover {
+    transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pf-titulo span {
+        transform: none;
+    }
+
+    .pf-onda,
+    .pf-intro__imagem::before,
+    .pf-intro__imagem img {
+        animation: none;
     }
 }
