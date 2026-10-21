@@ -6,7 +6,7 @@ import { Aviso } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, lista } from "../../services/api";
 import { formatarData, iniciais, STATUS_PUBLICACAO, tempoRelativo } from "../../utils/formatar";
-import { Cabecalho, imagemDe, minutosDeLeitura, Tag } from "./Jornal";
+import { Cabecalho, imagemDe, minutosDeLeitura, RodapeJornal, Tag } from "./Jornal";
 import "../../styles/pages/noticias.css";
 
 const REACOES = [
@@ -80,7 +80,7 @@ export default function NoticiaDetalhe() {
     const [comentario, setComentario] = useState("");
     const [erro, setErro] = useState("");
     const [outras, setOutras] = useState([]);
-    const [temas, setTemas] = useState([]);
+    const [todas, setTodas] = useState([]);
     const artigo = useRef(null);
 
     const carregarReacoes = useCallback(() => api(`/noticia/${id}/reacoes?per_page=50`).then(setReacoes).catch(() => {}), [id]);
@@ -90,9 +90,9 @@ export default function NoticiaDetalhe() {
         carregarReacoes();
         api("/noticia?per_page=100")
             .then((r) => {
-                const todas = lista(r);
-                setOutras(todas.filter((n) => String(n.id) !== String(id)).slice(0, 3));
-                setTemas([...new Set(todas.map((n) => n.tema).filter(Boolean))]);
+                const recebidas = lista(r);
+                setOutras(recebidas.filter((n) => String(n.id) !== String(id)).slice(0, 3));
+                setTodas(recebidas);
             })
             .catch(() => {});
     }, [id, carregarReacoes]);
@@ -124,7 +124,7 @@ export default function NoticiaDetalhe() {
         <div className="nyt">
             <BarraLeitura alvo={artigo} />
             <div className="nyt__pagina">
-                <Cabecalho temas={temas} />
+                <Cabecalho noticias={todas} />
 
                 <div className="nyt-materia">
                     <article className="nyt-materia__artigo nyt-materia__artigo--entrada" ref={artigo}>
@@ -177,7 +177,9 @@ export default function NoticiaDetalhe() {
                         )}
 
                         <figure className="nyt-foto nyt-materia__foto">
-                            <img src={imagemDe(noticia)} alt="" />
+                            <span className="nyt-foto__quadro">
+                                <img src={imagemDe(noticia, Number(noticia.id) || 0)} alt="" />
+                            </span>
                             <figcaption>{noticia.usuario?.nome ?? "Redação EcoHub"}/EcoHub Notícias</figcaption>
                         </figure>
 
@@ -215,22 +217,27 @@ export default function NoticiaDetalhe() {
 
                     <aside className="nyt__lateral" aria-label="Mais notícias">
                         <section className="nyt-perdido" data-revelar="direita">
-                            <h2 className="nyt-rotulo">Você pode ter perdido</h2>
-                            <p className="nyt-perdido__sub">Seleção da redação do EcoHub para você</p>
+                            <div className="nyt-perdido__topo">
+                                <h2 className="nyt-rotulo">Você pode ter perdido</h2>
+                                <p className="nyt-perdido__sub">Seleção da redação do EcoHub para você</p>
+                            </div>
                             {outras.map((outra, i) => (
                                 <article key={outra.id} className="nyt-coluna nyt-coluna--alta" style={{ "--i": i }}>
-                                    <div>
+                                    <div className="nyt-coluna__texto">
                                         <h3>
                                             <Link to={`/noticias/${outra.id}`}>{outra.titulo}</Link>
                                         </h3>
                                         <Tag>{minutosDeLeitura(outra.texto)}</Tag>
                                     </div>
-                                    <img src={imagemDe(outra, i)} alt="" loading="lazy" />
+                                    <Link to={`/noticias/${outra.id}`} tabIndex={-1} aria-hidden="true" className="nyt-coluna__foto">
+                                        <img src={imagemDe(outra, [1, 3, 4][i] ?? i, "alta")} alt="" loading="lazy" />
+                                    </Link>
                                 </article>
                             ))}
                         </section>
                     </aside>
                 </div>
+                <RodapeJornal />
             </div>
         </div>
     );
