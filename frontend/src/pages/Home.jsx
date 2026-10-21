@@ -1,273 +1,448 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-    ArrowRight, BadgeCheck, Boxes, Briefcase, CircleCheck, ClipboardList, Factory, FlaskConical, Gift, Newspaper, Printer, QrCode, Recycle, Truck,
+    Boxes, Briefcase, Check, ClipboardList, Factory, FlaskConical, Gift, GraduationCap, Landmark, Newspaper, QrCode, Recycle, School, Sprout, Truck, Users, X,
 } from "lucide-react";
+import Carrossel from "../components/Carrossel";
 import { Aviso } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { api, lista } from "../services/api";
-import { AREAS_PROJETO, tempoRelativo, TIPOS_USUARIO } from "../utils/formatar";
+import { tempoRelativo } from "../utils/formatar";
+import telaPainel from "../assets/home/tela-painel.webp";
+import montanhas from "../assets/home/montanhas.webp";
+import cilindros from "../assets/home/cilindros.webp";
+import esferas from "../assets/home/esferas.webp";
+import aerea from "../assets/home/aerea.webp";
 import "../styles/pages/home.css";
 
-const CICLO = [
-    { icone: Gift, titulo: "Doação", texto: "Makers cadastram sobras, carretéis e peças com falha." },
-    { icone: Truck, titulo: "Coleta", texto: "Laboratórios solicitam e agendam a retirada." },
-    { icone: Recycle, titulo: "Reciclagem", texto: "O material é triturado, seco e extrudado." },
-    { icone: FlaskConical, titulo: "Laudo", texto: "Ensaios garantem diâmetro, resistência e temperatura." },
-    { icone: Printer, titulo: "Nova peça", texto: "Filamento rastreável volta a imprimir projetos." },
+/*
+ * Home — clone do arquivo "Modern Product Launch" (frame Desktop 1:29):
+ * título Crimson Text de 160 px, iPad sobre o cartão verde, nuvem de
+ * parceiros, benefícios em 4 colunas, "Features carousel", tabela
+ * comparativa, depoimento, 3 passos, foto aérea e chamada centralizada.
+ */
+
+const PARCEIROS = [
+    { icone: Landmark, nome: "UEPG" },
+    { icone: FlaskConical, nome: "Lab. de Polímeros" },
+    { icone: School, nome: "Escolas estaduais" },
+    { icone: Users, nome: "Makerspaces" },
+    { icone: Factory, nome: "Indústria regional" },
+    { icone: GraduationCap, nome: "PIBITI" },
 ];
 
-const MODULOS = [
-    { para: "/chamados", icone: ClipboardList, titulo: "Chamados", texto: "Escolas e empresas pedem apoio; laboratórios e makers atendem.", perfis: ["solicitante", "prestador", "moderador"] },
-    { para: "/doacoes", icone: Gift, titulo: "Doações", texto: "Mural de resíduos de impressão à espera de reciclagem." },
-    { para: "/projetos", icone: Boxes, titulo: "Projetos", texto: "Repositório de modelos STL/3MF com licença e curadoria." },
-    { para: "/vagas", icone: Briefcase, titulo: "Vagas", texto: "Oportunidades em manufatura aditiva e banco de currículos." },
-    { para: "/noticias", icone: Newspaper, titulo: "Notícias", texto: "Pesquisa, mercado e educação em impressão 3D." },
-    { para: "/lotes", icone: Factory, titulo: "Lotes e laudos", texto: "Produza filamento reciclado e emita laudos de qualidade.", perfis: ["receptor"] },
-    { para: "/rastreio", icone: QrCode, titulo: "Rastreio", texto: "Leia o QR Code do carretel e veja a origem do material." },
+const BENEFICIOS = [
+    { icone: Gift, titulo: "Doe o que sobrou", texto: "Sobras, suportes, carretéis vazios e peças com falha entram num mural visto por laboratórios da região." },
+    { icone: Truck, titulo: "Coleta combinada", texto: "O laboratório solicita, você aceita e a data é combinada na própria plataforma, com peso conferido na entrega." },
+    { icone: FlaskConical, titulo: "Filamento com laudo", texto: "Cada lote reciclado passa por ensaio de diâmetro, tração e temperatura antes de voltar a circular." },
+    { icone: QrCode, titulo: "Rastreio por QR Code", texto: "O carretel leva um código público que mostra de onde veio o material e o resultado do laudo." },
+];
+
+const VANTAGENS = [
+    "Mostre o caminho do material: da doação ao laudo, tudo registrado.",
+    "Una a rede: escolas, makers, laboratórios e empresas no mesmo lugar.",
+    "Comprove o impacto: pontos, selos e ranking de quem mais recicla.",
+    "Publique com segurança: arquivos STL/3MF validados e curadoria.",
+];
+
+const IMAGENS_DESTAQUE = [
+    { src: cilindros, alt: "Três cilindros brancos sobre fundo creme" },
+    { src: esferas, alt: "Esfera de concreto equilibrada entre duas maiores" },
+    { src: montanhas, alt: "Cordilheira colorida com neve" },
+    { src: aerea, alt: "Vista aérea de colinas verdes e uma estrada sinuosa" },
+];
+
+const COMPARATIVO = [
+    {
+        nome: "EcoHub 3D",
+        itens: [
+            [true, "Rastreio por QR Code"],
+            [true, "Laudo de qualidade em PDF"],
+            [true, "Coletas agendadas"],
+            [true, "Instituições verificadas"],
+            [true, "Pontos, selos e ranking"],
+            [true, "Arquivos STL/3MF validados"],
+        ],
+    },
+    {
+        nome: "Grupos e planilhas",
+        itens: [
+            [true, "Contato rápido"],
+            [true, "Avisos de sobras"],
+            [true, "Combinação informal"],
+            [false, "Sem origem do material"],
+            [true, "Sem custo"],
+            [false, "Arquivos sem verificação"],
+        ],
+    },
+    {
+        nome: "Descarte comum",
+        itens: [
+            [false, "Plástico no aterro"],
+            [false, "Nenhum registro"],
+            [false, "Sem reaproveitamento"],
+            [false, "Sem parceiros"],
+            [false, "Sem impacto medido"],
+            [false, "Sem nova peça"],
+        ],
+    },
+];
+
+const PASSOS = [
+    { titulo: "Crie sua conta", texto: "Pessoa física, empresa, escola ou laboratório: cada perfil libera ações diferentes." },
+    { titulo: "Doe, peça ou atenda", texto: "Publique uma doação, abra um chamado ou aceite um pedido perto de você." },
+    { titulo: "Acompanhe o impacto", texto: "Siga o lote reciclado até o laudo e suba no ranking de impacto." },
+];
+
+const ATALHOS = [
+    { para: "/chamados", icone: ClipboardList, titulo: "Chamados", perfis: ["solicitante", "prestador", "moderador"], imagem: montanhas },
+    { para: "/doacoes", icone: Gift, titulo: "Doações e coletas", imagem: aerea },
+    { para: "/projetos", icone: Boxes, titulo: "Repositório de projetos", imagem: esferas },
+    { para: "/vagas", icone: Briefcase, titulo: "Vagas e currículos", imagem: cilindros },
+    { para: "/noticias", icone: Newspaper, titulo: "EcoHub Notícias", imagem: montanhas },
+    { para: "/lotes", icone: Factory, titulo: "Lotes e laudos", perfis: ["receptor"], imagem: aerea },
+    { para: "/rastreio", icone: QrCode, titulo: "Rastrear um lote", imagem: esferas },
 ];
 
 const total = (resposta) => resposta?.meta?.total ?? lista(resposta).length;
+
+/* Botões dos componentes "Button" e "Button linkout" do arquivo. */
+function BotaoClaro({ para, children }) {
+    return (
+        <Link to={para} className="ml-botao">
+            {children}
+        </Link>
+    );
+}
+
+function BotaoEscuro({ para, children, bloco = false }) {
+    return (
+        <Link to={para} className={`ml-botao ml-botao--escuro ${bloco ? "ml-botao--bloco" : ""}`}>
+            {children}
+            <span className="ml-botao__seta" aria-hidden="true">
+                ↗
+            </span>
+        </Link>
+    );
+}
+
+/* Troca de imagem com fade (o "Features carousel"). */
+function useAlternador(total, intervalo) {
+    const [atual, setAtual] = useState(0);
+    const pausado = useRef(false);
+    const ir = useCallback((indice) => setAtual(((indice % total) + total) % total), [total]);
+
+    useEffect(() => {
+        if (total < 2 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
+        const id = setInterval(() => !pausado.current && setAtual((a) => (a + 1) % total), intervalo);
+        return () => clearInterval(id);
+    }, [total, intervalo]);
+
+    const pausar = { onMouseEnter: () => (pausado.current = true), onMouseLeave: () => (pausado.current = false) };
+    return [atual, ir, pausar];
+}
 
 export default function Home() {
     const { usuario, pode } = useAuth();
     const [numeros, setNumeros] = useState(null);
     const [noticias, setNoticias] = useState([]);
-    const [projetos, setProjetos] = useState([]);
-    const [ranking, setRanking] = useState([]);
+    const [polimeros, setPolimeros] = useState(0);
+    const [depoimento, irDepoimento, pausarDepoimento] = useAlternador(Math.max(noticias.length, 1), 7000);
 
     useEffect(() => {
         let ativo = true;
-        Promise.allSettled([
-            api("/projeto?per_page=3"),
-            api("/noticia?per_page=4"),
-            api("/doacao?per_page=1"),
-            api("/vaga?per_page=1"),
-            api("/ranking"),
-        ]).then(([p, n, d, v, r]) => {
-            if (!ativo) return;
-            const valor = (resultado) => (resultado.status === "fulfilled" ? resultado.value : null);
-            setProjetos(lista(valor(p)));
-            setNoticias(lista(valor(n)));
-            setRanking(lista(valor(r)).slice(0, 5));
-            setNumeros({ projetos: total(valor(p)), noticias: total(valor(n)), doacoes: total(valor(d)), vagas: total(valor(v)) });
-        });
+        Promise.allSettled([api("/projeto?per_page=1"), api("/noticia?per_page=5"), api("/doacao?per_page=1"), api("/vaga?per_page=1"), api("/polimeros")]).then(
+            ([p, n, d, v, pol]) => {
+                if (!ativo) return;
+                const valor = (resultado) => (resultado.status === "fulfilled" ? resultado.value : null);
+                setNoticias(lista(valor(n)));
+                setPolimeros(lista(valor(pol)).length);
+                setNumeros({ projetos: total(valor(p)), noticias: total(valor(n)), doacoes: total(valor(d)), vagas: total(valor(v)) });
+            },
+        );
         return () => {
             ativo = false;
         };
     }, []);
 
-    const modulos = MODULOS.filter((m) => !m.perfis || pode(...m.perfis));
-    // Pessoas pelo primeiro nome; instituições pelo nome completo.
-    const primeiroNome = usuario?.tipo_usuario === "pessoa_fisica" ? usuario.nome.split(" ")[0] : usuario?.nome;
+    const atalhos = ATALHOS.filter((a) => !a.perfis || pode(...a.perfis));
+    const ano = new Date().getFullYear();
+    const acaoPrincipal = pode("solicitante")
+        ? { para: "/chamados", rotulo: "Abrir chamado" }
+        : pode("receptor")
+          ? { para: "/doacoes", rotulo: "Buscar resíduos" }
+          : { para: "/doacoes/nova", rotulo: "Doar resíduos" };
+    const destaque = noticias[depoimento];
 
     return (
-        <>
-            <section className="hero">
-                <div className="container hero__grade">
-                    <div>
-                        <span className="hero__selo">
-                            <b>Novo</b> Rastreabilidade por QR Code em cada carretel
+        <div className="ml">
+            {/* ---------- Header ---------- */}
+            <header className="ml-topo">
+                <h1 className="ml-titulo" aria-label="Feche o ciclo.">
+                    {["Feche", "o", "ciclo."].map((palavra, i) => (
+                        <span key={palavra} className="ml-titulo__palavra" style={{ "--i": i }} aria-hidden="true">
+                            {palavra}
                         </span>
-                        <h1>
-                            Do resíduo à <span>nova peça</span>.
-                        </h1>
-                        <p className="hero__texto">
-                            {primeiroNome ? `Olá, ${primeiroNome}. ` : ""}
-                            A EcoHub 3D conecta makers, laboratórios, escolas públicas e empresas para que nenhum grama de plástico de
-                            impressão 3D termine no aterro.
-                        </p>
-                        <div className="hero__acoes">
-                            {pode("solicitante") ? (
-                                <Link to="/chamados" className="botao botao--grande">
-                                    Abrir chamado <ArrowRight size={18} aria-hidden="true" />
-                                </Link>
-                            ) : (
-                                <Link to="/doacoes" className="botao botao--grande">
-                                    Doar resíduos <ArrowRight size={18} aria-hidden="true" />
-                                </Link>
-                            )}
-                            <Link to="/projetos" className="botao botao--grande botao--secundario">
-                                Explorar projetos
-                            </Link>
-                        </div>
-                    </div>
-
-                    <aside className="hero__cartao" aria-label="Exemplo de lote rastreado">
-                        <div className="hero__cartao-topo">
-                            <span>Lote de filamento reciclado</span>
-                            <code>01JECH…0001</code>
-                        </div>
-                        <h2>PLA natural · 1,75 mm</h2>
-                        <ol className="hero__passos">
-                            {["Sobras doadas por um makerspace", "Coletado pelo Laboratório de Polímeros", "Triturado e extrudado a 195 °C", "Laudo aprovado: 47 MPa de tração"].map((passo) => (
-                                <li key={passo}>
-                                    <CircleCheck size={18} aria-hidden="true" /> {passo}
-                                </li>
-                            ))}
-                        </ol>
-                        <Link to="/rastreio/01JECHB3DDEMNTE00000000001" className="botao botao--bloco" style={{ marginTop: "var(--esp-5)" }}>
-                            <QrCode size={16} aria-hidden="true" /> Ver rastreio completo
-                        </Link>
-                    </aside>
-                </div>
-            </section>
-
-            <section className="container numeros" aria-label="A plataforma em números">
-                <div className="numeros__grade">
-                    {[
-                        ["projetos", "projetos publicados"],
-                        ["doacoes", "doações à espera de coleta"],
-                        ["vagas", "vagas abertas"],
-                        ["noticias", "notícias publicadas"],
-                    ].map(([chave, rotulo]) => (
-                        <div className="estatistica" key={chave}>
-                            <span className="estatistica__valor">{numeros ? numeros[chave] : "—"}</span>
-                            <span className="estatistica__rotulo">{rotulo}</span>
-                        </div>
                     ))}
-                </div>
-            </section>
+                </h1>
 
-            <div className="container">
-                {usuario?.verificacao_status === "pendente" && (
-                    <div style={{ marginTop: "var(--esp-10)" }}>
-                        <Aviso tom="alerta">
-                            <strong>Cadastro em análise.</strong> A equipe está conferindo o CNPJ de {usuario.nome}. Assim que for aprovado,
-                            você poderá publicar vagas e notícias{usuario.tipo_usuario === "laboratorio" ? ", receber resíduos e atender chamados" : " e abrir chamados"}.
-                        </Aviso>
-                    </div>
-                )}
-                {usuario?.verificacao_status === "rejeitado" && (
-                    <div style={{ marginTop: "var(--esp-10)" }}>
-                        <Aviso tom="perigo">
-                            <strong>Verificação recusada.</strong> {usuario.motivo_verificacao} Corrija o documento no seu perfil para uma nova análise.
-                        </Aviso>
-                    </div>
-                )}
-
-                <section className="secao" aria-labelledby="titulo-ciclo">
-                    <div className="secao__titulo">
-                        <div>
-                            <span className="sobrelinha">Como funciona</span>
-                            <h2 id="titulo-ciclo">Um ciclo fechado, do carretel ao laudo.</h2>
-                        </div>
-                        <p>Cada etapa fica registrada. Quem compra ou usa o filamento reciclado vê de onde ele veio e como foi testado.</p>
-                    </div>
-                    <ol className="ciclo">
-                        {CICLO.map(({ icone: Icone, titulo, texto }) => (
-                            <li className="ciclo__etapa" key={titulo}>
-                                <span className="ciclo__icone">
-                                    <Icone size={22} aria-hidden="true" />
+                <div className="ml-hero" aria-label="Painel do EcoHub sobre uma paisagem, com os números da rede">
+                    <div className="ml-hero__fundo" />
+                    <div className="ml-ipad">
+                        <div className="ml-ipad__tela">
+                            <img src={telaPainel} alt="" />
+                            <div className="ml-tela">
+                                <span className="ml-tela__trilha">
+                                    Painel <span aria-hidden="true">›</span> <b>Visão geral</b>
                                 </span>
-                                <h3>{titulo}</h3>
-                                <p>{texto}</p>
+                                <div className="ml-tela__linha">
+                                    <span className="ml-tela__numero">{numeros ? numeros.doacoes : "—"}</span>
+                                    <span className="ml-tela__rotulo">Doações à espera de coleta</span>
+                                    <span className="ml-tela__seletor">
+                                        Todos os polímeros ({polimeros || "—"}) <span aria-hidden="true">▾</span>
+                                    </span>
+                                </div>
+                                <div className="ml-tela__anos">
+                                    {[ano - 3, ano - 2, ano - 1, ano].map((a) => (
+                                        <span key={a}>{a}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {usuario?.verificacao_status === "pendente" && (
+                <div className="ml-aviso">
+                    <Aviso tom="alerta">
+                        <strong>Cadastro em análise.</strong> A equipe está conferindo o CNPJ de {usuario.nome}. Assim que for aprovado, você poderá publicar
+                        vagas e notícias{usuario.tipo_usuario === "laboratorio" ? ", receber resíduos e atender chamados" : " e abrir chamados"}.
+                    </Aviso>
+                </div>
+            )}
+            {usuario?.verificacao_status === "rejeitado" && (
+                <div className="ml-aviso">
+                    <Aviso tom="perigo">
+                        <strong>Verificação recusada.</strong> {usuario.motivo_verificacao} Corrija o documento no seu perfil para uma nova análise.
+                    </Aviso>
+                </div>
+            )}
+
+            <main className="ml-principal">
+                {/* ---------- Logo cloud ---------- */}
+                <section className="ml-logos" aria-label="Quem faz parte">
+                    <p data-revelar="fade">Quem faz parte:</p>
+                    <ul>
+                        {PARCEIROS.map(({ icone: Icone, nome }, i) => (
+                            <li key={nome} data-revelar style={{ "--atraso": `${i * 70}ms` }}>
+                                <Icone size={22} strokeWidth={2.2} aria-hidden="true" />
+                                {nome}
                             </li>
                         ))}
-                    </ol>
+                    </ul>
                 </section>
 
-                <section className="secao" aria-labelledby="titulo-modulos">
-                    <div className="secao__titulo">
-                        <div>
-                            <span className="sobrelinha">Para {usuario ? TIPOS_USUARIO[usuario.tipo_usuario]?.toLowerCase() : "você"}</span>
-                            <h2 id="titulo-modulos">Tudo o que você pode fazer aqui.</h2>
-                        </div>
+                {/* ---------- Atalhos por perfil (componente "Photo row") ---------- */}
+                <section className="ml-atalhos" aria-labelledby="ml-atalhos-titulo">
+                    <div className="ml-atalhos__topo" data-revelar>
+                        <h2 id="ml-atalhos-titulo" className="ml-legenda">
+                            Seus atalhos
+                        </h2>
                     </div>
-                    <div className="modulos">
-                        {modulos.map(({ para, icone: Icone, titulo, texto }) => (
-                            <Link key={para} to={para} className="cartao cartao--interativo modulo">
-                                <span className="modulo__icone">
-                                    <Icone size={22} aria-hidden="true" />
+                    <Carrossel rotulo="Atalhos" automatico={6000} classe="ml-atalhos__carrossel">
+                        {atalhos.map(({ para, icone: Icone, titulo, imagem: foto }) => (
+                            <Link key={para} to={para} className="ml-foto">
+                                <span className="ml-foto__imagem zoom-imagem">
+                                    <img src={foto} alt="" loading="lazy" draggable="false" />
+                                    <span className="ml-foto__icone">
+                                        <Icone size={20} aria-hidden="true" />
+                                    </span>
                                 </span>
-                                <h3>{titulo}</h3>
-                                <p>{texto}</p>
-                                <span className="modulo__seta">
-                                    Acessar <ArrowRight size={16} aria-hidden="true" />
-                                </span>
+                                <span className="ml-foto__link">{titulo}</span>
                             </Link>
+                        ))}
+                    </Carrossel>
+                </section>
+
+                {/* ---------- Benefits section ---------- */}
+                <section className="ml-beneficios">
+                    <div className="ml-beneficios__texto">
+                        <h2 className="ml-legenda" data-revelar>
+                            Benefícios
+                        </h2>
+                        <p className="ml-h1" data-revelar style={{ "--atraso": "80ms" }}>
+                            Desvendamos o ciclo do plástico.
+                        </p>
+                        <p className="ml-paragrafo" data-revelar style={{ "--atraso": "160ms" }}>
+                            O EcoHub 3D mostra o caminho real do material, sem planilhas perdidas.
+                        </p>
+                    </div>
+                    <div className="ml-icones">
+                        {BENEFICIOS.map(({ icone: Icone, titulo, texto }, i) => (
+                            <section key={titulo} className="ml-icone" aria-label={`Benefício ${i + 1} de 4`} data-revelar style={{ "--atraso": `${i * 110}ms` }}>
+                                <Icone size={24} strokeWidth={2} aria-hidden="true" />
+                                <div>
+                                    <p className="ml-h3">{titulo}</p>
+                                    <p className="ml-paragrafo">{texto}</p>
+                                </div>
+                            </section>
                         ))}
                     </div>
                 </section>
+                <div className="ml-imagem-grande zoom-imagem" data-revelar="escala">
+                    <img src={montanhas} alt="Cordilheira colorida com neve" loading="lazy" />
+                </div>
 
-                <section className="secao destaques">
-                    <div>
-                        <div className="secao__titulo">
-                            <div>
-                                <span className="sobrelinha">Do jornal</span>
-                                <h2>Últimas notícias</h2>
-                            </div>
-                            <Link to="/noticias" className="modulo__seta">
-                                Ver todas <ArrowRight size={16} aria-hidden="true" />
-                            </Link>
+                {/* ---------- Features carousel ---------- */}
+                <section className="ml-recursos">
+                    <div className="ml-recursos__texto">
+                        <div className="ml-recursos__titulo">
+                            <p className="ml-h1" data-revelar>
+                                Veja o quadro completo
+                            </p>
+                            <p className="ml-paragrafo" data-revelar style={{ "--atraso": "80ms" }}>
+                                O EcoHub transforma doações, coletas e laudos em informação clara para cada instituição da rede.
+                            </p>
                         </div>
-                        <ul className="lista-destaque">
-                            {noticias.map((noticia) => (
-                                <li key={noticia.id}>
-                                    <Link to={`/noticias/${noticia.id}`}>
-                                        <span className="sobrelinha">
-                                            {noticia.tema} · {tempoRelativo(noticia.data_publicacao)}
-                                        </span>
-                                        <h3>{noticia.titulo}</h3>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <div className="secao__titulo">
-                            <div>
-                                <span className="sobrelinha">Ranking de impacto</span>
-                                <h2>Quem mais recicla</h2>
-                            </div>
-                            <Link to="/ranking" className="modulo__seta">
-                                Ranking completo <ArrowRight size={16} aria-hidden="true" />
-                            </Link>
-                        </div>
-                        <ol className="cartao ranking">
-                            {ranking.length === 0 && <li className="texto-suave">Ninguém pontuou ainda.</li>}
-                            {ranking.map((item) => (
-                                <li key={item.id}>
-                                    <span className="ranking__posicao">{item.posicao}</span>
-                                    <span>
-                                        <strong>{item.nome}</strong>
-                                        <br />
-                                        <span className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>
-                                            {TIPOS_USUARIO[item.tipo]} {item.selos.length > 0 && `· ${item.selos.map((s) => s.nome).join(", ")}`}
-                                        </span>
-                                    </span>
-                                    <span className="ranking__pontos">{item.pontos} pts</span>
+                        <ol className="ml-lista">
+                            {VANTAGENS.map((texto, i) => (
+                                <li key={texto} data-revelar="esquerda" style={{ "--atraso": `${120 + i * 90}ms` }}>
+                                    <b>{String(i + 1).padStart(2, "0")}</b>
+                                    <span>{texto}</span>
                                 </li>
                             ))}
                         </ol>
+                        <span data-revelar style={{ "--atraso": "480ms" }}>
+                            <BotaoClaro para="/rastreio">Descobrir mais</BotaoClaro>
+                        </span>
+                    </div>
+                    <div className="ml-recursos__galeria" data-revelar="direita">
+                        <Carrossel rotulo="Imagens do EcoHub" automatico={5000} classe="ml-galeria">
+                            {IMAGENS_DESTAQUE.map((foto) => (
+                                <div key={foto.alt} className="ml-galeria__slide zoom-imagem">
+                                    <img src={foto.src} alt={foto.alt} loading="lazy" draggable="false" />
+                                </div>
+                            ))}
+                        </Carrossel>
                     </div>
                 </section>
 
-                <section className="secao">
-                    <div className="secao__titulo">
-                        <div>
-                            <span className="sobrelinha">Repositório</span>
-                            <h2>Projetos em destaque</h2>
-                        </div>
-                        <Link to="/projetos" className="modulo__seta">
-                            Ver repositório <ArrowRight size={16} aria-hidden="true" />
-                        </Link>
+                {/* ---------- Specifications table ---------- */}
+                <section className="ml-specs">
+                    <div className="ml-specs__texto">
+                        <h2 className="ml-legenda" data-revelar>
+                            Comparativo
+                        </h2>
+                        <p className="ml-h1" data-revelar style={{ "--atraso": "80ms" }}>
+                            Por que o EcoHub 3D?
+                        </p>
+                        <p className="ml-paragrafo" data-revelar style={{ "--atraso": "160ms" }}>
+                            Grupos de mensagens e planilhas não mostram de onde veio o plástico. Por isso criamos uma rede com rastreio, laudo e
+                            instituições verificadas.
+                        </p>
+                        <span data-revelar style={{ "--atraso": "240ms" }}>
+                            <BotaoClaro para="/projetos">Ver projetos</BotaoClaro>
+                        </span>
                     </div>
-                    <div className="modulos">
-                        {projetos.map((projeto) => (
-                            <Link key={projeto.id} to={`/projetos/${projeto.id}`} className="cartao cartao--interativo modulo">
-                                <span className="modulo__icone">
-                                    <BadgeCheck size={22} aria-hidden="true" />
-                                </span>
-                                <span className="sobrelinha">{AREAS_PROJETO[projeto.area] ?? "Projeto"}</span>
-                                <h3>{projeto.titulo}</h3>
-                                <p>{projeto.texto.slice(0, 110)}…</p>
-                            </Link>
+                    <div className="ml-tabela" role="table" aria-label="Comparação entre o EcoHub 3D, grupos e planilhas e o descarte comum">
+                        {COMPARATIVO.map((coluna, c) => (
+                            <section key={coluna.nome} className={`ml-tabela__coluna ${c === 0 ? "ml-tabela__coluna--destaque" : ""}`} role="rowgroup" data-revelar style={{ "--atraso": `${c * 120}ms` }}>
+                                <div className={`ml-tabela__cabeca ml-tabela__cabeca--${c}`} role="columnheader">
+                                    {coluna.nome}
+                                </div>
+                                {coluna.itens.map(([sim, texto]) => (
+                                    <div key={texto} className="ml-tabela__item" role="cell">
+                                        {sim ? (
+                                            <Check size={14} strokeWidth={2.5} className={c === 0 ? "ml-ok" : "ml-ok ml-ok--fraco"} aria-label="Sim" />
+                                        ) : (
+                                            <X size={14} strokeWidth={2.5} className="ml-nao" aria-label="Não" />
+                                        )}
+                                        <span>{texto}</span>
+                                    </div>
+                                ))}
+                            </section>
                         ))}
                     </div>
                 </section>
-            </div>
-        </>
+
+                {/* ---------- Testimonial section (com as últimas notícias) ---------- */}
+                <section className="ml-depoimento" {...pausarDepoimento}>
+                    <div className="ml-depoimento__imagem zoom-imagem" data-revelar="esquerda">
+                        <img src={esferas} alt="Esfera de concreto equilibrada entre duas maiores" loading="lazy" />
+                    </div>
+                    <section className="ml-depoimento__citacao" aria-label="Destaque do EcoHub Notícias" aria-live="polite" data-revelar="direita">
+                        {destaque ? (
+                            <Link key={destaque.id} to={`/noticias/${destaque.id}`} className="ml-depoimento__texto">
+                                “{destaque.titulo}”
+                            </Link>
+                        ) : (
+                            <p className="ml-depoimento__texto">“Nenhum grama de plástico de impressão 3D precisa terminar no aterro.”</p>
+                        )}
+                        <div className="ml-depoimento__autor">
+                            <p>{destaque?.usuario?.nome ?? "EcoHub 3D"}</p>
+                            <p className="ml-legenda">{destaque ? `${destaque.tema} · ${tempoRelativo(destaque.data_publicacao)}` : "Manifesto"}</p>
+                        </div>
+                        {noticias.length > 1 && (
+                            <div className="ml-depoimento__pontos">
+                                {noticias.map((n, i) => (
+                                    <button key={n.id} type="button" aria-label={`Notícia ${i + 1}`} aria-current={i === depoimento} onClick={() => irDepoimento(i)} />
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </section>
+
+                {/* ---------- How it works section ---------- */}
+                <section className="ml-passos">
+                    <div className="ml-passos__topo">
+                        <p className="ml-h1" data-revelar>
+                            Mapeie seu impacto
+                        </p>
+                        <span data-revelar style={{ "--atraso": "100ms" }}>
+                            <BotaoClaro para="/ranking">Ver ranking</BotaoClaro>
+                        </span>
+                    </div>
+                    <div className="ml-passos__grade">
+                        {PASSOS.map(({ titulo, texto }, i) => (
+                            <section key={titulo} className="ml-passo" aria-label={`Passo ${i + 1} de 3`} data-revelar style={{ "--atraso": `${i * 140}ms` }}>
+                                <p className="ml-passo__numero">{String(i + 1).padStart(2, "0")}</p>
+                                <div>
+                                    <p className="ml-h3">{titulo}</p>
+                                    <p className="ml-paragrafo">{texto}</p>
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                </section>
+
+                {/* ---------- Hero image ---------- */}
+                <div className="ml-aerea" data-revelar="escala">
+                    <div className="ml-aerea__imagem zoom-imagem">
+                        <img src={aerea} alt="Vista aérea de colinas verdes e uma estrada sinuosa" loading="lazy" />
+                    </div>
+                </div>
+
+                {/* ---------- Centered CTA ---------- */}
+                <section className="ml-cta">
+                    <p className="ml-h1" data-revelar>
+                        Conecte-se à rede
+                    </p>
+                    <p className="ml-paragrafo" data-revelar style={{ "--atraso": "80ms" }}>
+                        {numeros
+                            ? `${numeros.projetos} projetos, ${numeros.vagas} vagas e ${numeros.noticias} notícias já circulam por aqui. Falta a sua parte.`
+                            : "Makers, laboratórios, escolas públicas e empresas trocando resíduos, conhecimento e oportunidades."}
+                    </p>
+                    <span className="ml-cta__botao" data-revelar style={{ "--atraso": "160ms" }}>
+                        <BotaoEscuro para={acaoPrincipal.para} bloco>
+                            {acaoPrincipal.rotulo}
+                        </BotaoEscuro>
+                    </span>
+                    <span className="ml-cta__selo" data-revelar="fade" style={{ "--atraso": "240ms" }}>
+                        <Recycle size={14} aria-hidden="true" /> Economia circular da impressão 3D <Sprout size={14} aria-hidden="true" />
+                    </span>
+                </section>
+            </main>
+        </div>
     );
 }

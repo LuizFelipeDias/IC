@@ -28,9 +28,13 @@ export default function RevelarAoRolar() {
             { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
         );
 
+        // Conjunto próprio de cada observador: no StrictMode o efeito roda duas vezes,
+        // e uma marca no DOM faria o segundo observador ignorar todos os elementos.
+        const observados = new WeakSet();
         const observarNovos = () =>
-            document.querySelectorAll("[data-revelar]:not(.visivel):not([data-observado])").forEach((el) => {
-                el.setAttribute("data-observado", "");
+            document.querySelectorAll("[data-revelar]:not(.visivel)").forEach((el) => {
+                if (observados.has(el)) return;
+                observados.add(el);
                 observador.observe(el);
             });
 
