@@ -31,11 +31,14 @@ export default function Carrossel({ rotulo, automatico = 0, classe = "", control
         medir();
         const el = trilho.current;
         if (!el) return undefined;
-        const redimensionar = new ResizeObserver(medir);
-        redimensionar.observe(el);
+        // Sem ResizeObserver (navegadores antigos), mede de novo ao redimensionar a janela.
+        const redimensionar = typeof ResizeObserver !== "undefined" ? new ResizeObserver(medir) : null;
+        if (redimensionar) redimensionar.observe(el);
+        else window.addEventListener("resize", medir);
         el.addEventListener("scroll", medir, { passive: true });
         return () => {
-            redimensionar.disconnect();
+            if (redimensionar) redimensionar.disconnect();
+            else window.removeEventListener("resize", medir);
             el.removeEventListener("scroll", medir);
         };
     }, [medir, itens.length]);

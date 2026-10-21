@@ -74,6 +74,12 @@ describe("Carrossel", () => {
         expect(screen.getAllByRole("button", { name: /ir para a página/i })[0]).toHaveAttribute("aria-current", "true");
     });
 
+    it("funciona sem ResizeObserver (navegadores antigos)", () => {
+        vi.stubGlobal("ResizeObserver", undefined);
+        render(<Carrossel rotulo="Lotes">{slides}</Carrossel>);
+        expect(screen.getAllByRole("button", { name: /ir para a página/i })).toHaveLength(3);
+    });
+
     it("esconde os controles quando tudo cabe numa página", () => {
         Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, get: () => 300 });
         render(<Carrossel rotulo="Lotes">{slides.slice(0, 2)}</Carrossel>);
