@@ -105,3 +105,75 @@ export const EVENTOS_LOTE = {
     enviado: "Enviado",
     utilizado: "Utilizado em peça",
 };
+
+/* ---------- Vagas e banco de currículos ---------- */
+
+export const TEMAS_VAGA = ["Modelagem 3D", "Pós-processamento", "Manutenção", "Reciclagem", "Pesquisa", "Educação", "Escaneamento 3D", "Outro"];
+
+export const MODALIDADES_TRABALHO = {
+    presencial: "Presencial",
+    remoto: "Remoto",
+    hibrido: "Híbrido",
+};
+
+export const MODALIDADES_PREFERIDAS = {
+    ...MODALIDADES_TRABALHO,
+    qualquer: "Qualquer modalidade",
+};
+
+export const TIPOS_CONTRATO = {
+    clt: "CLT",
+    estagio: "Estágio",
+    bolsa: "Bolsa (pesquisa/extensão)",
+    pj: "PJ",
+    temporario: "Temporário",
+    voluntario: "Voluntário",
+};
+
+export const NIVEIS_VAGA = {
+    estagio: "Estágio",
+    junior: "Júnior",
+    pleno: "Pleno",
+    senior: "Sênior",
+    nao_se_aplica: "Não se aplica",
+};
+
+export const DISPONIBILIDADES = {
+    imediata: "Imediata",
+    "30_dias": "Em até 30 dias",
+    a_combinar: "A combinar",
+};
+
+export const STATUS_CANDIDATURA = {
+    "Em análise": "alerta",
+    Aprovada: "sucesso",
+    Reprovada: "perigo",
+    Cancelada: "neutro",
+};
+
+export const UFS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"];
+
+export const ESPECIALIDADES_SUGERIDAS = [
+    "Modelagem 3D",
+    "Impressão FDM",
+    "Impressão SLA (resina)",
+    "Fatiamento",
+    "Pós-processamento",
+    "Manutenção de impressoras",
+    "Escaneamento 3D",
+    "Reciclagem de polímeros",
+    "Extrusão de filamento",
+    "Ensaios mecânicos",
+    "Design de produto",
+    "Educação maker",
+];
+
+export const formatarMoeda = (valor) =>
+    valor == null || valor === "" ? "—" : Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: Number(valor) % 1 ? 2 : 0 });
+
+/** "R$ 2.800 – R$ 3.400", "R$ 1.200", "A partir de R$ 700" ou "A combinar". */
+export const formatarFaixaSalarial = (minimo, maximo) => {
+    if (minimo == null && maximo == null) return "A combinar";
+    if (minimo != null && maximo != null) return Number(minimo) === Number(maximo) ? formatarMoeda(minimo) : `${formatarMoeda(minimo)} – ${formatarMoeda(maximo)}`;
+    return minimo != null ? `A partir de ${formatarMoeda(minimo)}` : `Até ${formatarMoeda(maximo)}`;
+};
