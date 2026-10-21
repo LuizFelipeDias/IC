@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, NavLink } from "react-router-dom";
 import Marca from "./Marca";
+import RevelarAoRolar from "./RevelarAoRolar";
 import estudante from "../assets/ilustracoes/estudante.png";
 import maker from "../assets/ilustracoes/maker.png";
 import "../styles/pages/auth.css";
@@ -35,10 +36,11 @@ export default function RegistroLayout({ children, largo = false }) {
             </header>
 
             <main className="registro__palco">
-                <img src={estudante} alt="" className="registro__ilustracao registro__ilustracao--esquerda" width="351" height="471" />
-                <div className={`registro__coluna ${largo ? "registro__coluna--larga" : ""}`}>{children}</div>
+                <img src={estudante} alt="" className="registro__ilustracao registro__ilustracao--esquerda flutua" width="351" height="471" />
+                <div className={`registro__coluna pagina-entra ${largo ? "registro__coluna--larga" : ""}`}>{children}</div>
                 <img src={maker} alt="" className="registro__ilustracao registro__ilustracao--direita" width="450" height="377" />
             </main>
+            <RevelarAoRolar />
         </div>
     );
 }
