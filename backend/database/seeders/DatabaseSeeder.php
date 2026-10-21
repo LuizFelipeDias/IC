@@ -48,25 +48,74 @@ class DatabaseSeeder extends Seeder
         $this->chamados($escola, $empresa, $maker);
         $this->economiaCircular($maker, $estudante, $laboratorio);
 
-        Curriculo::factory()->for($estudante, 'usuario')->create([
-            'cargo' => 'Estagiária em manufatura aditiva',
-            'habilidades' => 'Fusion 360, Cura, PrusaSlicer, ensaios mecânicos',
-            'competencias' => 'Trabalho em equipe, documentação técnica',
-            'texto' => 'Estudante de Engenharia de Materiais com experiência em impressão FDM e caracterização de filamentos reciclados.',
-        ]);
+        $this->curriculos($estudante, $maker);
     }
 
     private function vagas(Usuario $empresa, Usuario $laboratorio, Usuario $candidata): void
     {
+        // [autor, título, tema, modalidade, contrato, nível, cidade, UF, salário mín., salário máx., habilidades, encerra em (dias), texto]
         $vagas = collect([
-            [$empresa, 'Técnico(a) em impressão 3D FDM', 'Manutenção', 'Operação e manutenção de um parque de 12 impressoras FDM, calibração e controle de qualidade das peças.'],
-            [$empresa, 'Designer de produto para manufatura aditiva', 'Modelagem 3D', 'Modelagem paramétrica e otimização topológica de peças funcionais para clientes do agronegócio.'],
-            [$empresa, 'Analista de pós-processamento', 'Pós-processamento', 'Acabamento, lixamento, pintura e montagem de protótipos.'],
-            [$laboratorio, 'Bolsista de iniciação científica — reciclagem de PETG', 'Reciclagem', 'Apoio à extrusão de filamento reciclado e aos ensaios de tração do laboratório.'],
-            [$laboratorio, 'Monitor(a) de oficinas em escolas públicas', 'Educação', 'Condução de oficinas de impressão 3D para estudantes do ensino médio.'],
-        ])->map(fn ($v) => Vaga::factory()->for($v[0], 'usuario')->create(['titulo' => $v[1], 'tema' => $v[2], 'texto' => $v[3], 'cidade' => 'Ponta Grossa']));
+            [$empresa, 'Técnico(a) em impressão 3D FDM', 'Manutenção', 'presencial', 'clt', 'junior', 'Ponta Grossa', 'PR', 2800, 3400, ['Calibração de impressoras', 'Cura', 'Manutenção preventiva'], 30,
+                'Operação e manutenção de um parque de 12 impressoras FDM, calibração e controle de qualidade das peças.'],
+            [$empresa, 'Designer de produto para manufatura aditiva', 'Modelagem 3D', 'hibrido', 'clt', 'pleno', 'Ponta Grossa', 'PR', 4500, 6200, ['Fusion 360', 'Otimização topológica', 'DFAM'], null,
+                'Modelagem paramétrica e otimização topológica de peças funcionais para clientes do agronegócio.'],
+            [$empresa, 'Analista de pós-processamento', 'Pós-processamento', 'presencial', 'temporario', 'junior', 'Castro', 'PR', null, null, ['Lixamento', 'Pintura', 'Montagem de protótipos'], 20,
+                'Acabamento, lixamento, pintura e montagem de protótipos por seis meses.'],
+            [$empresa, 'Estágio em modelagem 3D remota', 'Modelagem 3D', 'remoto', 'estagio', 'estagio', 'Curitiba', 'PR', 1200, 1200, ['Blender', 'Fusion 360', 'Fatiamento'], 45,
+                'Apoio à equipe de projetos na preparação de modelos para impressão e na documentação técnica. 4 h por dia, totalmente remoto.'],
+            [$laboratorio, 'Bolsista de iniciação científica — reciclagem de PETG', 'Reciclagem', 'presencial', 'bolsa', 'estagio', 'Ponta Grossa', 'PR', 700, 700, ['Extrusão de filamento', 'Ensaios de tração', 'Trituração'], 60,
+                'Apoio à extrusão de filamento reciclado e aos ensaios de tração do laboratório.'],
+            [$laboratorio, 'Monitor(a) de oficinas em escolas públicas', 'Educação', 'hibrido', 'voluntario', 'nao_se_aplica', 'Ponta Grossa', 'PR', null, null, ['Educação maker', 'Tinkercad', 'Comunicação'], null,
+                'Condução de oficinas de impressão 3D para estudantes do ensino médio, com encontros remotos de planejamento.'],
+            [$laboratorio, 'Pesquisador(a) em resinas fotopoliméricas (SLA)', 'Pesquisa', 'remoto', 'pj', 'senior', 'Florianópolis', 'SC', 8000, 11000, ['Impressão SLA', 'Caracterização de materiais', 'Redação científica'], null,
+                'Consultoria para o desenvolvimento de resinas com conteúdo reciclado e protocolos de cura.'],
+        ])->map(fn ($v) => Vaga::factory()->for($v[0], 'usuario')->create([
+            'titulo' => $v[1], 'tema' => $v[2], 'modalidade' => $v[3], 'tipo_contrato' => $v[4], 'nivel' => $v[5],
+            'cidade' => $v[6], 'uf' => $v[7], 'salario_min' => $v[8], 'salario_max' => $v[9], 'habilidades' => $v[10],
+            'encerra_em' => $v[11] ? now()->addDays($v[11])->toDateString() : null, 'texto' => $v[12],
+        ]));
 
-        Candidatura::factory()->for($candidata, 'usuario')->for($vagas[3], 'vaga')->create();
+        Vaga::factory()->encerrada()->for($empresa, 'usuario')->create([
+            'titulo' => 'Operador(a) de scanner 3D (vaga preenchida)', 'tema' => 'Escaneamento 3D', 'modalidade' => 'presencial',
+            'tipo_contrato' => 'clt', 'nivel' => 'junior', 'cidade' => 'Ponta Grossa', 'uf' => 'PR', 'habilidades' => ['Escaneamento 3D'],
+            'texto' => 'Digitalização de peças de reposição para clientes industriais.', 'data_publicacao' => now()->subDays(40),
+        ]);
+
+        Candidatura::factory()->for($candidata, 'usuario')->for($vagas[4], 'vaga')->create();
+        Candidatura::factory()->for($candidata, 'usuario')->for($vagas[1], 'vaga')->create(['status' => 'Aprovada']);
+    }
+
+    /**
+     * Currículos do banco: a estudante e o maker do cenário principal e mais duas pessoas físicas.
+     */
+    private function curriculos(Usuario $estudante, Usuario $maker): void
+    {
+        $carla = Usuario::factory()->create(['nome' => 'Carla Nogueira', 'email' => 'carla@ecohub3d.test', 'profissao' => 'Técnica em polímeros']);
+        $joao = Usuario::factory()->create(['nome' => 'João Pedro Ribas', 'email' => 'joao@ecohub3d.test', 'profissao' => 'Designer de produto']);
+
+        // [dono, cargo, habilidades, especialidades, cidade, UF, disponibilidade, modalidade, portfólio, visível no banco, resumo]
+        $curriculos = [
+            [$estudante, 'Estagiária em manufatura aditiva', 'Fusion 360, Cura, PrusaSlicer, ensaios mecânicos', ['Modelagem 3D', 'Impressão FDM', 'Ensaios mecânicos'],
+                'Ponta Grossa', 'PR', 'imediata', 'qualquer', 'https://portfolio.exemplo.com.br/ana-moreira', true,
+                'Estudante de Engenharia de Materiais com experiência em impressão FDM e caracterização de filamentos reciclados.'],
+            [$maker, 'Técnico em impressão 3D e manutenção', 'Klipper, Marlin, calibração, eletrônica básica', ['Impressão FDM', 'Manutenção de impressoras', 'Pós-processamento', 'Educação maker'],
+                'Ponta Grossa', 'PR', '30_dias', 'presencial', 'https://rafaelmaker.exemplo.com.br', true,
+                'Maker há seis anos, mantém um makerspace comunitário e já conduziu mais de 40 oficinas em escolas.'],
+            [$carla, 'Técnica em reciclagem de polímeros', 'Extrusora de bancada, trituradores, controle de umidade', ['Reciclagem de polímeros', 'Extrusão de filamento', 'Ensaios mecânicos'],
+                'Curitiba', 'PR', 'imediata', 'hibrido', 'https://carlanogueira.exemplo.com.br/projetos', true,
+                'Técnica em polímeros com experiência em reciclagem de PETG e PLA e produção de filamento em pequena escala.'],
+            [$joao, 'Designer de produto (resina e FDM)', 'Blender, Rhino, ZBrush, Chitubox', ['Modelagem 3D', 'Impressão SLA (resina)', 'Design de produto', 'Pós-processamento'],
+                'Joinville', 'SC', 'a_combinar', 'remoto', 'https://joaoribas.exemplo.com.br', false,
+                'Designer com foco em peças de resina para joalheria e miniaturas. Currículo oculto do banco enquanto finaliza um contrato.'],
+        ];
+
+        foreach ($curriculos as [$dono, $cargo, $habilidades, $especialidades, $cidade, $uf, $disponibilidade, $modalidade, $portfolio, $visivel, $texto]) {
+            Curriculo::factory()->for($dono, 'usuario')->create([
+                'cargo' => $cargo, 'habilidades' => $habilidades, 'especialidades' => $especialidades, 'cidade' => $cidade, 'uf' => $uf,
+                'disponibilidade' => $disponibilidade, 'modalidade_preferida' => $modalidade, 'portfolio_url' => $portfolio,
+                'visivel_no_banco' => $visivel, 'competencias' => 'Trabalho em equipe, documentação técnica', 'texto' => $texto,
+            ]);
+        }
     }
 
     private function noticias(Usuario $laboratorio, Usuario $empresa, Usuario $moderador): void

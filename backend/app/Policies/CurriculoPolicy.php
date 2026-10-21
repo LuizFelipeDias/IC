@@ -9,10 +9,12 @@ use App\Models\Usuario;
 class CurriculoPolicy extends ConteudoDoUsuarioPolicy
 {
     /**
-     * Currículo contém dados pessoais: só o dono e instituições verificadas que contratam podem ver.
+     * Currículo contém dados pessoais: o dono sempre vê o próprio; instituições
+     * verificadas que contratam veem apenas os marcados como visíveis no banco.
      */
     public function view(Usuario $usuario, Curriculo $curriculo): bool
     {
-        return $usuario->temPerfil(Perfil::Contratante) || $this->ehAutor($usuario, $curriculo);
+        return $this->ehAutor($usuario, $curriculo)
+            || ($usuario->temPerfil(Perfil::Contratante) && $curriculo->visivel_no_banco);
     }
 }

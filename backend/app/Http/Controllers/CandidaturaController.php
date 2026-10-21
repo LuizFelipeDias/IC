@@ -17,7 +17,7 @@ class CandidaturaController extends Controller
     public function index(Request $request)
     {
         $candidaturas = $request->user()->candidaturas()
-            ->with('vaga')
+            ->with('vaga.usuario')
             ->orderByDesc('data_candidatura')
             ->paginate($this->porPagina($request, 100));
 
@@ -45,12 +45,22 @@ class CandidaturaController extends Controller
             'id_vaga' => ['required', 'integer', 'exists:vagas,id'],
         ]);
 
+        $chave = ['id_usuario' => $request->user()->id, 'id_vaga' => $dados['id_vaga']];
+
+        // Repetir o pedido não duplica: devolve a candidatura existente (200).
+        if ($existente = Candidatura::where($chave)->first()) {
+            return new CandidaturaResource($existente->load('vaga'));
+        }
+
+        abort_unless(
+            Vaga::findOrFail($dados['id_vaga'])->estaAberta(),
+            409,
+            'Esta vaga está encerrada e não recebe novas candidaturas.',
+        );
+
         // O candidato não escolhe o próprio status: o banco aplica 'Em análise'.
         // O índice UNIQUE(id_usuario, id_vaga) garante que não haja duplicata.
-        $candidatura = Candidatura::firstOrCreate([
-            'id_usuario' => $request->user()->id,
-            'id_vaga' => $dados['id_vaga'],
-        ]);
+        $candidatura = Candidatura::firstOrCreate($chave);
 
         return (new CandidaturaResource($candidatura->refresh()))
             ->response()

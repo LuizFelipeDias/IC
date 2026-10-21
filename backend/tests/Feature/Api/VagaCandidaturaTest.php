@@ -5,6 +5,8 @@ use App\Models\Usuario;
 use App\Models\Vaga;
 use Laravel\Sanctum\Sanctum;
 
+const CAMPOS_VAGA = ['modalidade' => 'presencial', 'tipo_contrato' => 'clt', 'nivel' => 'junior'];
+
 it('lista vagas publicamente com paginação', function () {
     Vaga::factory(3)->create();
 
@@ -22,7 +24,7 @@ it('publica a vaga em nome do usuário do token, ignorando id_usuario do corpo',
     $outro = Usuario::factory()->create();
     Sanctum::actingAs($empresa = Usuario::factory()->empresa()->create());
 
-    $this->postJson('/api/vaga', ['titulo' => 'Modelador 3D', 'texto' => 'Descrição', 'id_usuario' => $outro->id])
+    $this->postJson('/api/vaga', [...CAMPOS_VAGA, 'titulo' => 'Modelador 3D', 'texto' => 'Descrição', 'id_usuario' => $outro->id])
         ->assertCreated()
         ->assertJsonPath('id_usuario', $empresa->id);
 });
@@ -100,7 +102,7 @@ it('só pessoa jurídica (empresa, escola, laboratório) publica vagas', functio
 
     foreach (['empresa', 'escola', 'laboratorio'] as $tipo) {
         Sanctum::actingAs(Usuario::factory()->{$tipo}()->create());
-        $this->postJson('/api/vaga', ['titulo' => "Vaga {$tipo}", 'texto' => 'Texto'])->assertCreated();
+        $this->postJson('/api/vaga', [...CAMPOS_VAGA, 'titulo' => "Vaga {$tipo}", 'texto' => 'Texto'])->assertCreated();
     }
 });
 

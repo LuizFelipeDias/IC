@@ -51,7 +51,7 @@ it('instituição pendente não usa perfis institucionais até ser aprovada', fu
         ->assertJsonPath('perfis.contratante', true);
 
     Sanctum::actingAs($empresa->fresh());
-    $this->postJson('/api/vaga', ['titulo' => 'Vaga', 'texto' => 'Texto'])->assertCreated();
+    $this->postJson('/api/vaga', ['titulo' => 'Vaga', 'texto' => 'Texto', 'modalidade' => 'remoto', 'tipo_contrato' => 'clt', 'nivel' => 'junior'])->assertCreated();
 });
 
 it('rejeição exige motivo e quem não é moderador não decide', function () {

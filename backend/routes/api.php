@@ -29,6 +29,7 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 Route::post('/usuario', [UsuarioController::class, 'store'])->middleware('throttle:cadastro');
 
 // Conteúdo de vitrine pode ser lido sem login.
+Route::get('/vaga/opcoes', [VagaController::class, 'opcoes']);
 Route::apiResource('vaga', VagaController::class)->only(['index', 'show']);
 Route::apiResource('noticia', NoticiaController::class)->only(['index', 'show'])->parameters(['noticia' => 'noticia']);
 Route::get('/noticia/{noticia}/reacoes', [ReacaoNoticiaController::class, 'index']);
@@ -67,13 +68,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('perfil:contratante')->group(function () {
         Route::get('/vaga/minhas', [VagaController::class, 'minhas']);
         Route::get('/vaga/{vaga}/candidaturas', [CandidaturaController::class, 'porVaga']);
+        Route::post('/vaga/{vaga}/encerrar', [VagaController::class, 'encerrar']);
         Route::apiResource('vaga', VagaController::class)->except(['index', 'show']);
+        // Banco de currículos: só instituições verificadas que contratam (apenas os visíveis).
+        Route::get('/curriculo', [CurriculoController::class, 'index']);
         Route::match(['put', 'patch'], '/candidatura/{candidatura}', [CandidaturaController::class, 'update']);
     });
     Route::middleware('perfil:candidato')->group(function () {
         Route::get('/candidatura', [CandidaturaController::class, 'index']);
         Route::post('/candidatura', [CandidaturaController::class, 'store']);
         Route::delete('/candidatura/{candidatura}', [CandidaturaController::class, 'destroy']);
+        Route::post('/curriculo', [CurriculoController::class, 'store']);
     });
     // Notícias: publicam pessoas jurídicas e moderadores; tudo passa por moderação.
     Route::get('/noticia/minhas', [NoticiaController::class, 'minhas']);
@@ -149,5 +154,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/chamado/{chamado}/aceitar', [ChamadoController::class, 'aceitar']);
         Route::post('/chamado/{chamado}/concluir', [ChamadoController::class, 'concluir']);
     });
-    Route::apiResource('curriculo', CurriculoController::class);
+    // Currículo: cada pessoa vê e edita só o próprio (a Policy confere o dono).
+    Route::get('/curriculo/meus', [CurriculoController::class, 'meus']);
+    Route::apiResource('curriculo', CurriculoController::class)->only(['show', 'update', 'destroy']);
 });

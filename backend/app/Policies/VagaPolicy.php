@@ -14,4 +14,12 @@ class VagaPolicy extends ConteudoDoUsuarioPolicy
     {
         return $this->ehAutor($usuario, $vaga);
     }
+
+    /**
+     * Encerrar (parar de receber candidaturas): apenas quem publicou.
+     */
+    public function encerrar(Usuario $usuario, Vaga $vaga): bool
+    {
+        return $this->ehAutor($usuario, $vaga);
+    }
 }

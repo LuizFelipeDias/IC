@@ -20,7 +20,22 @@ class CurriculoResource extends JsonResource
             'data_inicio' => $this->data_inicio?->toDateString(),
             'data_fim' => $this->data_fim?->toDateString(),
             'texto' => $this->texto,
+            'cidade' => $this->cidade,
+            'uf' => $this->uf,
+            'disponibilidade' => $this->disponibilidade?->value,
+            'disponibilidade_rotulo' => $this->disponibilidade?->rotulo(),
+            'modalidade_preferida' => $this->modalidade_preferida?->value,
+            'modalidade_preferida_rotulo' => $this->modalidade_preferida?->rotulo(),
+            'portfolio_url' => $this->portfolio_url,
+            'especialidades' => $this->especialidades,
+            'visivel_no_banco' => $this->visivel_no_banco,
+            'atualizado_em' => $this->updated_at,
             'usuario' => new UsuarioResource($this->whenLoaded('usuario')),
+            // Quem consulta o banco (contratante verificado) precisa do e-mail para o contato.
+            'contato' => $this->when(
+                $this->relationLoaded('usuario') && $this->usuario !== null && $request->user()?->can('view', $this->resource),
+                fn () => ['email' => $this->usuario->email],
+            ),
         ];
     }
 }

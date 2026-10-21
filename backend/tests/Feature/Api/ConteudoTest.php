@@ -49,7 +49,8 @@ it('currículos de terceiros só são visíveis para empresas', function () {
 
     Sanctum::actingAs(Usuario::factory()->create());
     $this->getJson("/api/curriculo/{$curriculo->id}")->assertForbidden();
-    $this->getJson('/api/curriculo')->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson('/api/curriculo')->assertForbidden();
+    $this->getJson('/api/curriculo/meus')->assertOk()->assertJsonCount(0, 'data');
 
     Sanctum::actingAs(Usuario::factory()->empresa()->create());
     $this->getJson("/api/curriculo/{$curriculo->id}")->assertOk();
