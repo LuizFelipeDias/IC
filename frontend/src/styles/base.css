@@ -60,11 +60,23 @@ button {
     outline: none;
     box-shadow: var(--anel-foco);
     border-radius: var(--raio-sm);
+    animation: foco-entra 260ms var(--curva-suave, ease);
+}
+
+/* O anel de foco "acende" do lado de fora para dentro */
+@keyframes foco-entra {
+    from {
+        box-shadow: 0 0 0 8px rgba(56, 0, 223, 0);
+    }
 }
 
 ::selection {
-    background: var(--cor-primaria);
+    background: rgba(56, 0, 223, 0.85);
     color: #fff;
+}
+
+html {
+    scroll-padding-top: calc(var(--altura-nav) + 16px);
 }
 
 /* Utilitários */

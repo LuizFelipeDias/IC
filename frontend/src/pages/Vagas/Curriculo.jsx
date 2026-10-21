@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Aviso, CabecalhoPagina, Campo, Carregando, errosPorCampo } from "../../components/ui";
+import { Aviso, CabecalhoPagina, Campo, Carregando, Chip, errosPorCampo } from "../../components/ui";
 import { api, ApiError, lista } from "../../services/api";
 import "../../styles/pages/vagas.css";
 
@@ -46,7 +46,7 @@ export default function Curriculo() {
     return (
         <div className="container" style={{ maxWidth: 860 }}>
             <CabecalhoPagina sobrelinha="Banco de currículos" titulo="Meu currículo" descricao="Só você e instituições verificadas que contratam veem estas informações." />
-            <form className="cartao cartao--padding pilha" onSubmit={salvar} noValidate>
+            <form className="cartao cartao--padding pilha formulario-animado" onSubmit={salvar} noValidate>
                 {mensagem && <Aviso tom={mensagem.tom}>{mensagem.texto}</Aviso>}
                 <div className="formulario-grade">
                     <div className="inteiro">
@@ -57,6 +57,13 @@ export default function Curriculo() {
                     <Campo id="habilidades" rotulo="Habilidades técnicas" erro={erros.habilidades} ajuda="Separe por vírgulas: Fusion 360, Cura, ensaios mecânicos">
                         <input id="habilidades" className="entrada" value={form.habilidades} onChange={alterar("habilidades")} />
                     </Campo>
+                    {form.habilidades.trim() && (
+                        <div className="inteiro habilidades-previa" aria-label="Habilidades informadas">
+                            {form.habilidades.split(",").map((h) => h.trim()).filter(Boolean).map((h, i) => (
+                                <span key={`${h}-${i}`} className="chip-pula"><Chip tom="primaria">{h}</Chip></span>
+                            ))}
+                        </div>
+                    )}
                     <Campo id="competencias" rotulo="Competências" erro={erros.competencias}>
                         <input id="competencias" className="entrada" value={form.competencias} onChange={alterar("competencias")} />
                     </Campo>

@@ -213,10 +213,62 @@ select.entrada {
     transition: border-color var(--transicao), background var(--transicao);
 }
 
+.area-envio {
+    transition:
+        border-color var(--transicao),
+        background var(--transicao),
+        transform 320ms var(--curva-mola),
+        box-shadow 320ms var(--curva-suave);
+}
+
+.area-envio svg {
+    transition: transform 420ms var(--curva-mola);
+}
+
 .area-envio:hover,
 .area-envio:focus-within {
     border-color: var(--cor-primaria);
     background: var(--cor-primaria-suave);
+}
+
+.area-envio:hover svg {
+    transform: translateY(-4px);
+}
+
+/* Arquivo sendo arrastado por cima */
+.area-envio--arrastando {
+    border-style: solid;
+    border-color: var(--cor-primaria);
+    background: var(--cor-primaria-suave);
+    transform: scale(1.015);
+    box-shadow: 0 0 0 6px rgba(56, 0, 223, 0.08), var(--sombra-2);
+}
+
+.area-envio--arrastando svg {
+    animation: flutuar 1.2s ease-in-out infinite;
+}
+
+/* Barra de progresso de envio */
+.progresso {
+    position: relative;
+    height: 6px;
+    overflow: hidden;
+    border-radius: var(--raio-pilula);
+    background: rgba(12, 11, 20, 0.08);
+}
+
+.progresso span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--cor-primaria), var(--cor-eco));
+    animation: progresso-indeterminado 1.2s var(--curva-suave) infinite;
+}
+
+@keyframes progresso-indeterminado {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(260%); }
 }
 
 .area-envio strong {
@@ -294,6 +346,18 @@ select.entrada {
     transition: all var(--transicao);
 }
 
+.chip-filtro {
+    transition:
+        background 240ms var(--curva-suave),
+        color 240ms var(--curva-suave),
+        border-color 240ms var(--curva-suave),
+        transform 320ms var(--curva-mola);
+}
+
+.chip-filtro:active {
+    transform: scale(0.95);
+}
+
 .chip-filtro:hover {
     border-color: var(--cor-texto-fraco);
     color: var(--cor-texto);
@@ -329,6 +393,7 @@ select.entrada {
 
 /* ---------- Avisos ---------- */
 .aviso {
+    animation: aviso-entra 420ms var(--curva-mola) both;
     display: flex;
     gap: var(--esp-3);
     align-items: flex-start;
@@ -341,6 +406,24 @@ select.entrada {
 .aviso svg {
     flex-shrink: 0;
     margin-top: 2px;
+}
+
+@keyframes aviso-entra {
+    from {
+        opacity: 0;
+        transform: translate3d(0, -8px, 0) scale(0.98);
+    }
+}
+
+.aviso--perigo {
+    animation-name: aviso-entra, aviso-tremor;
+    animation-duration: 420ms, 480ms;
+    animation-delay: 0ms, 80ms;
+}
+
+@keyframes aviso-tremor {
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
 }
 
 .aviso--info { background: var(--cor-info-suave); border-color: #c9dbfa; color: #0c3f8c; }
@@ -361,8 +444,19 @@ select.entrada {
     color: var(--cor-texto-suave);
 }
 
-.vazio svg {
+.vazio {
+    animation: surgir 520ms var(--curva-suave) both;
+}
+
+.vazio__icone {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--cor-superficie-2);
     color: var(--cor-texto-fraco);
+    animation: flutuar 5s ease-in-out infinite;
 }
 
 .vazio strong {
@@ -372,15 +466,22 @@ select.entrada {
 
 .carregando {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: var(--esp-3);
-    padding: var(--esp-12);
+    gap: var(--esp-5);
+    padding: var(--esp-12) var(--esp-6);
     color: var(--cor-texto-suave);
     font-size: var(--texto-sm);
+    animation: surgir 400ms var(--curva-suave) both;
 }
 
-.carregando::before {
+.carregando__texto {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-3);
+}
+
+.carregando__texto::before {
     content: "";
     width: 18px;
     height: 18px;
@@ -390,19 +491,20 @@ select.entrada {
     animation: girar 0.8s linear infinite;
 }
 
-.esqueleto {
-    border-radius: var(--raio-md);
-    background: linear-gradient(90deg, #ececf0 0%, #f6f6f8 50%, #ececf0 100%);
-    background-size: 200% 100%;
-    animation: brilho 1.4s ease infinite;
+.carregando__esqueleto {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(520px, 100%);
 }
 
+.carregando__esqueleto .esqueleto {
+    height: 14px;
+}
+
+/* .esqueleto e @keyframes brilho ficam em animacoes.css */
 @keyframes girar {
     to { transform: rotate(360deg); }
-}
-
-@keyframes brilho {
-    to { background-position: -200% 0; }
 }
 
 /* ---------- Tabela ---------- */
@@ -443,7 +545,7 @@ select.entrada {
 }
 
 .tabela tbody tr {
-    transition: background var(--transicao);
+    transition: background 200ms var(--curva-suave);
 }
 
 .tabela tbody tr:hover {
@@ -478,14 +580,33 @@ select.entrada {
     color: var(--cor-texto);
 }
 
-.abas button[aria-selected="true"]::after {
+.abas button {
+    transition: color var(--transicao);
+}
+
+.abas button:hover {
+    color: var(--cor-texto);
+}
+
+.abas button::after {
     content: "";
     position: absolute;
     left: 0;
     right: 0;
     bottom: -1px;
     height: 2px;
+    border-radius: 2px;
     background: var(--cor-primaria);
+    transform: scaleX(0);
+    transition: transform 420ms var(--curva-suave);
+}
+
+.abas button:hover::after {
+    transform: scaleX(0.35);
+}
+
+.abas button[aria-selected="true"]::after {
+    transform: scaleX(1);
 }
 
 /* ---------- Linha do tempo / etapas ---------- */
@@ -508,19 +629,28 @@ select.entrada {
     content: "";
     height: 4px;
     border-radius: var(--raio-pilula);
-    background: var(--cor-borda);
+    background: linear-gradient(var(--cor-preenchimento, transparent), var(--cor-preenchimento, transparent)) 0 0 / 0 100% no-repeat, var(--cor-borda);
+    animation: etapa-enche 900ms var(--curva-suave) forwards;
+}
+
+.etapa {
+    transition: color 400ms var(--curva-suave);
+}
+
+.etapa:nth-child(2)::before { animation-delay: 180ms; }
+.etapa:nth-child(3)::before { animation-delay: 360ms; }
+
+@keyframes etapa-enche {
+    to { background-size: 100% 100%, auto; }
 }
 
 .etapa--feita {
     color: var(--cor-texto);
+    --cor-preenchimento: var(--cor-eco);
 }
 
-.etapa--feita::before {
-    background: var(--cor-eco);
-}
-
-.etapa--atual::before {
-    background: var(--cor-primaria);
+.etapa--atual {
+    --cor-preenchimento: var(--cor-primaria);
 }
 
 .etapa--atual {
@@ -542,7 +672,28 @@ select.entrada {
     bottom: 6px;
     left: 9px;
     width: 2px;
-    background: var(--cor-borda);
+    background: linear-gradient(var(--cor-eco), var(--cor-primaria));
+    transform-origin: top;
+    animation: linha-cresce 1.4s var(--curva-suave) both;
+}
+
+@keyframes linha-cresce {
+    from { transform: scaleY(0); }
+}
+
+/* Itens surgem um a um; o último (evento mais recente) pulsa */
+.linha-tempo__item {
+    animation: surgir 600ms var(--curva-suave) both;
+}
+
+.linha-tempo__item:nth-child(2) { animation-delay: 120ms; }
+.linha-tempo__item:nth-child(3) { animation-delay: 240ms; }
+.linha-tempo__item:nth-child(4) { animation-delay: 360ms; }
+.linha-tempo__item:nth-child(5) { animation-delay: 480ms; }
+.linha-tempo__item:nth-child(n + 6) { animation-delay: 600ms; }
+
+.linha-tempo__item--atual::before {
+    animation: pulso 1.8s ease-out infinite;
 }
 
 .linha-tempo__item {
@@ -584,6 +735,7 @@ select.entrada {
 
 /* ---------- Avatar ---------- */
 .avatar {
+    transition: transform 360ms var(--curva-mola);
     display: inline-grid;
     place-items: center;
     flex-shrink: 0;
@@ -623,7 +775,37 @@ select.entrada {
     padding: var(--esp-6);
     background: rgba(12, 11, 20, 0.55);
     backdrop-filter: blur(4px);
-    animation: aparecer 160ms ease;
+    animation: aparecer 220ms var(--curva-suave) both;
+}
+
+.dialogo-fundo .dialogo {
+    animation: dialogo-entra 420ms var(--curva-mola) both;
+}
+
+.dialogo-fundo.saindo {
+    animation: sumir 220ms var(--curva-suave) both;
+}
+
+.dialogo-fundo.saindo .dialogo {
+    animation: dialogo-sai 220ms var(--curva-suave) both;
+}
+
+@keyframes dialogo-entra {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 24px, 0) scale(0.96);
+    }
+}
+
+@keyframes dialogo-sai {
+    to {
+        opacity: 0;
+        transform: translate3d(0, 12px, 0) scale(0.98);
+    }
+}
+
+@keyframes sumir {
+    to { opacity: 0; }
 }
 
 .dialogo {
@@ -721,4 +903,75 @@ select.entrada {
 
 .barra-ferramentas .busca .entrada {
     padding-left: 40px;
+}
+
+/* Formulários: campos entram em sequência */
+.formulario-animado {
+    animation: surgir 520ms var(--curva-suave) both;
+}
+
+.formulario-animado .formulario-grade > *,
+.formulario-animado > .campo {
+    animation: surgir 520ms var(--curva-suave) both;
+}
+
+.formulario-animado .formulario-grade > :nth-child(1) { animation-delay: 60ms; }
+.formulario-animado .formulario-grade > :nth-child(2) { animation-delay: 110ms; }
+.formulario-animado .formulario-grade > :nth-child(3) { animation-delay: 160ms; }
+.formulario-animado .formulario-grade > :nth-child(4) { animation-delay: 210ms; }
+.formulario-animado .formulario-grade > :nth-child(5) { animation-delay: 260ms; }
+.formulario-animado .formulario-grade > :nth-child(6) { animation-delay: 310ms; }
+.formulario-animado .formulario-grade > :nth-child(n + 7) { animation-delay: 360ms; }
+
+.entrada {
+    transition:
+        border-color var(--transicao),
+        box-shadow 260ms var(--curva-suave),
+        background 260ms var(--curva-suave);
+}
+
+/* Troca de conteúdo (painéis de detalhe, abas) */
+.troca-suave {
+    animation: troca-suave 480ms var(--curva-suave) both;
+}
+
+@keyframes troca-suave {
+    from {
+        opacity: 0;
+        transform: translate3d(12px, 0, 0);
+    }
+}
+
+.linha-entra {
+    animation: surgir 500ms var(--curva-suave) both;
+    animation-delay: var(--atraso, 0ms);
+}
+
+/* Item saindo de uma lista (useSaida) */
+.item-saindo {
+    animation: item-sai 380ms var(--curva-suave) forwards;
+    pointer-events: none;
+}
+
+@keyframes item-sai {
+    to {
+        opacity: 0;
+        transform: translate3d(32px, 0, 0);
+    }
+}
+
+/* QR Code: os módulos "revelam" de cima para baixo quando a imagem fica pronta */
+.qr__imagem {
+    animation: qr-revela 900ms var(--curva-suave) both;
+}
+
+@keyframes qr-revela {
+    from {
+        clip-path: inset(0 0 100% 0);
+        opacity: 0.2;
+    }
+    to {
+        clip-path: inset(0 0 0 0);
+        opacity: 1;
+    }
 }

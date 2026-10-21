@@ -2,10 +2,30 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Download, FlaskConical, QrCode as IconeQr } from "lucide-react";
 import QrCode from "../../components/QrCode";
-import { Aviso, Carregando, Chip } from "../../components/ui";
+import { Aviso, Carregando, Chip, Contador } from "../../components/ui";
 import { baixarAnexo, api } from "../../services/api";
-import { EVENTOS_LOTE, formatarData, formatarPeso, STATUS_LOTE, TIPOS_DOACAO } from "../../utils/formatar";
+import { EVENTOS_LOTE, formatarData, STATUS_LOTE, TIPOS_DOACAO } from "../../utils/formatar";
 import "../../styles/pages/economia.css";
+
+/** Peso que conta até o valor (em kg a partir de 1 kg). */
+function PesoAnimado({ gramas }) {
+    if (gramas == null) return "—";
+    return gramas >= 1000 ? <Contador valor={gramas / 1000} casas={1} sufixo=" kg" /> : <Contador valor={gramas} sufixo=" g" />;
+}
+
+/** Medida do laudo com barra que cresce até a fração indicada (0 a 1). */
+function Medida({ rotulo, valor, fracao, nota }) {
+    return (
+        <div className="medida">
+            <dt>{rotulo}</dt>
+            <dd>{valor}</dd>
+            <span className="medida__barra" aria-hidden="true">
+                <span style={{ "--fracao": Math.max(0.04, Math.min(1, fracao || 0)) }} />
+            </span>
+            {nota && <span className="medida__nota">{nota}</span>}
+        </div>
+    );
+}
 
 function BuscaCodigo({ inicial = "" }) {
     const navigate = useNavigate();
@@ -36,16 +56,18 @@ export default function Rastreio() {
 
     if (!codigo) {
         return (
-            <section className="passaporte">
+            <section className="passaporte passaporte--busca">
                 <div className="container">
-                    <span className="sobrelinha">Rastreabilidade</span>
-                    <h1>De onde veio este filamento?</h1>
-                    <p style={{ maxWidth: "56ch", marginTop: "var(--esp-4)", color: "#c9c8d6" }}>
+                    <span className="sobrelinha" data-revelar="fade">Rastreabilidade</span>
+                    <h1 data-revelar style={{ "--atraso": "80ms" }}>De onde veio este filamento?</h1>
+                    <p data-revelar style={{ maxWidth: "56ch", marginTop: "var(--esp-4)", color: "#c9c8d6", "--atraso": "160ms" }}>
                         Aponte a câmera para o QR Code do carretel ou digite o código impresso na etiqueta para ver a origem do
                         material, as etapas de produção e o laudo de qualidade.
                     </p>
-                    <BuscaCodigo />
-                    <p style={{ marginTop: "var(--esp-4)", fontSize: "var(--texto-sm)", color: "#a9a7bb" }}>
+                    <div data-revelar style={{ "--atraso": "240ms" }}>
+                        <BuscaCodigo />
+                    </div>
+                    <p data-revelar="fade" style={{ marginTop: "var(--esp-4)", fontSize: "var(--texto-sm)", color: "#a9a7bb", "--atraso": "320ms" }}>
                         Exemplo: <Link to="/rastreio/01JECHB3DDEMNTE00000000001" style={{ color: "#fff", textDecoration: "underline" }}>01JECHB3DDEMNTE00000000001</Link>
                     </p>
                 </div>
@@ -70,7 +92,7 @@ export default function Rastreio() {
         <>
             <section className="passaporte">
                 <div className="container passaporte__grade">
-                    <div>
+                    <div className="passaporte__texto">
                         <span className="sobrelinha"><IconeQr size={12} aria-hidden="true" style={{ display: "inline", verticalAlign: "-1px" }} /> Passaporte do filamento</span>
                         <h1>{lote.polimero.sigla} reciclado · {lote.diametro_nominal_mm.toLocaleString("pt-BR")} mm{lote.cor && ` · ${lote.cor}`}</h1>
                         <p className="passaporte__codigo">Lote {lote.codigo}</p>
@@ -79,19 +101,21 @@ export default function Rastreio() {
                             <span style={{ color: "#c9c8d6", fontSize: "var(--texto-sm)" }}>Produzido por {lote.laboratorio.nome} em {formatarData(lote.produzido_em)}</span>
                         </div>
                     </div>
-                    <QrCode codigo={lote.codigo} />
+                    <div className="passaporte__qr">
+                        <QrCode codigo={lote.codigo} />
+                    </div>
                 </div>
             </section>
 
             <div className="container">
                 <div className="numeros-lote">
                     {[
-                        [formatarPeso(lote.origem.peso_reciclado_g), "de plástico desviado do aterro"],
-                        [lote.origem.doacoes, "doação(ões) de origem"],
-                        [formatarPeso(lote.peso_saida_g), "de filamento produzido"],
+                        [<PesoAnimado key="r" gramas={lote.origem.peso_reciclado_g} />, "de plástico desviado do aterro"],
+                        [<Contador key="d" valor={lote.origem.doacoes} />, "doação(ões) de origem"],
+                        [<PesoAnimado key="p" gramas={lote.peso_saida_g} />, "de filamento produzido"],
                         [lote.origem.cidades.join(", ") || "—", "cidade(s) de origem"],
-                    ].map(([valor, rotulo]) => (
-                        <div className="cartao estatistica" key={rotulo}>
+                    ].map(([valor, rotulo], i) => (
+                        <div className="cartao estatistica eleva" key={rotulo} data-revelar style={{ "--atraso": `${i * 90}ms` }}>
                             <span className="estatistica__valor" style={{ fontSize: "var(--texto-2xl)" }}>{valor}</span>
                             <span className="estatistica__rotulo">{rotulo}</span>
                         </div>
@@ -99,11 +123,11 @@ export default function Rastreio() {
                 </div>
 
                 <div className="dupla">
-                    <section className="cartao cartao--padding" aria-labelledby="titulo-linha">
+                    <section className="cartao cartao--padding" aria-labelledby="titulo-linha" data-revelar="esquerda">
                         <h2 id="titulo-linha" style={{ marginBottom: "var(--esp-6)", fontSize: "var(--texto-xl)" }}>Linha do tempo</h2>
                         <ol className="linha-tempo">
                             {lote.eventos.map((evento, i) => (
-                                <li className="linha-tempo__item" key={i}>
+                                <li className={`linha-tempo__item ${i === lote.eventos.length - 1 ? "linha-tempo__item--atual" : ""}`} key={i}>
                                     <strong>{EVENTOS_LOTE[evento.tipo] ?? evento.tipo}</strong>
                                     <div className="texto-suave" style={{ fontSize: "var(--texto-sm)" }}>{evento.descricao}</div>
                                     <div className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>{formatarData(evento.ocorrido_em)}</div>
@@ -116,7 +140,7 @@ export default function Rastreio() {
                         </p>
                     </section>
 
-                    <section className="cartao cartao--padding laudo" aria-labelledby="titulo-laudo">
+                    <section className="cartao cartao--padding laudo" aria-labelledby="titulo-laudo" data-revelar="direita">
                         <div className="linha linha--entre">
                             <h2 id="titulo-laudo" style={{ fontSize: "var(--texto-xl)" }}><FlaskConical size={18} aria-hidden="true" style={{ display: "inline", verticalAlign: "-2px" }} /> Laudo de qualidade</h2>
                             {laudo && <Chip tom={laudo.resultado === "reprovado" ? "perigo" : "sucesso"} ponto>{laudo.resultado.replace("_", " ")}</Chip>}
@@ -125,10 +149,20 @@ export default function Rastreio() {
                         {laudo && (
                             <>
                                 <dl>
-                                    <div><dt>Diâmetro médio</dt><dd>{laudo.diametro_medio_mm.toLocaleString("pt-BR")} mm</dd></div>
-                                    <div><dt>Tolerância</dt><dd>± {laudo.tolerancia_mm.toLocaleString("pt-BR")} mm</dd></div>
-                                    <div><dt>Resistência à tração</dt><dd>{laudo.resistencia_tracao_mpa?.toLocaleString("pt-BR") ?? "—"} MPa</dd></div>
-                                    <div><dt>Temperatura de impressão</dt><dd>{laudo.temp_impressao?.[0] ?? "—"}–{laudo.temp_impressao?.[1] ?? "—"} °C</dd></div>
+                                    <Medida
+                                        rotulo="Diâmetro médio"
+                                        valor={`${laudo.diametro_medio_mm.toLocaleString("pt-BR")} mm`}
+                                        fracao={1 - (Math.abs(laudo.diametro_medio_mm - lote.diametro_nominal_mm) / lote.diametro_nominal_mm) * 10}
+                                        nota={`nominal ${lote.diametro_nominal_mm.toLocaleString("pt-BR")} mm`}
+                                    />
+                                    <Medida rotulo="Tolerância" valor={`± ${laudo.tolerancia_mm.toLocaleString("pt-BR")} mm`} fracao={1 - laudo.tolerancia_mm / 0.1} nota="quanto menor, melhor (limite 0,10)" />
+                                    <Medida rotulo="Resistência à tração" valor={`${laudo.resistencia_tracao_mpa?.toLocaleString("pt-BR") ?? "—"} MPa`} fracao={(laudo.resistencia_tracao_mpa ?? 0) / 60} nota="referência: 60 MPa (PLA virgem)" />
+                                    <Medida
+                                        rotulo="Temperatura de impressão"
+                                        valor={`${laudo.temp_impressao?.[0] ?? "—"}–${laudo.temp_impressao?.[1] ?? "—"} °C`}
+                                        fracao={((laudo.temp_impressao?.[1] ?? 0) - 150) / 150}
+                                        nota="escala de 150 a 300 °C"
+                                    />
                                 </dl>
                                 <p className="texto-suave" style={{ fontSize: "var(--texto-sm)" }}>Emitido por {laudo.laboratorio} em {formatarData(laudo.emitido_em)}.</p>
                                 {laudo.id_anexo && (

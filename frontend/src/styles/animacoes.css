@@ -45,11 +45,14 @@
 [data-revelar].visivel {
     opacity: 1;
     transform: none;
+    will-change: auto;
 }
 
 /* ---------- Transição entre páginas ---------- */
+/* "backwards": ao terminar, o elemento fica sem transform; com "both" ele
+   continuaria sendo o bloco de contenção dos diálogos com position: fixed. */
 .pagina-entra {
-    animation: pagina-entra 520ms var(--curva-suave) both;
+    animation: pagina-entra 520ms var(--curva-suave) backwards;
 }
 
 @keyframes pagina-entra {

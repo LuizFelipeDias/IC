@@ -99,7 +99,7 @@ export default function CadastroUsuario() {
                     </button>
                 ))}
             </div>
-            <p className="registro__ajuda-tipo">{tipoAtual.ajuda}</p>
+            <p key={tipo} className="registro__ajuda-tipo">{tipoAtual.ajuda}</p>
 
             <form className="registro__form" onSubmit={enviar} noValidate>
                 {!pessoaFisica && (

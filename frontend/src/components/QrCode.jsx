@@ -14,7 +14,11 @@ export default function QrCode({ codigo, tamanho = 168 }) {
 
     return (
         <a className="qr" href={url} title="Abrir página de rastreio">
-            {imagem ? <img src={imagem} width={tamanho} height={tamanho} alt={`QR Code do lote ${codigo}`} /> : <span style={{ display: "block", width: tamanho, height: tamanho }} />}
+            {imagem ? (
+                <img className="qr__imagem" src={imagem} width={tamanho} height={tamanho} alt={`QR Code do lote ${codigo}`} />
+            ) : (
+                <span className="esqueleto" style={{ display: "block", width: tamanho, height: tamanho }} />
+            )}
         </a>
     );
 }

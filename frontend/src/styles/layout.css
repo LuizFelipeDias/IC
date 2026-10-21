@@ -90,6 +90,25 @@
     z-index: 40;
     background: var(--rodape-fundo);
     color: #fff;
+    transition:
+        background 360ms var(--curva-suave),
+        box-shadow 360ms var(--curva-suave);
+}
+
+/* Depois de rolar: fundo levemente translúcido com desfoque e sombra */
+.nav--rolada {
+    background: rgba(18, 32, 49, 0.92);
+    backdrop-filter: saturate(160%) blur(14px);
+    box-shadow: 0 12px 32px -18px rgba(5, 10, 20, 0.75);
+}
+
+.nav .marca__simbolo {
+    transition: transform 700ms var(--curva-mola);
+}
+
+.nav a:hover .marca__simbolo,
+.rodape a:hover .marca__simbolo {
+    transform: rotate(180deg);
 }
 
 .nav__interno.container {
@@ -102,10 +121,25 @@
 }
 
 .nav__links {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 30px;
     margin-left: auto;
+}
+
+/* Sublinhado laranja que desliza entre os links (posição calculada em Nav.jsx) */
+.nav__indicador {
+    position: absolute;
+    left: 0;
+    bottom: calc(50% - 14px);
+    height: 2px;
+    border-radius: 2px;
+    background: var(--rodape-laranja);
+    pointer-events: none;
+    transition:
+        transform 460ms var(--curva-suave),
+        width 460ms var(--curva-suave);
 }
 
 .nav__link {
@@ -123,8 +157,8 @@
     opacity: 1;
 }
 
-.nav__link.ativo {
-    box-shadow: 0 2px 0 var(--rodape-laranja);
+.nav__link {
+    position: relative;
 }
 
 .nav__acoes {
@@ -145,12 +179,46 @@
     border-radius: 50px;
     background: none;
     color: #fff;
-    transition: border-color var(--transicao), background var(--transicao);
+    transition:
+        border-color var(--transicao),
+        background var(--transicao),
+        transform 320ms var(--curva-mola);
 }
 
 .nav__circulo:hover {
     border-color: rgba(255, 255, 255, 0.4);
     background: rgba(255, 255, 255, 0.06);
+    transform: scale(1.08);
+}
+
+/* Troca animada entre os ícones de menu e fechar */
+.nav__icone-troca {
+    position: relative;
+    display: grid;
+    width: 16px;
+    height: 16px;
+}
+
+.nav__icone-troca svg {
+    grid-area: 1 / 1;
+    transition:
+        opacity 260ms var(--curva-suave),
+        transform 360ms var(--curva-suave);
+}
+
+.nav__icone-troca svg:last-child {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.6);
+}
+
+.nav__icone-troca.aberto svg:first-child {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.6);
+}
+
+.nav__icone-troca.aberto svg:last-child {
+    opacity: 1;
+    transform: none;
 }
 
 .nav__botao {
@@ -165,11 +233,16 @@
     line-height: 1.4;
     color: #fff;
     white-space: nowrap;
-    transition: background var(--transicao);
+    transition:
+        background var(--transicao),
+        transform 320ms var(--curva-mola),
+        box-shadow 320ms var(--curva-suave);
 }
 
 .nav__botao:hover {
     background: var(--rodape-laranja-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px -12px rgba(219, 93, 35, 0.8);
 }
 
 .nav__usuario {
@@ -191,8 +264,24 @@
     color: #fff;
 }
 
-.nav__usuario-botao:hover {
+.nav__usuario-botao {
+    transition:
+        border-color var(--transicao),
+        background var(--transicao);
+}
+
+.nav__usuario-botao:hover,
+.nav__usuario-botao[aria-expanded="true"] {
     border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.nav__usuario-botao .avatar {
+    transition: transform 420ms var(--curva-mola);
+}
+
+.nav__usuario-botao:hover .avatar {
+    transform: rotate(-8deg) scale(1.06);
 }
 
 .nav__usuario-botao .avatar {
@@ -221,7 +310,33 @@
     background: var(--cor-superficie);
     box-shadow: var(--sombra-2);
     color: var(--cor-texto);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.97);
+    transform-origin: top right;
+    transition:
+        opacity 220ms var(--curva-suave),
+        transform 320ms var(--curva-suave),
+        visibility 0s linear 320ms;
 }
+
+.menu-suspenso.aberto {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+        opacity 220ms var(--curva-suave),
+        transform 360ms var(--curva-mola),
+        visibility 0s;
+}
+
+.menu-suspenso.aberto > * {
+    animation: surgir 360ms var(--curva-suave) both;
+}
+
+.menu-suspenso.aberto > :nth-child(2) { animation-delay: 40ms; }
+.menu-suspenso.aberto > :nth-child(3) { animation-delay: 80ms; }
+.menu-suspenso.aberto > :nth-child(4) { animation-delay: 120ms; }
 
 .menu-suspenso__cabecalho {
     padding: var(--esp-3);
@@ -242,8 +357,15 @@
     text-align: left;
 }
 
+.menu-suspenso__item {
+    transition:
+        background var(--transicao),
+        padding-left 260ms var(--curva-suave);
+}
+
 .menu-suspenso__item:hover {
     background: var(--cor-superficie-2);
+    padding-left: calc(var(--esp-3) + 4px);
 }
 
 .nav__hamburguer {
@@ -256,7 +378,7 @@
         top: var(--altura-nav);
         left: 0;
         right: 0;
-        display: none;
+        display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 0;
@@ -264,19 +386,50 @@
         padding: 10px var(--rodape-margem) 30px;
         border-top: 1px solid var(--rodape-borda);
         background: var(--rodape-fundo);
+        box-shadow: 0 24px 40px -24px rgba(5, 10, 20, 0.8);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-12px);
+        transition:
+            opacity 240ms var(--curva-suave),
+            transform 360ms var(--curva-suave),
+            visibility 0s linear 360ms;
     }
 
     .nav__links.aberto {
-        display: flex;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition:
+            opacity 240ms var(--curva-suave),
+            transform 360ms var(--curva-suave),
+            visibility 0s;
     }
 
     .nav__link {
         padding: 12px 0;
         font-size: 16px;
+        opacity: 0;
+        transform: translateX(-12px);
+        transition:
+            opacity 300ms var(--curva-suave),
+            transform 400ms var(--curva-suave);
     }
 
-    .nav__link.ativo {
-        box-shadow: none;
+    .nav__links.aberto .nav__link {
+        opacity: 0.75;
+        transform: none;
+        transition-delay: calc(var(--i, 0) * 35ms);
+    }
+
+    .nav__links.aberto .nav__link.ativo {
+        opacity: 1;
+        padding-left: 12px;
+        box-shadow: inset 2px 0 0 var(--rodape-laranja);
+    }
+
+    .nav__indicador {
+        display: none;
     }
 
     .nav__acoes {
@@ -367,11 +520,16 @@
     line-height: 1.4;
     color: #fff;
     opacity: 0.75;
-    transition: opacity var(--transicao);
+    background: linear-gradient(var(--rodape-laranja), var(--rodape-laranja)) 0 100% / 0 1px no-repeat;
+    transition:
+        opacity var(--transicao),
+        background-size 380ms var(--curva-suave);
 }
 
-.rodape__coluna a:hover {
+.rodape__coluna a:hover,
+.rodape__coluna a:focus-visible {
     opacity: 1;
+    background-size: 100% 1px;
 }
 
 .rodape__contato-botao {
@@ -386,11 +544,16 @@
     line-height: 1.4;
     color: #fff;
     white-space: nowrap;
-    transition: background var(--transicao);
+    transition:
+        background var(--transicao),
+        transform 320ms var(--curva-mola),
+        box-shadow 320ms var(--curva-suave);
 }
 
 .rodape__contato-botao:hover {
     background: var(--rodape-laranja-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -14px rgba(219, 93, 35, 0.85);
 }
 
 .rodape__base {
@@ -413,12 +576,16 @@
     border: 1px solid var(--rodape-borda);
     border-radius: 50px;
     color: #fff;
-    transition: border-color var(--transicao), background var(--transicao);
+    transition:
+        border-color var(--transicao),
+        background 320ms var(--curva-suave),
+        transform 360ms var(--curva-mola);
 }
 
 .rodape__redes a:hover {
-    border-color: rgba(255, 255, 255, 0.4);
-    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--rodape-laranja);
+    background: var(--rodape-laranja);
+    transform: translateY(-4px) rotate(-6deg);
 }
 
 /* Traço azul de 45 × 1 px acima do contato */
@@ -441,6 +608,11 @@
     width: 45px;
     height: 1px;
     background: var(--rodape-traco);
+    transition: width 600ms var(--curva-suave);
+}
+
+.rodape__base:hover .rodape__contato::before {
+    width: 120px;
 }
 
 .rodape__contato span,

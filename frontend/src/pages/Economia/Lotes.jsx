@@ -6,7 +6,7 @@ import { api, ApiError, lista } from "../../services/api";
 import { formatarData, formatarPeso, STATUS_LOTE } from "../../utils/formatar";
 import "../../styles/pages/economia.css";
 
-function NovoLote({ aoFechar, aoCriar }) {
+function NovoLote({ aberto, aoFechar, aoCriar }) {
     const [polimeros, setPolimeros] = useState([]);
     const [coletas, setColetas] = useState([]);
     const [form, setForm] = useState({ id_polimero: "", diametro_nominal_mm: "1.75", cor: "" });
@@ -19,6 +19,7 @@ function NovoLote({ aoFechar, aoCriar }) {
         api("/coleta?papel=laboratorio&status=concluida&per_page=100").then((r) => setColetas(lista(r)));
     }, []);
 
+    const totalSelecionado = Object.values(pesos).reduce((soma, peso) => soma + (Number(peso) || 0), 0);
     const disponiveis = coletas.filter((c) => !form.id_polimero || c.doacao?.polimero?.id === Number(form.id_polimero));
 
     const criar = async () => {
@@ -37,7 +38,7 @@ function NovoLote({ aoFechar, aoCriar }) {
     };
 
     return (
-        <Dialogo aberto aoFechar={aoFechar} titulo="Novo lote">
+        <Dialogo aberto={aberto} aoFechar={aoFechar} titulo="Novo lote">
             <div className="pilha">
                 <span className="sobrelinha">Produção</span>
                 <h2>Formar lote de filamento</h2>
@@ -64,13 +65,17 @@ function NovoLote({ aoFechar, aoCriar }) {
                 <fieldset style={{ border: 0, padding: 0, margin: 0 }} className="pilha">
                     <legend className="campo__rotulo">Coletas de origem (peso aproveitado em gramas)</legend>
                     {disponiveis.length === 0 && <p className="texto-suave">Nenhuma coleta concluída {form.id_polimero && "deste polímero"} ainda.</p>}
-                    {disponiveis.map((c) => (
-                        <label key={c.id} className="linha linha--entre" style={{ fontSize: "var(--texto-sm)" }}>
+                    {disponiveis.map((c, i) => (
+                        <label key={c.id} className={`linha linha--entre origem-coleta ${Number(pesos[c.id]) > 0 ? "origem-coleta--usada" : ""}`} style={{ fontSize: "var(--texto-sm)", "--atraso": `${i * 50}ms` }}>
                             <span>#{c.id} · {c.doacao?.titulo} <span className="texto-suave">({formatarPeso(c.peso_recebido_g)} recebidos)</span></span>
                             <input type="number" min="0" className="entrada" style={{ width: 120 }} aria-label={`Peso da coleta ${c.id}`} value={pesos[c.id] ?? ""} onChange={(e) => setPesos({ ...pesos, [c.id]: e.target.value })} />
                         </label>
                     ))}
                 </fieldset>
+                <div className={`total-lote ${totalSelecionado > 0 ? "total-lote--ativo" : ""}`} aria-live="polite">
+                    <span>Entrada do lote</span>
+                    <strong key={totalSelecionado}>{formatarPeso(totalSelecionado)}</strong>
+                </div>
                 <div className="linha linha--entre">
                     <button type="button" className="botao botao--secundario" onClick={aoFechar}>Cancelar</button>
                     <button type="button" className="botao" onClick={criar}>Criar lote</button>
@@ -83,6 +88,8 @@ function NovoLote({ aoFechar, aoCriar }) {
 export default function Lotes() {
     const [lotes, setLotes] = useState(null);
     const [novo, setNovo] = useState(false);
+    // Montado na primeira abertura e mantido para a animação de saída.
+    const [novoMontado, setNovoMontado] = useState(false);
 
     useEffect(() => {
         api("/lote?per_page=100").then((r) => setLotes(lista(r))).catch(() => setLotes([]));
@@ -91,7 +98,7 @@ export default function Lotes() {
     return (
         <div className="container">
             <CabecalhoPagina sobrelinha="Receptores e reciclagem" titulo="Lotes de filamento" descricao="Forme lotes a partir das coletas concluídas, registre as etapas de produção e emita o laudo. Cada lote ganha um QR Code público.">
-                <button type="button" className="botao" onClick={() => setNovo(true)}><Plus size={16} aria-hidden="true" /> Novo lote</button>
+                <button type="button" className="botao" onClick={() => { setNovoMontado(true); setNovo(true); }}><Plus size={16} aria-hidden="true" /> Novo lote</button>
             </CabecalhoPagina>
 
             {lotes === null && <Carregando />}
@@ -103,8 +110,8 @@ export default function Lotes() {
                             <tr><th>Código</th><th>Material</th><th>Entrada</th><th>Saída</th><th>Status</th><th>Criado</th></tr>
                         </thead>
                         <tbody>
-                            {lotes.map((lote) => (
-                                <tr key={lote.id}>
+                            {lotes.map((lote, i) => (
+                                <tr key={lote.id} className="linha-entra" style={{ "--atraso": `${Math.min(i, 10) * 50}ms` }}>
                                     <td><Link to={`/lotes/${lote.id}`} className="codigo" style={{ color: "var(--cor-primaria)" }}>{lote.codigo}</Link></td>
                                     <td>{lote.polimero?.sigla} · {lote.diametro_nominal_mm.toLocaleString("pt-BR")} mm {lote.cor && `· ${lote.cor}`}</td>
                                     <td>{formatarPeso(lote.peso_entrada_g)}</td>
@@ -118,7 +125,7 @@ export default function Lotes() {
                 </div>
             )}
 
-            {novo && <NovoLote aoFechar={() => setNovo(false)} aoCriar={(lote) => { setLotes((atual) => [lote, ...(atual ?? [])]); setNovo(false); }} />}
+            {novoMontado && <NovoLote aberto={novo} aoFechar={() => setNovo(false)} aoCriar={(lote) => { setLotes((atual) => [lote, ...(atual ?? [])]); setNovo(false); }} />}
         </div>
     );
 }

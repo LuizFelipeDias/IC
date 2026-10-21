@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gift, MapPin, Package, Plus, Truck } from "lucide-react";
+import { Flame, Gift, MapPin, Package, Plus, Recycle, Truck } from "lucide-react";
+import Carrossel from "../../components/Carrossel";
 import { Aviso, CabecalhoPagina, Campo, Carregando, Chip, Dialogo, Vazio } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, lista, query } from "../../services/api";
@@ -10,8 +11,8 @@ import "../../styles/pages/economia.css";
 function CartaoDoacao({ doacao, acao }) {
     const foto = doacao.fotos?.[0]?.url;
     return (
-        <article className="cartao cartao-doacao">
-            <div className="cartao-doacao__foto">{foto ? <img src={foto} alt="" loading="lazy" /> : <Package size={48} strokeWidth={1.2} aria-hidden="true" />}</div>
+        <article className="cartao cartao-doacao eleva">
+            <div className="cartao-doacao__foto zoom-imagem">{foto ? <img src={foto} alt="" loading="lazy" /> : <Package size={48} strokeWidth={1.2} aria-hidden="true" />}</div>
             <div className="cartao-doacao__corpo">
                 <div className="linha">
                     <Chip tom="sucesso">{doacao.polimero?.sigla}</Chip>
@@ -29,7 +30,7 @@ function CartaoDoacao({ doacao, acao }) {
     );
 }
 
-function SolicitarColeta({ doacao, aoFechar, aoSolicitar }) {
+function SolicitarColeta({ doacao, aberto, aoFechar, aoSolicitar }) {
     const [modalidade, setModalidade] = useState("coleta");
     const [data, setData] = useState("");
     const [observacoes, setObservacoes] = useState("");
@@ -45,7 +46,7 @@ function SolicitarColeta({ doacao, aoFechar, aoSolicitar }) {
     };
 
     return (
-        <Dialogo aberto aoFechar={aoFechar} titulo="Solicitar coleta">
+        <Dialogo aberto={aberto} aoFechar={aoFechar} titulo="Solicitar coleta">
             <div className="pilha">
                 <span className="sobrelinha">Solicitar material</span>
                 <h2>{doacao.titulo}</h2>
@@ -99,12 +100,12 @@ function ListaColetas({ papel }) {
     return (
         <div className="cartao">
             {erro && <div style={{ padding: "var(--esp-4)" }}><Aviso tom="perigo">{erro}</Aviso></div>}
-            {coletas.map((coleta) => {
+            {coletas.map((coleta, i) => {
                 const status = STATUS_COLETA[coleta.status];
                 const ativa = ["pendente", "aceita", "agendada"].includes(coleta.status);
                 const contato = coleta.contato?.[papel === "doador" ? "laboratorio" : "doador"];
                 return (
-                    <div className="coleta" key={coleta.id}>
+                    <div className={`coleta coleta--${coleta.status}`} key={coleta.id} style={{ "--atraso": `${i * 70}ms` }}>
                         <div className="pilha" style={{ gap: "var(--esp-2)" }}>
                             <div className="linha">
                                 <Chip tom={status.tom} ponto>{status.rotulo}</Chip>
@@ -151,6 +152,8 @@ export default function Doacoes() {
     const [polimeros, setPolimeros] = useState([]);
     const [polimero, setPolimero] = useState("");
     const [solicitando, setSolicitando] = useState(null);
+    // Mantém a última doação para o diálogo animar a saída depois de fechado.
+    const [alvo, setAlvo] = useState(null);
     const [aviso, setAviso] = useState("");
 
     useEffect(() => {
@@ -171,6 +174,36 @@ export default function Doacoes() {
                 <Link to="/doacoes/nova" className="botao botao--eco"><Plus size={16} aria-hidden="true" /> Doar resíduos</Link>
             </CabecalhoPagina>
 
+            {polimeros.length > 0 && (
+                <section className="polimeros-faixa" aria-label="Polímeros aceitos" data-revelar>
+                    <div className="linha linha--entre polimeros-faixa__topo">
+                        <span className="sobrelinha">Polímeros que viram filamento novo</span>
+                        <span className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>Toque para filtrar o mural</span>
+                    </div>
+                    <Carrossel rotulo="Polímeros aceitos" automatico={5000} classe="carrossel-polimeros">
+                        {polimeros.map((p) => (
+                            <button
+                                key={p.id}
+                                type="button"
+                                className="polimero-cartao"
+                                aria-pressed={aba === "mural" && polimero === p.id}
+                                onClick={() => {
+                                    setAba("mural");
+                                    setPolimero((atual) => (atual === p.id ? "" : p.id));
+                                }}
+                            >
+                                <span className="polimero-cartao__sigla">{p.sigla}</span>
+                                <span className="polimero-cartao__nome">{p.nome}</span>
+                                <span className="polimero-cartao__dados">
+                                    {p.temp_extrusao_min && <span><Flame size={13} aria-hidden="true" /> {p.temp_extrusao_min}–{p.temp_extrusao_max} °C</span>}
+                                    {p.reciclavel && <span><Recycle size={13} aria-hidden="true" /> reciclável</span>}
+                                </span>
+                            </button>
+                        ))}
+                    </Carrossel>
+                </section>
+            )}
+
             <div className="abas" role="tablist" style={{ marginBottom: "var(--esp-6)" }}>
                 {abas.map(([valor, rotulo]) => (
                     <button key={valor} type="button" role="tab" aria-selected={aba === valor} onClick={() => setAba(valor)}>{rotulo}</button>
@@ -178,6 +211,8 @@ export default function Doacoes() {
             </div>
 
             {aviso && <div style={{ marginBottom: "var(--esp-4)" }}><Aviso tom="sucesso">{aviso}</Aviso></div>}
+
+            <div key={aba} className="troca-suave">
 
             {aba === "mural" && (
                 <div className="linha" style={{ marginBottom: "var(--esp-5)" }} role="group" aria-label="Polímero">
@@ -193,13 +228,13 @@ export default function Doacoes() {
                     {doacoes === null && <Carregando />}
                     {doacoes?.length === 0 && <Vazio icone={Gift} titulo={aba === "minhas" ? "Você ainda não doou" : "Nenhuma doação disponível"} acao={<Link to="/doacoes/nova" className="botao botao--eco">Doar resíduos</Link>} />}
                     <div className="grade-doacoes">
-                        {doacoes?.map((doacao) => (
+                        {doacoes?.map((doacao, i) => (
+                            <div key={doacao.id} data-revelar style={{ "--atraso": `${(i % 4) * 80}ms` }}>
                             <CartaoDoacao
-                                key={doacao.id}
                                 doacao={doacao}
                                 acao={
                                     aba === "mural" && pode("receptor") ? (
-                                        <button type="button" className="botao botao--eco botao--bloco botao--pequeno" onClick={() => setSolicitando(doacao)}>
+                                        <button type="button" className="botao botao--eco botao--bloco botao--pequeno" onClick={() => { setAlvo(doacao); setSolicitando(doacao); }}>
                                             <Truck size={14} aria-hidden="true" /> Solicitar coleta
                                         </button>
                                     ) : aba === "minhas" ? (
@@ -207,6 +242,7 @@ export default function Doacoes() {
                                     ) : null
                                 }
                             />
+                            </div>
                         ))}
                     </div>
                 </>
@@ -214,13 +250,16 @@ export default function Doacoes() {
 
             {aba === "pedidos" && <ListaColetas papel="doador" />}
             {aba === "coletas" && <ListaColetas papel="laboratorio" />}
+            </div>
 
-            {solicitando && (
+            {alvo && (
                 <SolicitarColeta
-                    doacao={solicitando}
+                    key={alvo.id}
+                    doacao={alvo}
+                    aberto={Boolean(solicitando)}
                     aoFechar={() => setSolicitando(null)}
                     aoSolicitar={() => {
-                        setDoacoes((atual) => atual.filter((d) => d.id !== solicitando.id));
+                        setDoacoes((atual) => atual.filter((d) => d.id !== alvo.id));
                         setSolicitando(null);
                         setAviso("Solicitação enviada. O doador vai aceitar ou recusar; acompanhe em “Minhas coletas”.");
                     }}

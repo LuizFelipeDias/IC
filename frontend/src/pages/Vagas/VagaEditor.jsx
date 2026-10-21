@@ -33,7 +33,7 @@ export default function VagaEditor() {
     return (
         <div className="container" style={{ maxWidth: 860 }}>
             <CabecalhoPagina sobrelinha="Painel do contratante" titulo="Publicar vaga" descricao="A vaga fica visível para todos os profissionais da plataforma." />
-            <form className="cartao cartao--padding pilha" onSubmit={enviar} noValidate>
+            <form className="cartao cartao--padding pilha formulario-animado" onSubmit={enviar} noValidate>
                 {mensagem && <Aviso tom="perigo">{mensagem}</Aviso>}
                 <div className="formulario-grade">
                     <div className="inteiro">

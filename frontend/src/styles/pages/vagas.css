@@ -14,6 +14,8 @@
 }
 
 .vaga-item {
+    position: relative;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: var(--esp-2);
@@ -23,11 +25,44 @@
     border-radius: var(--raio-lg);
     background: var(--cor-superficie);
     text-align: left;
-    transition: border-color var(--transicao), box-shadow var(--transicao);
+}
+
+.vaga-item {
+    transition:
+        border-color 260ms var(--curva-suave),
+        box-shadow 320ms var(--curva-suave),
+        transform 320ms var(--curva-suave);
+}
+
+/* Faixa de destaque que cresce à esquerda */
+.vaga-item::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: linear-gradient(var(--cor-primaria), var(--cor-eco));
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 420ms var(--curva-suave);
 }
 
 .vaga-item:hover {
     border-color: var(--cor-borda-forte);
+    transform: translateX(4px);
+    box-shadow: var(--sombra-2);
+}
+
+.vaga-item:hover::before,
+.vaga-item[aria-pressed="true"]::before {
+    transform: scaleY(1);
+}
+
+.vaga-item h3 {
+    transition: color 260ms var(--curva-suave);
+}
+
+.vaga-item:hover h3 {
+    color: var(--cor-primaria);
 }
 
 .vaga-item[aria-pressed="true"] {
@@ -73,7 +108,32 @@
     line-height: 1.75;
 }
 
+.troca-suave .vaga-detalhe__texto {
+    animation: surgir 600ms var(--curva-suave) 120ms both;
+}
+
+.candidato-linha {
+    padding-bottom: var(--esp-3);
+    border-bottom: 1px solid var(--cor-borda);
+    animation: surgir 480ms var(--curva-suave) both;
+    animation-delay: var(--atraso, 0ms);
+}
+
+.candidato-linha:hover .avatar {
+    transform: scale(1.1) rotate(-6deg);
+}
+
+.carrossel-curriculos {
+    --carrossel-largura: calc((100% - 2 * 16px) / 3);
+    --carrossel-gap: 16px;
+}
+
+.carrossel-curriculos .carrossel__trilho {
+    padding: 4px 4px 12px;
+}
+
 .curriculo-cartao {
+    height: 100%;
     display: flex;
     flex-direction: column;
     gap: var(--esp-3);
@@ -84,6 +144,25 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: var(--esp-4);
+}
+
+.habilidades-previa {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--esp-2);
+    margin-top: calc(-1 * var(--esp-2));
+}
+
+.chip-pula {
+    display: inline-flex;
+    animation: chip-pula 420ms var(--curva-mola) both;
+}
+
+@keyframes chip-pula {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
 }
 
 @media (max-width: 960px) {

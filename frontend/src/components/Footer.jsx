@@ -45,12 +45,12 @@ export default function Footer() {
         <footer className="rodape">
             <div className="rodape__interno">
                 <div className="rodape__topo">
-                    <Link to="/home" className="rodape__marca" aria-label="EcoHub 3D — início">
+                    <Link to="/home" className="rodape__marca" aria-label="EcoHub 3D — início" data-revelar="fade">
                         <Marca />
                     </Link>
 
-                    {COLUNAS.map((coluna) => (
-                        <nav key={coluna.titulo} className="rodape__coluna" aria-label={coluna.titulo}>
+                    {COLUNAS.map((coluna, i) => (
+                        <nav key={coluna.titulo} className="rodape__coluna" aria-label={coluna.titulo} data-revelar style={{ "--atraso": `${80 + i * 90}ms` }}>
                             <h2>{coluna.titulo}</h2>
                             <ul>
                                 {coluna.links.map((link) => (
@@ -68,12 +68,12 @@ export default function Footer() {
                         </nav>
                     ))}
 
-                    <a href={ISSUES} target="_blank" rel="noreferrer" className="rodape__contato-botao">
+                    <a href={ISSUES} target="_blank" rel="noreferrer" className="rodape__contato-botao" data-revelar="escala" style={{ "--atraso": "360ms" }}>
                         Fale com a equipe
                     </a>
                 </div>
 
-                <div className="rodape__base">
+                <div className="rodape__base" data-revelar="fade" style={{ "--atraso": "200ms" }}>
                     <div className="rodape__redes">
                         <a href="https://github.com/LuizFelipeDias/IC" target="_blank" rel="noreferrer" aria-label="Repositório no GitHub">
                             <Github size={16} aria-hidden="true" />

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FileBox, Image as ImageIcon, Trash2, UploadCloud } from "lucide-react";
-import { Aviso, CabecalhoPagina, Campo, Chip, errosPorCampo } from "../../components/ui";
+import { AreaEnvio, Aviso, CabecalhoPagina, Campo, Chip, errosPorCampo } from "../../components/ui";
 import { api, ApiError } from "../../services/api";
 import { AREAS_PROJETO, formatarBytes, LICENCAS } from "../../utils/formatar";
 import "../../styles/pages/projetos.css";
@@ -12,8 +12,6 @@ function EnvioArquivos({ idProjeto }) {
     const [anexos, setAnexos] = useState([]);
     const [mensagens, setMensagens] = useState([]);
     const [enviando, setEnviando] = useState(false);
-    const refModelo = useRef(null);
-    const refImagem = useRef(null);
 
     useEffect(() => {
         api(`/projeto/${idProjeto}`).then((p) => setAnexos(p.anexos));
@@ -51,18 +49,8 @@ function EnvioArquivos({ idProjeto }) {
             </div>
 
             <div className="formulario-grade">
-                <label className="area-envio">
-                    <FileBox size={28} aria-hidden="true" />
-                    <strong>Enviar modelo 3D</strong>
-                    <span>STL ou 3MF</span>
-                    <input ref={refModelo} type="file" accept=".stl,.3mf" multiple className="sr-only" disabled={enviando} onChange={(e) => { enviar("modelo", [...e.target.files]); e.target.value = ""; }} />
-                </label>
-                <label className="area-envio">
-                    <ImageIcon size={28} aria-hidden="true" />
-                    <strong>Enviar imagens</strong>
-                    <span>JPG, PNG ou WebP — os metadados de localização são removidos</span>
-                    <input ref={refImagem} type="file" accept="image/*" multiple className="sr-only" disabled={enviando} onChange={(e) => { enviar("imagem", [...e.target.files]); e.target.value = ""; }} />
-                </label>
+                <AreaEnvio icone={FileBox} titulo="Enviar modelo 3D" ajuda="STL ou 3MF — clique ou arraste" accept=".stl,.3mf" multiple enviando={enviando} aoEscolher={(arquivos) => enviar("modelo", arquivos)} />
+                <AreaEnvio icone={ImageIcon} titulo="Enviar imagens" ajuda="JPG, PNG ou WebP — os metadados de localização são removidos" accept="image/*" multiple enviando={enviando} aoEscolher={(arquivos) => enviar("imagem", arquivos)} />
             </div>
 
             {enviando && <Aviso tom="info"><UploadCloud size={16} aria-hidden="true" /> Enviando e validando arquivos...</Aviso>}
@@ -133,7 +121,7 @@ export default function ProjetoEditor() {
             <CabecalhoPagina sobrelinha="Repositório de projetos" titulo={id ? "Editar projeto" : "Enviar projeto"} descricao="Descreva a peça, escolha a área e a licença. Depois de salvar, envie os modelos STL/3MF e as imagens." />
 
             <div className="pilha" style={{ gap: "var(--esp-6)" }}>
-                <form className="cartao cartao--padding pilha" onSubmit={salvar} noValidate>
+                <form className="cartao cartao--padding pilha formulario-animado" onSubmit={salvar} noValidate>
                     {mensagem && <Aviso tom={mensagem.startsWith("Dados salvos") ? "sucesso" : "perigo"}>{mensagem}</Aviso>}
                     <div className="formulario-grade">
                         <div className="inteiro">

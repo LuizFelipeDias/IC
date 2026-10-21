@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ImagePlus } from "lucide-react";
-import { Aviso, CabecalhoPagina, Campo, errosPorCampo } from "../../components/ui";
+import { AreaEnvio, Aviso, CabecalhoPagina, Campo, errosPorCampo } from "../../components/ui";
 import { api, ApiError } from "../../services/api";
 import { TIPOS_DOACAO } from "../../utils/formatar";
 import "../../styles/pages/economia.css";
@@ -45,7 +45,7 @@ export default function NovaDoacao() {
     return (
         <div className="container" style={{ maxWidth: 860 }}>
             <CabecalhoPagina sobrelinha="Doação de makers" titulo="Doar resíduos de impressão" descricao="Informe o polímero e uma estimativa de peso. Separar por material faz toda a diferença na reciclagem." />
-            <form className="cartao cartao--padding pilha" onSubmit={enviar} noValidate>
+            <form className="cartao cartao--padding pilha formulario-animado" onSubmit={enviar} noValidate>
                 {mensagem && <Aviso tom="perigo">{mensagem}</Aviso>}
                 <div className="formulario-grade">
                     <div className="inteiro">
@@ -81,12 +81,16 @@ export default function NovaDoacao() {
                             <textarea id="descricao" className="entrada" placeholder="Estado do material, se há suportes, etiquetas ou metais misturados..." value={form.descricao} onChange={alterar("descricao")} />
                         </Campo>
                     </div>
-                    <label className="area-envio inteiro">
-                        <ImagePlus size={28} aria-hidden="true" />
-                        <strong>{fotos.length ? `${fotos.length} foto(s) selecionada(s)` : "Adicionar fotos (até 5)"}</strong>
-                        <span>Os metadados de localização das fotos são removidos no envio.</span>
-                        <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => setFotos([...e.target.files].slice(0, 5))} />
-                    </label>
+                    <AreaEnvio
+                        classe="inteiro"
+                        icone={ImagePlus}
+                        titulo={fotos.length ? `${fotos.length} foto(s) selecionada(s)` : "Adicionar fotos (até 5)"}
+                        ajuda="Clique ou arraste. Os metadados de localização das fotos são removidos no envio."
+                        accept="image/*"
+                        multiple
+                        enviando={enviando && fotos.length > 0}
+                        aoEscolher={(arquivos) => setFotos(arquivos.slice(0, 5))}
+                    />
                 </div>
                 <div className="linha linha--entre">
                     <button type="button" className="botao botao--secundario" onClick={() => navigate(-1)}>Cancelar</button>

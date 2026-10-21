@@ -35,6 +35,7 @@ export default function MinhasPublicacoes() {
                 ))}
             </div>
 
+            <div key={aba} className="troca-suave">
             {itens === null && <Carregando />}
             {itens?.length === 0 && <Vazio icone={FileText} titulo="Nada por aqui ainda">Quando você enviar algo, acompanhe a revisão nesta página.</Vazio>}
             {itens?.length > 0 && (
@@ -49,10 +50,10 @@ export default function MinhasPublicacoes() {
                             </tr>
                         </thead>
                         <tbody>
-                            {itens.map((item) => {
+                            {itens.map((item, i) => {
                                 const status = STATUS_PUBLICACAO[item.status];
                                 return (
-                                    <tr key={item.id}>
+                                    <tr key={item.id} className="linha-entra" style={{ "--atraso": `${Math.min(i, 10) * 50}ms` }}>
                                         <td><Link to={`${base}/${item.id}`}><strong>{item.titulo}</strong></Link></td>
                                         <td><Chip tom={status.tom} ponto>{status.rotulo}</Chip></td>
                                         <td className="texto-suave">{item.motivo_rejeicao ?? "—"}</td>
@@ -64,6 +65,7 @@ export default function MinhasPublicacoes() {
                     </table>
                 </div>
             )}
+            </div>
         </div>
     );
 }

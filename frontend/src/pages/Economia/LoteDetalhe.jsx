@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ExternalLink, FileUp } from "lucide-react";
 import QrCode from "../../components/QrCode";
-import { Aviso, CabecalhoPagina, Campo, Carregando, Chip, errosPorCampo } from "../../components/ui";
+import { AreaEnvio, Aviso, CabecalhoPagina, Campo, Carregando, Chip, errosPorCampo } from "../../components/ui";
 import { api, ApiError, baixarAnexo } from "../../services/api";
 import { EVENTOS_LOTE, formatarData, formatarPeso, STATUS_LOTE } from "../../utils/formatar";
 import "../../styles/pages/economia.css";
@@ -18,6 +18,7 @@ export default function LoteDetalhe() {
     const [pdf, setPdf] = useState(null);
     const [erros, setErros] = useState({});
     const [mensagem, setMensagem] = useState(null);
+    const [enviando, setEnviando] = useState(false);
 
     const carregar = () => api(`/lote/${id}`).then(setLote);
     useEffect(() => {
@@ -29,6 +30,7 @@ export default function LoteDetalhe() {
     const executar = async (promessa, sucesso) => {
         setErros({});
         setMensagem(null);
+        setEnviando(true);
         try {
             await promessa;
             setMensagem({ tom: "sucesso", texto: sucesso });
@@ -36,6 +38,8 @@ export default function LoteDetalhe() {
         } catch (e) {
             if (e instanceof ApiError && e.status === 422) setErros(errosPorCampo(e));
             setMensagem({ tom: "perigo", texto: e.message });
+        } finally {
+            setEnviando(false);
         }
     };
 
@@ -60,11 +64,11 @@ export default function LoteDetalhe() {
 
             <div className="dupla" style={{ marginTop: 0 }}>
                 <div className="pilha" style={{ gap: "var(--esp-6)" }}>
-                    <section className="cartao cartao--padding">
+                    <section className="cartao cartao--padding" data-revelar>
                         <h2 style={{ fontSize: "var(--texto-xl)", marginBottom: "var(--esp-6)" }}>Linha do tempo</h2>
                         <ol className="linha-tempo">
-                            {lote.eventos.map((e) => (
-                                <li className="linha-tempo__item" key={e.id}>
+                            {lote.eventos.map((e, i) => (
+                                <li className={`linha-tempo__item ${i === lote.eventos.length - 1 ? "linha-tempo__item--atual" : ""}`} key={e.id}>
                                     <strong>{EVENTOS_LOTE[e.tipo]}</strong>
                                     <div className="texto-suave" style={{ fontSize: "var(--texto-sm)" }}>{e.descricao} · {formatarData(e.ocorrido_em)}</div>
                                 </li>
@@ -81,7 +85,7 @@ export default function LoteDetalhe() {
                         </form>
                     </section>
 
-                    <section className="cartao cartao--padding">
+                    <section className="cartao cartao--padding" data-revelar style={{ "--atraso": "120ms" }}>
                         <h2 style={{ fontSize: "var(--texto-xl)", marginBottom: "var(--esp-4)" }}>Produção</h2>
                         <div className="linha">
                             <label className="sr-only" htmlFor="peso-saida">Peso de filamento produzido (g)</label>
@@ -95,7 +99,7 @@ export default function LoteDetalhe() {
                 </div>
 
                 <div className="pilha" style={{ gap: "var(--esp-6)" }}>
-                    <section className="cartao cartao--padding linha" style={{ alignItems: "center" }}>
+                    <section className="cartao cartao--padding linha etiqueta-qr" style={{ alignItems: "center" }} data-revelar="escala">
                         <QrCode codigo={lote.codigo} tamanho={128} />
                         <div style={{ flex: 1 }}>
                             <strong>Etiqueta do carretel</strong>
@@ -103,8 +107,8 @@ export default function LoteDetalhe() {
                         </div>
                     </section>
 
-                    {lote.laudos.map((l) => (
-                        <section className="cartao cartao--padding" key={l.id}>
+                    {lote.laudos.map((l, i) => (
+                        <section className="cartao cartao--padding eleva" key={l.id} data-revelar style={{ "--atraso": `${i * 80}ms` }}>
                             <div className="linha linha--entre">
                                 <strong>Laudo · {formatarData(l.emitido_em)}</strong>
                                 <Chip tom={l.resultado === "reprovado" ? "perigo" : "sucesso"} ponto>{l.resultado.replace("_", " ")}</Chip>
@@ -115,7 +119,7 @@ export default function LoteDetalhe() {
                     ))}
 
                     {lote.status !== "distribuido" && (
-                        <form className="cartao cartao--padding pilha" onSubmit={emitirLaudo} noValidate>
+                        <form className="cartao cartao--padding pilha" onSubmit={emitirLaudo} noValidate data-revelar style={{ "--atraso": "160ms" }}>
                             <h2 style={{ fontSize: "var(--texto-xl)" }}>Emitir laudo de qualidade</h2>
                             <div className="formulario-grade">
                                 <Campo id="resultado" rotulo="Resultado" erro={erros.resultado}>
@@ -131,14 +135,16 @@ export default function LoteDetalhe() {
                                     </Campo>
                                 ))}
                             </div>
-                            <label className="area-envio">
-                                <FileUp size={24} aria-hidden="true" />
-                                <strong>{pdf ? pdf.name : "Anexar laudo em PDF"}</strong>
-                                <span>Até 10 MB, sem scripts. O PDF fica público na página de rastreio.</span>
-                                <input type="file" accept="application/pdf" className="sr-only" onChange={(e) => setPdf(e.target.files[0] ?? null)} />
-                            </label>
+                            <AreaEnvio
+                                icone={FileUp}
+                                titulo={pdf ? pdf.name : "Anexar laudo em PDF"}
+                                ajuda="Clique ou arraste. Até 10 MB, sem scripts. O PDF fica público na página de rastreio."
+                                accept="application/pdf"
+                                enviando={enviando && Boolean(pdf)}
+                                aoEscolher={setPdf}
+                            />
                             {erros.arquivo && <span className="campo__erro">{erros.arquivo}</span>}
-                            <button type="submit" className="botao" disabled={!pdf}>Emitir laudo</button>
+                            <button type="submit" className="botao" disabled={!pdf || enviando}>{enviando ? "Emitindo..." : "Emitir laudo"}</button>
                         </form>
                     )}
                 </div>

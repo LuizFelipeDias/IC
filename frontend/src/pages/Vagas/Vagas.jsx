@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Briefcase, Building2, CalendarDays, MapPin, Plus, Search, Trash2, Users } from "lucide-react";
+import Carrossel from "../../components/Carrossel";
 import { Aviso, CabecalhoPagina, Carregando, Chip, Vazio } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { api, lista } from "../../services/api";
@@ -56,7 +57,7 @@ function VisaoCandidato({ pode }) {
 
     return (
         <>
-            <div className="barra-ferramentas linha" style={{ margin: "0 0 var(--esp-6)" }}>
+            <div className="barra-ferramentas linha" style={{ margin: "0 0 var(--esp-6)" }} data-revelar="fade">
                 <label className="busca-grande" style={{ margin: 0, flex: 1, boxShadow: "none", padding: "4px 16px" }}>
                     <Search size={16} aria-hidden="true" />
                     <span className="sr-only">Buscar vagas</span>
@@ -75,8 +76,9 @@ function VisaoCandidato({ pode }) {
             ) : (
                 <div className="vagas">
                     <div className="vagas__lista">
-                        {filtradas.map((vaga) => (
-                            <button key={vaga.id} type="button" className="vaga-item" aria-pressed={vaga.id === atual.id} onClick={() => { setSelecionada(vaga.id); setMensagem(null); }}>
+                        {filtradas.map((vaga, i) => (
+                            <div key={vaga.id} data-revelar style={{ "--atraso": `${Math.min(i, 8) * 70}ms` }}>
+                            <button type="button" className="vaga-item" aria-pressed={vaga.id === atual.id} onClick={() => { setSelecionada(vaga.id); setMensagem(null); }}>
                                 <div className="linha linha--entre">
                                     <span className="sobrelinha">{vaga.tema ?? "Vaga"}</span>
                                     {minhas.has(vaga.id) && <Chip tom={STATUS_CANDIDATURA[minhas.get(vaga.id).status]} ponto>{minhas.get(vaga.id).status}</Chip>}
@@ -88,10 +90,11 @@ function VisaoCandidato({ pode }) {
                                     <span><CalendarDays size={13} aria-hidden="true" /> {tempoRelativo(vaga.data_publicacao)}</span>
                                 </div>
                             </button>
+                            </div>
                         ))}
                     </div>
 
-                    <article className="cartao vaga-detalhe" aria-live="polite">
+                    <article key={atual.id} className="cartao vaga-detalhe troca-suave" aria-live="polite">
                         <span className="sobrelinha">{atual.tema ?? "Vaga"}</span>
                         <h2>{atual.titulo}</h2>
                         <div className="vaga-item__meta" style={{ marginTop: "var(--esp-3)" }}>
@@ -138,8 +141,8 @@ function Candidatos({ vaga }) {
 
     return (
         <ul className="pilha">
-            {candidatos.map((c) => (
-                <li key={c.id} className="linha linha--entre" style={{ paddingBottom: "var(--esp-3)", borderBottom: "1px solid var(--cor-borda)" }}>
+            {candidatos.map((c, i) => (
+                <li key={c.id} className="linha linha--entre candidato-linha" style={{ "--atraso": `${i * 60}ms` }}>
                     <span className="linha">
                         <span className="avatar">{iniciais(c.usuario?.nome)}</span>
                         <span>
@@ -167,9 +170,9 @@ function BancoCurriculos() {
     if (curriculos.length === 0) return <Vazio icone={Users} titulo="Nenhum currículo cadastrado" />;
 
     return (
-        <div className="grade-curriculos">
+        <Carrossel rotulo="Banco de currículos" automatico={7000} classe="carrossel-curriculos">
             {curriculos.map((c) => (
-                <article key={c.id} className="cartao curriculo-cartao">
+                <article key={c.id} className="cartao curriculo-cartao eleva">
                     <div className="linha">
                         <span className="avatar avatar--grande">{iniciais(c.usuario?.nome)}</span>
                         <div>
@@ -185,7 +188,7 @@ function BancoCurriculos() {
                     )}
                 </article>
             ))}
-        </div>
+        </Carrossel>
     );
 }
 
@@ -215,6 +218,7 @@ function VisaoContratante() {
                 ))}
             </div>
 
+            <div key={aba} className="troca-suave">
             {aba === "curriculos" && <BancoCurriculos />}
             {aba === "todas" && <VisaoCandidato pode={NINGUEM_PODE} />}
             {aba === "vagas" && vagas === null && <Carregando />}
@@ -229,8 +233,8 @@ function VisaoContratante() {
                                 <tr><th>Vaga</th><th>Candidatos</th><th>Publicada</th><th /></tr>
                             </thead>
                             <tbody>
-                                {vagas.map((vaga) => (
-                                    <tr key={vaga.id} aria-selected={vaga.id === atual?.id} onClick={() => setSelecionada(vaga.id)} style={{ cursor: "pointer" }}>
+                                {vagas.map((vaga, i) => (
+                                    <tr key={vaga.id} className="linha-entra" aria-selected={vaga.id === atual?.id} onClick={() => setSelecionada(vaga.id)} style={{ cursor: "pointer", "--atraso": `${i * 60}ms` }}>
                                         <td><strong>{vaga.titulo}</strong><br /><span className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>{vaga.tema}</span></td>
                                         <td><Chip tom="primaria">{vaga.candidaturas_count ?? 0}</Chip></td>
                                         <td className="texto-suave">{formatarDia(vaga.data_publicacao?.slice(0, 10))}</td>
@@ -245,7 +249,7 @@ function VisaoContratante() {
                         </table>
                     </div>
                     {atual && (
-                        <section className="cartao vaga-detalhe" aria-label="Candidatos">
+                        <section key={atual.id} className="cartao vaga-detalhe troca-suave" aria-label="Candidatos">
                             <span className="sobrelinha">Candidatos</span>
                             <h2 style={{ marginBottom: "var(--esp-6)" }}>{atual.titulo}</h2>
                             <Candidatos vaga={atual} />
@@ -253,6 +257,7 @@ function VisaoContratante() {
                     )}
                 </div>
             )}
+            </div>
         </>
     );
 }

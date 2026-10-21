@@ -401,3 +401,155 @@
         font-size: 32px;
     }
 }
+
+/* ---------- Movimento (micro-interações, sem alterar o layout do Figma) ---------- */
+.registro__ilustracao--direita {
+    animation: ilustracao-entra 1s var(--curva-suave) 150ms both;
+}
+
+@keyframes ilustracao-entra {
+    from {
+        opacity: 0;
+        transform: translate3d(60px, 0, 0);
+    }
+}
+
+/* Itens da coluna entram em sequência */
+.registro__coluna > *,
+.registro__form > * {
+    animation: surgir 560ms var(--curva-suave) both;
+}
+
+.registro__coluna > :nth-child(2),
+.registro__form > :nth-child(2) { animation-delay: 70ms; }
+.registro__coluna > :nth-child(3),
+.registro__form > :nth-child(3) { animation-delay: 140ms; }
+.registro__coluna > :nth-child(4),
+.registro__form > :nth-child(4) { animation-delay: 210ms; }
+.registro__coluna > :nth-child(5),
+.registro__form > :nth-child(5) { animation-delay: 280ms; }
+.registro__coluna > :nth-child(n + 6),
+.registro__form > :nth-child(n + 6) { animation-delay: 350ms; }
+
+.registro .entrada {
+    transition:
+        border-color 220ms var(--curva-suave),
+        box-shadow 280ms var(--curva-suave),
+        transform 280ms var(--curva-suave);
+}
+
+.registro .entrada:focus {
+    transform: translateY(-1px);
+}
+
+.registro__principal,
+.registro__contorno,
+.registro__botao-topo {
+    transition:
+        background 220ms var(--curva-suave),
+        transform 320ms var(--curva-mola),
+        box-shadow 320ms var(--curva-suave);
+}
+
+.registro__principal:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px -14px rgba(71, 65, 254, 0.75);
+}
+
+.registro__principal:active:not(:disabled),
+.registro__contorno:active,
+.tipo-perfil button:active {
+    transform: scale(0.98);
+}
+
+.registro__contorno:hover {
+    transform: translateY(-2px);
+}
+
+.registro__contorno svg {
+    transition: transform 420ms var(--curva-mola);
+}
+
+.registro__contorno:hover svg {
+    transform: rotate(-12deg) scale(1.15);
+}
+
+.registro__botao-topo:hover {
+    transform: translateY(-1px);
+}
+
+.registro__link {
+    background: linear-gradient(var(--reg-roxo), var(--reg-roxo)) 0 100% / 0 2px no-repeat;
+    transition:
+        color 220ms var(--curva-suave),
+        background-size 320ms var(--curva-suave);
+}
+
+.registro__link:hover {
+    background-size: 100% 2px;
+}
+
+.registro__textos a {
+    background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+    transition: background-size 320ms var(--curva-suave);
+}
+
+.registro__textos a:hover {
+    text-decoration: none;
+    background-size: 100% 1px;
+}
+
+/* Troca do tipo de conta */
+.tipo-perfil button {
+    transition:
+        background 260ms var(--curva-suave),
+        color 260ms var(--curva-suave),
+        transform 320ms var(--curva-mola),
+        box-shadow 260ms var(--curva-suave);
+}
+
+.tipo-perfil button:hover:not([aria-checked="true"]) {
+    transform: translateY(-2px);
+    box-shadow: 4px 4px 0 #000;
+}
+
+.tipo-perfil button svg {
+    transition: transform 420ms var(--curva-mola), color 260ms var(--curva-suave);
+}
+
+.tipo-perfil button[aria-checked="true"] svg {
+    transform: scale(1.2) rotate(-8deg);
+}
+
+.registro__ajuda-tipo {
+    animation: surgir 360ms var(--curva-suave) both;
+}
+
+/* Campos que aparecem ao trocar o tipo (CPF ↔ CNPJ, INEP) */
+.registro__form .campo,
+.registro__checagem {
+    animation: surgir 420ms var(--curva-suave) both;
+}
+
+.registro__checagem {
+    transition:
+        background 220ms var(--curva-suave),
+        box-shadow 260ms var(--curva-suave);
+}
+
+.registro__checagem:hover {
+    box-shadow: 4px 4px 0 #000;
+}
+
+.registro__checagem:has(input:checked) {
+    background: rgba(153, 71, 254, 0.08);
+}
+
+.registro__demo {
+    transition: border-color 260ms var(--curva-suave), background 260ms var(--curva-suave);
+}
+
+.registro__demo:hover {
+    border-color: var(--reg-roxo);
+    background: rgba(153, 71, 254, 0.04);
+}

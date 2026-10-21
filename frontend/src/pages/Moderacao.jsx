@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2, FileSearch, Flag, ShieldCheck } from "lucide-react";
 import { BotoesModeracao } from "../components/Curadoria";
-import { Aviso, CabecalhoPagina, Campo, Carregando, Chip, Dialogo, Vazio } from "../components/ui";
+import { Aviso, CabecalhoPagina, Campo, Carregando, Chip, Dialogo, useSaida, Vazio } from "../components/ui";
 import { api, lista } from "../services/api";
 import { formatarData, TIPOS_USUARIO } from "../utils/formatar";
 
@@ -12,6 +12,7 @@ function Instituicoes() {
     const [rejeitando, setRejeitando] = useState(null);
     const [motivo, setMotivo] = useState("");
     const [erro, setErro] = useState("");
+    const [saindo, remover] = useSaida();
 
     const carregar = useCallback(() => api("/moderacao/instituicoes?per_page=100").then((r) => setItens(lista(r))), []);
     useEffect(() => {
@@ -32,8 +33,8 @@ function Instituicoes() {
         setErro("");
         try {
             await api(`/moderacao/instituicoes/${id}/verificacao`, { method: "POST", body: { decisao, motivo: justificativa } });
-            setItens((atual) => atual.filter((i) => i.id !== id));
             setRejeitando(null);
+            remover(id, () => setItens((atual) => atual.filter((i) => i.id !== id)));
             setMotivo("");
         } catch (e) {
             setErro(e.message);
@@ -46,10 +47,10 @@ function Instituicoes() {
     return (
         <div className="pilha">
             {erro && <Aviso tom="perigo">{erro}</Aviso>}
-            {itens.map((inst) => {
+            {itens.map((inst, i) => {
                 const consulta = consultas[inst.id];
                 return (
-                    <article key={inst.id} className="cartao cartao--padding pilha">
+                    <article key={inst.id} className={`cartao cartao--padding pilha linha-entra ${saindo.has(inst.id) ? "item-saindo" : ""}`} style={{ "--atraso": `${Math.min(i, 8) * 70}ms` }}>
                         <div className="linha linha--entre">
                             <div className="linha">
                                 <span className="avatar avatar--grande"><Building2 size={18} aria-hidden="true" /></span>
@@ -98,6 +99,7 @@ function Instituicoes() {
 
 function Publicacoes() {
     const [itens, setItens] = useState(null);
+    const [saindo, remover] = useSaida();
 
     useEffect(() => {
         Promise.all([api("/noticia?status=em_revisao&per_page=100"), api("/projeto?status=em_revisao&per_page=100")]).then(([n, p]) =>
@@ -113,12 +115,12 @@ function Publicacoes() {
             <table className="tabela">
                 <thead><tr><th>Publicação</th><th>Tipo</th><th>Autor</th><th>Decisão</th></tr></thead>
                 <tbody>
-                    {itens.map((item) => (
-                        <tr key={`${item.recurso}-${item.id}`}>
+                    {itens.map((item, i) => (
+                        <tr key={`${item.recurso}-${item.id}`} className={`linha-entra ${saindo.has(`${item.recurso}-${item.id}`) ? "item-saindo" : ""}`} style={{ "--atraso": `${Math.min(i, 10) * 50}ms` }}>
                             <td><Link to={`/${item.recurso === "noticia" ? "noticias" : "projetos"}/${item.id}`}><strong>{item.titulo}</strong></Link></td>
                             <td><Chip>{item.recurso === "noticia" ? "Notícia" : "Projeto"}</Chip></td>
                             <td>{item.usuario?.nome}</td>
-                            <td><BotoesModeracao recurso={item.recurso} id={item.id} aoDecidir={() => setItens((atual) => atual.filter((i) => !(i.id === item.id && i.recurso === item.recurso)))} /></td>
+                            <td><BotoesModeracao recurso={item.recurso} id={item.id} aoDecidir={() => remover(`${item.recurso}-${item.id}`, () => setItens((atual) => atual.filter((i) => !(i.id === item.id && i.recurso === item.recurso))))} /></td>
                         </tr>
                     ))}
                 </tbody>
@@ -131,6 +133,7 @@ const MOTIVOS = { peca_perigosa: "Peça perigosa", licenca_violada: "Licença vi
 
 function Denuncias() {
     const [itens, setItens] = useState(null);
+    const [saindo, remover] = useSaida();
 
     useEffect(() => {
         api("/denuncia?per_page=100").then((r) => setItens(lista(r)));
@@ -138,7 +141,7 @@ function Denuncias() {
 
     const resolver = async (denuncia, procedente) => {
         await api(`/denuncia/${denuncia.id}/resolver`, { method: "POST", body: { procedente } });
-        setItens((atual) => atual.filter((d) => d.id !== denuncia.id));
+        remover(denuncia.id, () => setItens((atual) => atual.filter((d) => d.id !== denuncia.id)));
     };
 
     if (itens === null) return <Carregando />;
@@ -149,8 +152,8 @@ function Denuncias() {
             <table className="tabela">
                 <thead><tr><th>Conteúdo</th><th>Motivo</th><th>Denunciante</th><th>Decisão</th></tr></thead>
                 <tbody>
-                    {itens.map((d) => (
-                        <tr key={d.id}>
+                    {itens.map((d, i) => (
+                        <tr key={d.id} className={`linha-entra ${saindo.has(d.id) ? "item-saindo" : ""}`} style={{ "--atraso": `${Math.min(i, 10) * 50}ms` }}>
                             <td>
                                 <Link to={`/${d.denunciavel_type === "noticia" ? "noticias" : "projetos"}/${d.denunciavel_id}`}><strong>{d.denunciavel?.titulo ?? "Conteúdo removido"}</strong></Link>
                                 {d.descricao && <div className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>“{d.descricao}”</div>}
@@ -180,9 +183,11 @@ export default function Moderacao() {
                     <button key={valor} type="button" role="tab" aria-selected={aba === valor} onClick={() => setAba(valor)}>{rotulo}</button>
                 ))}
             </div>
-            {aba === "instituicoes" && <Instituicoes />}
-            {aba === "publicacoes" && <Publicacoes />}
-            {aba === "denuncias" && <Denuncias />}
+            <div key={aba} className="troca-suave">
+                {aba === "instituicoes" && <Instituicoes />}
+                {aba === "publicacoes" && <Publicacoes />}
+                {aba === "denuncias" && <Denuncias />}
+            </div>
         </div>
     );
 }
