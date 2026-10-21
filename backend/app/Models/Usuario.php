@@ -89,7 +89,7 @@ class Usuario extends Authenticatable
         $laboratorio = $this->tipo_usuario === TipoUsuario::Laboratorio;
 
         return match ($perfil) {
-            Perfil::Solicitante => $verificada && in_array($this->tipo_usuario, [TipoUsuario::Escola, TipoUsuario::Empresa], true),
+            Perfil::Solicitante => $verificada && in_array($this->tipo_usuario, [TipoUsuario::Escola, TipoUsuario::Empresa, TipoUsuario::Estabelecimento], true),
             Perfil::Prestador => ($verificada && $laboratorio) || ($this->ehPessoaFisica() && $this->prestador_servico),
             Perfil::Contratante => $verificada,
             Perfil::Candidato => $this->ehPessoaFisica(),
@@ -140,6 +140,18 @@ class Usuario extends Authenticatable
     public function projetos(): HasMany
     {
         return $this->hasMany(Projeto::class, 'id_usuario');
+    }
+
+    /** Chamados que a conta atende como prestadora (maker ou laboratório). */
+    public function chamadosAtendidos(): HasMany
+    {
+        return $this->hasMany(Chamado::class, 'id_prestador');
+    }
+
+    /** Lotes de filamento produzidos (laboratórios). */
+    public function lotes(): HasMany
+    {
+        return $this->hasMany(LoteFilamento::class, 'id_laboratorio');
     }
 
     public function chamados(): HasMany

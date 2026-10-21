@@ -40,6 +40,7 @@ class DatabaseSeeder extends Seeder
         $laboratorio = Usuario::factory()->laboratorio()->create(['nome' => 'Laboratório de Polímeros da UEPG', 'email' => 'laboratorio@ecohub3d.test']);
         $moderador = Usuario::factory()->moderador()->create(['nome' => 'Equipe de Curadoria EcoHub', 'email' => 'moderador@ecohub3d.test']);
         Usuario::factory()->empresa()->pendente()->create(['nome' => 'Filamentos Verdes Ltda.', 'email' => 'pendente@ecohub3d.test']);
+        Usuario::factory()->estabelecimento()->create(['nome' => 'Oficina Mecânica Vila Estrela', 'email' => 'estabelecimento@ecohub3d.test']);
 
         $this->vagas($empresa, $laboratorio, $estudante);
         $this->noticias($laboratorio, $empresa, $moderador);

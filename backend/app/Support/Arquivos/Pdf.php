@@ -16,7 +16,10 @@ final class Pdf
 
     public static function validar(string $caminho): void
     {
-        $arquivo = fopen($caminho, 'rb');
+        $arquivo = is_readable($caminho) ? fopen($caminho, 'rb') : false;
+        if ($arquivo === false) {
+            throw new ArquivoInvalido('Não foi possível ler o arquivo enviado.');
+        }
         $inicio = fread($arquivo, 1024);
         fclose($arquivo);
 

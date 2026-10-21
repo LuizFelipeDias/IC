@@ -8,6 +8,7 @@ use App\Http\Controllers\ColetaController;
 use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\DenunciaController;
 use App\Http\Controllers\DoacaoController;
+use App\Http\Controllers\InstituicaoController;
 use App\Http\Controllers\LoteController;
 use App\Http\Controllers\NoticiaController;
 use App\Http\Controllers\PolimeroController;
@@ -56,6 +57,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::match(['put', 'patch'], '/usuario/me', [UsuarioController::class, 'update']);
     Route::delete('/usuario/me', [UsuarioController::class, 'destroy']);
     Route::get('/usuario/{usuario}', [UsuarioController::class, 'show']);
+
+    // Diretório de instituições verificadas (empresas, escolas, laboratórios, estabelecimentos).
+    Route::get('/instituicoes', [InstituicaoController::class, 'index']);
+    Route::get('/instituicoes/{instituicao}', [InstituicaoController::class, 'show'])->whereNumber('instituicao');
 
     // Vagas: só quem contrata (CNPJ/instituição) publica; só pessoa física se candidata.
     // Os triggers do banco repetem essas duas regras como última barreira.

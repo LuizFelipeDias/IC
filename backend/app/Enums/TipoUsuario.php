@@ -8,6 +8,7 @@ enum TipoUsuario: string
     case Empresa = 'empresa';
     case Escola = 'escola';
     case Laboratorio = 'laboratorio';
+    case Estabelecimento = 'estabelecimento';
 
     public function ehPessoaJuridica(): bool
     {
@@ -21,6 +22,7 @@ enum TipoUsuario: string
             self::Empresa => 'Empresa',
             self::Escola => 'Escola',
             self::Laboratorio => 'Laboratório',
+            self::Estabelecimento => 'Estabelecimento',
         };
     }
 }

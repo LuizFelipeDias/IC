@@ -51,6 +51,12 @@ class UsuarioFactory extends Factory
         return $this->pessoaJuridica(TipoUsuario::Empresa);
     }
 
+    /** Estabelecimento comercial (loja, oficina, clínica) com CNPJ. */
+    public function estabelecimento(): static
+    {
+        return $this->pessoaJuridica(TipoUsuario::Estabelecimento);
+    }
+
     public function escola(): static
     {
         return $this->pessoaJuridica(TipoUsuario::Escola)
