@@ -10,6 +10,8 @@ import Login from "./pages/Login";
 const CadastroUsuario = lazy(() => import("./pages/Cadastro/CadastroUsuario"));
 const Home = lazy(() => import("./pages/Home"));
 const Chamados = lazy(() => import("./pages/Chamados"));
+const NovoChamado = lazy(() => import("./pages/Chamados/NovoChamado"));
+const Instituicoes = lazy(() => import("./pages/Instituicoes"));
 const Vagas = lazy(() => import("./pages/Vagas/Vagas"));
 const VagaEditor = lazy(() => import("./pages/Vagas/VagaEditor"));
 const Curriculo = lazy(() => import("./pages/Vagas/Curriculo"));
@@ -62,6 +64,9 @@ function App() {
                             <Route path="/ranking" element={<Ranking />} />
 
                             <Route path="/chamados" element={comPerfil(["solicitante", "prestador", "moderador"], <Chamados />)} />
+                            <Route path="/chamados/novo" element={comPerfil(["solicitante"], <NovoChamado />)} />
+
+                            <Route path="/instituicoes" element={<Instituicoes />} />
 
                             <Route path="/vagas" element={<Vagas />} />
                             <Route path="/vagas/nova" element={comPerfil(["contratante"], <VagaEditor />)} />

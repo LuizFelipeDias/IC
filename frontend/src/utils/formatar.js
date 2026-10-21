@@ -42,6 +42,7 @@ export const TIPOS_USUARIO = {
     empresa: "Empresa",
     escola: "Escola",
     laboratorio: "Laboratório",
+    estabelecimento: "Estabelecimento",
 };
 
 export const AREAS_PROJETO = {

@@ -509,3 +509,374 @@
         justify-content: flex-start;
     }
 }
+
+/* ==========================================================================
+   Doações no visual "Browse templates" (Website Templates — Squarespace).
+   Usa as peças sq- de chamados.css; aqui só a grade de cartões de template,
+   a faixa de polímeros e a lista de coletas.
+   ========================================================================== */
+
+.dc .sq-topo {
+    padding-bottom: 50px;
+}
+
+.dc-busca-rotulo {
+    margin-top: 16px;
+}
+
+/* Faixa de polímeros: sem gradiente, com a moldura do template */
+.dc-polimeros {
+    padding-bottom: 50px;
+}
+
+.dc-polimeros__topo {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.dc-polimeros__dica {
+    font-size: 14px;
+    color: var(--sq-cinza);
+}
+
+.dc .carrossel-polimeros {
+    color: var(--sq-preto);
+}
+
+.dc .polimero-cartao {
+    border: 1px solid var(--sq-platina);
+    border-radius: 0;
+    font-family: var(--sq-fonte);
+}
+
+.dc .polimero-cartao::after {
+    background: radial-gradient(closest-side, rgba(0, 0, 0, 0.06), transparent);
+}
+
+.dc .polimero-cartao:hover {
+    border-color: var(--sq-preto);
+    box-shadow: var(--sq-sombra);
+}
+
+.dc .polimero-cartao[aria-pressed="true"] {
+    border-color: var(--sq-preto);
+    background: var(--sq-preto);
+    box-shadow: none;
+    color: #fff;
+}
+
+.dc .polimero-cartao__sigla {
+    font-family: var(--sq-fonte);
+    font-size: 50px;
+    line-height: 50px;
+    letter-spacing: 0;
+    color: inherit;
+}
+
+.dc .polimero-cartao__nome {
+    font-weight: 400;
+}
+
+.dc .polimero-cartao[aria-pressed="true"] .polimero-cartao__dados {
+    color: var(--sq-cinza-claro);
+}
+
+.dc-resultados {
+    padding-bottom: 30px;
+}
+
+.dc-resultados .sq-link[aria-pressed="true"] {
+    font-weight: 700;
+}
+
+.dc-conteudo {
+    padding-top: 20px;
+    padding-bottom: 99px;
+}
+
+.dc-aviso {
+    margin-bottom: 30px;
+}
+
+/* Grade de cartões: "imagem" + legenda com ícone, como os templates */
+.dc-grade {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 50px 20px;
+}
+
+.dc-cartao {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.dc-cartao__capa {
+    position: relative;
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border: 1px solid var(--sq-platina);
+    background: var(--sq-fundo);
+    box-shadow: var(--sq-sombra);
+    transition: transform 0.45s var(--curva-suave), box-shadow 0.45s var(--curva-suave);
+}
+
+.dc-cartao:hover .dc-cartao__capa {
+    transform: translateY(-6px);
+    box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.1), 0 28px 64px -8px rgba(0, 0, 0, 0.22);
+}
+
+.dc-cartao__capa img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dc-cartao__sigla {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: 64px;
+    font-weight: 700;
+    line-height: 64px;
+    transition: transform 0.6s var(--curva-mola);
+}
+
+.dc-cartao:hover .dc-cartao__sigla {
+    transform: scale(1.06) rotate(-3deg);
+}
+
+.dc-cartao__peso,
+.dc-cartao__situacao {
+    position: absolute;
+    top: 16px;
+}
+
+.dc-cartao__peso {
+    left: 16px;
+    padding: 6px 10px;
+    background: var(--sq-preto);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.dc-cartao__situacao {
+    right: 16px;
+}
+
+.dc-cartao__legenda {
+    gap: 16px;
+}
+
+.dc-cartao__legenda h3 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--sq-fonte);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 22.4px;
+    letter-spacing: -0.16px;
+    text-transform: uppercase;
+}
+
+.dc-cartao__ficha {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+    margin: 10px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--sq-platina);
+}
+
+.dc-cartao__ficha dt {
+    font-size: 11px;
+    line-height: 16px;
+    letter-spacing: 0.75px;
+    color: var(--sq-cinza);
+}
+
+.dc-cartao__ficha dd {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 2px 0 0;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.dc-cartao__acao {
+    margin-top: 12px;
+}
+
+.dc-cartao__acao .sq-botao {
+    gap: 8px;
+}
+
+.dc-cartao--esqueleto {
+    gap: 12px;
+}
+
+.dc-cartao--esqueleto .dc-cartao__capa {
+    border: 0;
+    box-shadow: none;
+}
+
+.dc-botao-vazio {
+    width: auto;
+}
+
+/* Lista de coletas: linhas do painel de chamados */
+.dc-coletas {
+    overflow: hidden;
+}
+
+.dc-coleta {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    padding: 20px;
+    font-family: var(--sq-fonte);
+}
+
+.dc-coleta + .dc-coleta {
+    border-top-color: var(--sq-platina);
+}
+
+.dc-coleta::before {
+    inset: 0 auto 0 0;
+    border-radius: 0;
+}
+
+.dc-coleta__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    font-size: 14px;
+    color: var(--sq-cinza);
+}
+
+.dc-coleta__texto strong {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 22.4px;
+    color: var(--sq-preto);
+}
+
+.dc-coleta__obs {
+    font-style: italic;
+}
+
+.dc-coleta__acoes {
+    align-items: center;
+}
+
+.dc-botao.sq-botao {
+    width: auto;
+    padding: 12px 18px;
+    font-size: 14px;
+}
+
+.dc-entrada.rg-entrada {
+    width: 220px;
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.dc-entrada--peso.rg-entrada {
+    width: 140px;
+}
+
+/* Diálogo de solicitar coleta */
+.dc-dialogo {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    padding: 0 !important;
+}
+
+.dc-dialogo__topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dc-dialogo h2 {
+    margin: 0;
+    font-family: var(--sq-fonte);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 32px;
+}
+
+.dc-dialogo__resumo {
+    margin: -8px 0 0;
+    font-size: 14px;
+    color: var(--sq-cinza);
+}
+
+.dialogo:has(.dc-dialogo) {
+    border-radius: 0;
+}
+
+@media (max-width: 1100px) {
+    .dc-grade {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .dc-coleta {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .dc-coleta__acoes {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 560px) {
+    .dc-grade {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .dc-cartao__sigla {
+        font-size: 50px;
+        line-height: 50px;
+    }
+
+    .dc-entrada.rg-entrada,
+    .dc-entrada--peso.rg-entrada {
+        width: 100%;
+    }
+
+    .dc-coleta__acoes .dc-botao.sq-botao {
+        flex: 1 1 auto;
+    }
+
+    .dc-dialogo h2 {
+        font-size: 24px;
+        line-height: 28px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dc-cartao:hover .dc-cartao__capa,
+    .dc-cartao:hover .dc-cartao__sigla {
+        transform: none;
+    }
+}

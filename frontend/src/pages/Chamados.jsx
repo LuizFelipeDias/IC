@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { ArrowRight, Check, ClipboardList, Inbox, MapPin, Search } from "lucide-react";
-import { Aviso, Campo, Chip, Dialogo, errosPorCampo, Vazio } from "../components/ui";
+import { Aviso, Chip, Vazio } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
-import { api, ApiError, lista } from "../services/api";
+import { api, lista } from "../services/api";
 import { formatarData, formatarDia, STATUS_CHAMADO } from "../utils/formatar";
 import "../styles/pages/chamados.css";
 
@@ -20,7 +21,6 @@ import "../styles/pages/chamados.css";
  * ================================================================== */
 
 const ETAPAS = ["Aberto", "Em Atendimento", "Resolvido"];
-const FORM_VAZIO = { titulo: "", tipo_servico: "", data_limite: "", cidade: "", uf: "", descricao: "" };
 
 function Etapas({ status }) {
     if (status === "Cancelado") return <Chip tom="perigo" ponto>Cancelado pelo solicitante</Chip>;
@@ -36,73 +36,6 @@ function Etapas({ status }) {
     );
 }
 
-function NovoChamado({ opcoes, aberto, aoFechar, aoCriar }) {
-    const [form, setForm] = useState(FORM_VAZIO);
-    const [erros, setErros] = useState({});
-    const [mensagem, setMensagem] = useState("");
-    const [enviando, setEnviando] = useState(false);
-    const alterar = (campo) => (e) => setForm((atual) => ({ ...atual, [campo]: e.target.value }));
-
-    const enviar = async (evento) => {
-        evento.preventDefault();
-        setEnviando(true);
-        setErros({});
-        setMensagem("");
-        try {
-            const criado = await api("/chamado", { method: "POST", body: form });
-            setForm(FORM_VAZIO);
-            aoCriar(criado);
-        } catch (e) {
-            if (e instanceof ApiError && e.status === 422) setErros(errosPorCampo(e));
-            else setMensagem(e.message);
-        } finally {
-            setEnviando(false);
-        }
-    };
-
-    return (
-        <Dialogo aberto={aberto} aoFechar={aoFechar} titulo="Novo chamado">
-            <form className="pilha" onSubmit={enviar} noValidate>
-                <div>
-                    <span className="sobrelinha">Novo chamado</span>
-                    <h2 style={{ marginTop: "var(--esp-2)" }}>Do que sua instituição precisa?</h2>
-                </div>
-                {mensagem && <Aviso tom="perigo">{mensagem}</Aviso>}
-                <div className="formulario-grade">
-                    <div className="inteiro">
-                        <Campo id="titulo" rotulo="Título" erro={erros.titulo}>
-                            <input id="titulo" className="entrada" value={form.titulo} onChange={alterar("titulo")} aria-invalid={Boolean(erros.titulo)} />
-                        </Campo>
-                    </div>
-                    <Campo id="tipo_servico" rotulo="Tipo de serviço" erro={erros.tipo_servico}>
-                        <select id="tipo_servico" className="entrada" value={form.tipo_servico} onChange={alterar("tipo_servico")} aria-invalid={Boolean(erros.tipo_servico)}>
-                            <option value="">Selecione</option>
-                            {opcoes.tipos_servico.map((t) => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
-                        </select>
-                    </Campo>
-                    <Campo id="data_limite" rotulo="Prazo desejado" erro={erros.data_limite}>
-                        <input id="data_limite" type="date" className="entrada" value={form.data_limite} onChange={alterar("data_limite")} aria-invalid={Boolean(erros.data_limite)} />
-                    </Campo>
-                    <Campo id="cidade" rotulo="Cidade" erro={erros.cidade}>
-                        <input id="cidade" className="entrada" value={form.cidade} onChange={alterar("cidade")} />
-                    </Campo>
-                    <Campo id="uf" rotulo="UF" erro={erros.uf}>
-                        <input id="uf" className="entrada" maxLength={2} placeholder="PR" value={form.uf} onChange={alterar("uf")} />
-                    </Campo>
-                    <div className="inteiro">
-                        <Campo id="descricao" rotulo="Descrição" erro={erros.descricao} ajuda="Público atendido, equipamentos disponíveis e o que precisa ser feito.">
-                            <textarea id="descricao" className="entrada" value={form.descricao} onChange={alterar("descricao")} aria-invalid={Boolean(erros.descricao)} />
-                        </Campo>
-                    </div>
-                </div>
-                <div className="linha linha--entre">
-                    <button type="button" className="botao botao--secundario" onClick={aoFechar}>Cancelar</button>
-                    <button type="submit" className="botao" disabled={enviando}>{enviando ? "Enviando..." : "Abrir chamado"}</button>
-                </div>
-            </form>
-        </Dialogo>
-    );
-}
 
 const KPIS = [
     ["Aberto", "Abertos"],
@@ -422,7 +355,6 @@ export default function Chamados() {
     const [status, setStatus] = useState("");
     const [tipo, setTipo] = useState("");
     const [aba, setAba] = useState("todos");
-    const [novoAberto, setNovoAberto] = useState(false);
 
     const carregar = useCallback(async () => {
         try {
@@ -508,9 +440,9 @@ export default function Chamados() {
                     <div className="sq-filtros__acoes">
                         <p className="sq-rotulo">TAXA DE ATENDIMENTO · {chamados ? `${taxa}%` : "—"}</p>
                         {ehSolicitante && (
-                            <button type="button" className="sq-botao" onClick={() => setNovoAberto(true)}>
+                            <Link to="/chamados/novo" className="sq-botao">
                                 NOVO CHAMADO
-                            </button>
+                            </Link>
                         )}
                     </div>
                 </div>
@@ -610,7 +542,7 @@ export default function Chamados() {
                         </p>
                     </div>
                     {ehSolicitante && (
-                        <button type="button" className="sq-botao sq-botao--branco" onClick={() => setNovoAberto(true)}>ABRIR CHAMADO</button>
+                        <Link to="/chamados/novo" className="sq-botao sq-botao--branco">ABRIR CHAMADO</Link>
                     )}
                     {ehPrestador && !ehSolicitante && (
                         <button type="button" className="sq-botao sq-botao--branco" onClick={() => { setAba("disponiveis"); document.getElementById("lista-chamados")?.scrollIntoView({ behavior: "smooth" }); }}>
@@ -633,16 +565,6 @@ export default function Chamados() {
                 </ol>
             </section>
 
-            <NovoChamado
-                opcoes={opcoes}
-                aberto={novoAberto}
-                aoFechar={() => setNovoAberto(false)}
-                aoCriar={(novo) => {
-                    setChamados((itens) => [{ ...novo, usuario }, ...(itens ?? [])]);
-                    setSelecionado(novo.id);
-                    setNovoAberto(false);
-                }}
-            />
         </div>
     );
 }

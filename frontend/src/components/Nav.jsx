@@ -13,6 +13,7 @@ const LINKS = [
     { para: "/projetos", rotulo: "Projetos" },
     { para: "/noticias", rotulo: "Notícias" },
     { para: "/doacoes", rotulo: "Doações" },
+    { para: "/instituicoes", rotulo: "Empresas" },
     { para: "/lotes", rotulo: "Lotes", perfis: ["receptor"] },
     { para: "/moderacao", rotulo: "Moderação", perfis: ["moderador"] },
 ];

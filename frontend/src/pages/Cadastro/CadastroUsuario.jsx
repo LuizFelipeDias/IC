@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, FlaskConical, School, UserRound } from "lucide-react";
+import { Building2, FlaskConical, School, Store, UserRound } from "lucide-react";
 import RegistroLayout from "../../components/RegistroLayout";
 import { Aviso, Campo, errosPorCampo } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
@@ -11,6 +11,7 @@ const TIPOS = [
     { valor: "empresa", rotulo: "Empresa", icone: Building2, ajuda: "Publica vagas e notícias, abre chamados e consulta o banco de currículos." },
     { valor: "escola", rotulo: "Escola", icone: School, ajuda: "Escolas públicas abrem chamados de treinamento, modelagem, scanner 3D e impressão." },
     { valor: "laboratorio", rotulo: "Laboratório", icone: FlaskConical, ajuda: "Recebe resíduos, produz filamento reciclado com laudo, atende chamados e publica vagas." },
+    { valor: "estabelecimento", rotulo: "Estabelecimento", icone: Store, ajuda: "Lojas, oficinas e clínicas com CNPJ: abrem chamados e publicam vagas depois da verificação." },
 ];
 
 const mascaraTelefone = (valor) =>
