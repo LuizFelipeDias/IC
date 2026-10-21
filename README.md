@@ -13,7 +13,7 @@
 [![Figma](https://img.shields.io/badge/Figma-diagramas-F24E1E?style=for-the-badge&logo=figma&logoColor=white)](https://www.figma.com/design/vZYI6VEfTDdlgzbk1mgYis)
 
 ![Status](https://img.shields.io/badge/status-protótipo%20funcional-blue?style=flat-square)
-![Testes](https://img.shields.io/badge/testes-112%20automatizados-success?style=flat-square)
+![Testes](https://img.shields.io/badge/testes-217%20automatizados-success?style=flat-square)
 ![CI](https://img.shields.io/badge/CI-PostgreSQL%20%2B%20SQLite-success?style=flat-square)
 ![Licença](https://img.shields.io/badge/uso-acadêmico-lightgrey?style=flat-square)
 
@@ -96,45 +96,47 @@ Situação em relação ao documento de requisitos (*Adapta One*, out/2026):
 | **2. Receptores e reciclagem** | ✅ | Laboratórios verificados solicitam a coleta; o doador aceita (reservando a doação) ou recusa; a data é combinada e o laboratório conclui com o peso real. Com as coletas concluídas, o laboratório cria **lotes de filamento**, registra a linha do tempo (triturado, extrudado...) e **emite o laudo** com PDF, que aprova ou reprova o lote. |
 | **3. Repositório de projetos** | ✅ | Projetos com área (saúde, educação, agro, acessibilidade), licença Creative Commons e **arquivos STL/3MF validados** (volume e dimensões calculados). Imagens de capa, moderação, denúncias e download por link assinado. |
 | **4. Pedidos de escolas públicas** | ✅ | Escolas e empresas verificadas abrem chamados com tipo de serviço e prazo. Laboratórios e makers escolhem o **local de atendimento** (na escola, no espaço do prestador ou remoto), aceitam e concluem. O contato é liberado só aos envolvidos. |
-| **5. Banco de currículos** e vagas | ✅ | Instituições verificadas publicam vagas e avaliam candidatos; pessoas físicas mantêm currículo e se candidatam; contratantes consultam o banco de currículos. |
+| **5. Banco de currículos** e vagas | ✅ | Instituições verificadas publicam vagas com modalidade, contrato, nível, UF, faixa salarial e habilidades, avaliam candidatos e encerram vagas; pessoas físicas mantêm currículo (especialidades, portfólio, disponibilidade, visibilidade no banco) e se candidatam; contratantes buscam no banco de currículos por especialidade, UF, modalidade e disponibilidade. |
 | **6. Hub de conexão** | ⏳ | Planejado (mural de demandas e ofertas). |
 | Notícias | ✅ | Portal editorial com destaques, temas, reações e comentários; publicação com revisão. |
 | Rastreabilidade por QR Code | ✅ | Página pública `/rastreio/:codigo`: origem agregada, linha do tempo, laudos e o PDF, **sem dados pessoais**. |
 | Controle de qualidade | ✅ | Laudo com diâmetro, tolerância, ovalidade, tração, alongamento, faixa de temperatura e umidade. |
 | Gamificação | ✅ | 50 pontos por chamado concluído, 30 por coleta concluída (laboratório), 15 por doação entregue (doador), 20 por projeto aprovado; selos e ranking. |
+| Diretório de empresas | ✅ | Página de empresas, escolas, laboratórios e estabelecimentos verificados, com filtro por tipo e números de participação na rede. |
 | Curadoria e verificação | ✅ | Moderação de notícias e projetos com histórico, denúncias e **verificação de CNPJ/INEP** com consulta à Receita (BrasilAPI). |
 
 ## 4. Perfis de usuário e permissões
 
-No cadastro, cada usuário escolhe um **tipo**: pessoa física, empresa, escola ou laboratório.
+No cadastro, cada usuário escolhe um **tipo**: pessoa física, empresa, escola, laboratório ou estabelecimento (loja, oficina ou clínica com CNPJ).
 - Pessoas físicas podem se declarar **maker/voluntário**.
-- Empresas, escolas e laboratórios começam **pendentes** até um moderador verificar o CNPJ (e o INEP, no caso das escolas).
+- Empresas, escolas, laboratórios e estabelecimentos começam **pendentes** até um moderador verificar o CNPJ (e o INEP, no caso das escolas).
 - Moderadores têm um **papel administrativo** à parte.
 
 A partir disso, a API calcula os perfis de acesso em um único método, `Usuario::temPerfil()`:
 
 | Perfil | Quem tem | O que libera |
 | :--- | :--- | :--- |
-| `solicitante` | escola ou empresa verificada | abrir e acompanhar chamados |
+| `solicitante` | escola, empresa ou estabelecimento verificados | abrir e acompanhar chamados |
 | `prestador` | laboratório verificado; pessoa física maker | ver chamados abertos, **escolher o local** e aceitar; concluir |
-| `contratante` | empresa, escola ou laboratório verificados | publicar vagas, avaliar candidatos, consultar currículos |
+| `contratante` | empresa, escola, laboratório ou estabelecimento verificados | publicar vagas, avaliar candidatos, consultar currículos |
 | `candidato` | pessoa física | candidatar-se a vagas e manter currículo |
 | `publicador` | instituição verificada ou moderador | publicar notícias (com revisão) |
 | `receptor` | laboratório verificado | solicitar coletas, criar lotes, registrar eventos e emitir laudos |
 | `moderador` | papel moderador ou admin | moderar conteúdo, resolver denúncias, verificar instituições |
 
-| Ação | Pessoa física | Maker | Empresa | Escola | Laboratório | Moderador | Visitante |
-| :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| Abrir chamado | | | ✅ | ✅ | | (vê todos) | |
-| Ver abertos, escolher local e aceitar | | ✅ | | | ✅ | | |
-| Publicar vaga e ver candidatos | | | ✅ | ✅ | ✅ | | |
-| Candidatar-se / manter currículo | ✅ | ✅ | | | | | |
-| Publicar notícia (com revisão) | | | ✅ | ✅ | ✅ | ✅ (direto) | |
-| Enviar projeto 3D (com revisão) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| Doar resíduo | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| Solicitar coleta, criar lote, emitir laudo | | | | | ✅ | | |
-| Moderar e verificar instituições | | | | | | ✅ | |
-| Ler conteúdo publicado, rastreio e ranking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (rastreio) |
+| Ação | Pessoa física | Maker | Empresa | Escola | Estabelecimento | Laboratório | Moderador | Visitante |
+| :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Abrir chamado | | | ✅ | ✅ | ✅ | | (vê todos) | |
+| Ver abertos, escolher local e aceitar | | ✅ | | | | ✅ | | |
+| Publicar vaga, ver candidatos e buscar no banco de currículos | | | ✅ | ✅ | ✅ | ✅ | | |
+| Candidatar-se / manter currículo | ✅ | ✅ | | | | | | |
+| Publicar notícia (com revisão) | | | ✅ | ✅ | ✅ | ✅ | ✅ (direto) | |
+| Enviar projeto 3D (com revisão) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Registrar doação de peças e filamento | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | | |
+| Solicitar coleta (receptor homologado), criar lote, emitir laudo | | | | | | ✅ | | |
+| Moderar e verificar instituições | | | | | | | ✅ | |
+| Diretório de empresas | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Ler conteúdo publicado, rastreio e ranking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ (rastreio) |
 
 As regras são aplicadas em quatro camadas:
 1. **Interface:** `pode(...perfis)` e `RequirePerfil` escondem o que o usuário não pode fazer (experiência de uso, não segurança).
@@ -149,7 +151,7 @@ O sistema é organizado em cinco camadas, e cada uma só conversa com a camada s
 ```mermaid
 flowchart LR
     C["<b>1 · Cliente</b><br/>SPA React 19 — páginas, AuthContext, RequirePerfil<br/>services/api.js — token, 401, 422, FormData<br/>QR Code impresso no carretel"]
-    B["<b>2 · Borda HTTP</b> — routes/api.php, 83 rotas<br/>auth:sanctum (token de 120 min) · throttle (login, cadastro, uploads)<br/>perfil:* (GarantePerfil) · signed (download de anexos)"]
+    B["<b>2 · Borda HTTP</b> — routes/api.php, 88 rotas<br/>auth:sanctum (token de 120 min) · throttle (login, cadastro, uploads)<br/>perfil:* (GarantePerfil) · signed (download de anexos)"]
     A["<b>3 · Aplicação</b><br/>Controllers (19), finos e com transações · FormRequests + Rules (CPF, CNPJ, STL/3MF, PDF)<br/>Policies (13): dono e status · Resources (13): público × privado"]
     D["<b>4 · Domínio</b><br/>Models + Enums — Usuario::temPerfil()<br/>Services: Moderação, Gamificação, Anexos · Job VerificarAnexo (fila)"]
     I[("<b>5 · Infraestrutura</b><br/>PostgreSQL 16 (CHECKs, triggers, FKs) · disco privado (UUID, sha256)<br/>ClamAV (antivírus) · BrasilAPI (CNPJ)")]
@@ -297,7 +299,7 @@ flowchart LR
 
     subgraph MCH["Chamados"]
         direction LR
-        CH["/chamados · Painel<br/>🔒 solicitante · prestador · moderador"] --> CHN["Diálogo · Novo chamado<br/>🔒 solicitante"]
+        CH["/chamados · Painel<br/>🔒 solicitante · prestador · moderador"] --> CHN["/chamados/novo · Novo chamado<br/>🔒 solicitante"]
         CH --> CHA["Aceitar + local<br/>🔒 prestador"]
     end
 
@@ -329,6 +331,7 @@ flowchart LR
         direction LR
         RK["/ranking"] --> PUBS["/publicacoes · Minhas publicações"]
         RK --> MODR["/moderacao<br/>🔒 moderador"]
+        RK --> INS["/instituicoes · Empresas"]
     end
 
     LOGIN --> HOME
@@ -338,25 +341,24 @@ flowchart LR
     LO -. "QR Code impresso" .-> RAS
 ```
 
-| Tela | Rota | Quem acessa | Referência visual |
-| :--- | :--- | :--- | :--- |
-| Entrar / Criar conta | `/` · `/cadastro/usuario` | público | *Register Page for Web*: barra branca, coluna central de 397 px, campos com borda preta de 4 px e ilustrações laterais |
-| Início | `/home` | autenticado | *Modern Product Launch*: hero escuro com cartão do lote, números, ciclo em 5 etapas e atalhos por perfil |
-| Chamados | `/chamados` | solicitante, prestador, moderador | *Squarespace* + *Mockfit*: topo editorial, anel de taxa de atendimento, faixa de indicadores e painel mestre-detalhe |
-| Vagas · Currículo · Nova vaga | `/vagas` · `/curriculo` · `/vagas/nova` | autenticado · candidato · contratante | Lista com painel de detalhe |
-| Projetos · Projeto · Editor | `/projetos` · `/projetos/:id` · `/projetos/novo` | autenticado | *Personal Portfolio*: apresentação grande e "trabalhos selecionados" numerados com ficha técnica |
-| Notícias · Matéria · Editor | `/noticias` · `/noticias/:id` · `/noticias/nova` | autenticado · publicador | *New York Times News Portal*, adaptado para "EcoHub Notícias": cabeçalho editorial, manchete, colunas e tipografia serifada |
-| Doações · Nova doação | `/doacoes` · `/doacoes/nova` | autenticado | Mural com cartões e abas "Mural de doações / Minhas doações / Pedidos nas minhas doações / Minhas coletas" |
-| Lotes · Lote | `/lotes` · `/lotes/:id` | receptor | Tabela, linha do tempo, laudo e QR Code |
-| Rastreio | `/rastreio/:codigo` | **público** | Página do QR Code, otimizada para celular |
-| Ranking · Minhas publicações · Moderação | `/ranking` · `/publicacoes` · `/moderacao` | autenticado · autor · moderador | Lista de pontos e selos; fila de revisão e de verificação de CNPJ |
-| Navegação e rodapé | todas | — | *Web Footer Templates*: barra branca com sublinhado no link ativo; rodapé com chamada em cartão, colunas, contato e "voltar ao topo" |
+Cada tela, a regra de visibilidade e o lugar das capturas (desktop e mobile) estão em **[`SCREENS.md`](SCREENS.md)**. Referências visuais, todas lidas diretamente dos arquivos de design do Figma:
 
-> **Sobre as referências do Figma.** Os arquivos da Comunidade do Figma (`figma.com/community/file/...`) não podem ser lidos pela API do Figma. Por isso, Home, Notícias, Projetos, Chamados e rodapé foram **interpretações** dos estilos indicados, com nomes e conteúdo do EcoHub. A *Register Page for Web*, enviada como arquivo de design, foi lida diretamente: as medidas, as cores (`#9947FE`, `#4741FE`, `#FFC010`) e as ilustrações vêm dela. Todo o visual é feito em **CSS puro** (`frontend/src/styles/`), sem Tailwind.
+| Área | Arquivo do Figma | Frame |
+| :--- | :--- | :--- |
+| Início | [Modern Product Launch](https://www.figma.com/design/LGUJtWnvKBIbWzRrLwYUS8) | `1:29` |
+| Entrar e criar conta | [Register Page for Web](https://www.figma.com/design/RkvaW8JJjgGQ1vhk6dNoNT) | `1:2` |
+| Portal de notícias e matéria | [New York Times News Portal](https://www.figma.com/design/pmQejtfTEUKhDgbK4PvcPI) | `1:131` |
+| Vitrine e detalhe de projetos | [Personal Portfolio Website Template](https://www.figma.com/design/W9vaSi2rB9IZaf2ty9y4Bn) | `7:191`, `7:291` |
+| Navegação e rodapé | [Footers](https://www.figma.com/design/g8QB6OEHbZd5qr9k2k0fc4) | `113:7361` |
+| Chamados, Doações, Empresas, Vagas e todos os formulários de registro | [Website Templates — Squarespace](https://www.figma.com/design/2BKD8TGc4woMAtnmbZkz5f) + estrutura de painel do Mockfit | `19:2115` |
+
+Todo o visual é feito em **CSS puro** (`frontend/src/styles/`), com tokens e um arquivo por página. Os movimentos (transição de página, revelar ao rolar, hovers, carrosséis com setas/pontos/autoplay/arrastar, contadores, barras que crescem e dropzones reativas) estão em `styles/animacoes.css`, `components/Carrossel.jsx`, `components/RevelarAoRolar.jsx` e `components/ui.jsx`, e são desligados com `prefers-reduced-motion`.
 
 ## 8. Diagramas UML e modelo de dados (Figma)
 
 Os diagramas foram desenhados no Figma, no arquivo **[EcoHub 3D — Diagramas UML e Banco de Dados](https://www.figma.com/design/vZYI6VEfTDdlgzbk1mgYis)**, que tem quatro páginas e usa variáveis de cor iguais aos tokens do frontend. As exportações ficam em [`docs/diagramas/`](docs/diagramas/).
+
+Para os templates oficiais do projeto no Figma/FigJam ([User Flow](https://www.figma.com/board/pR035aNZzQtJ6MFpvtuvF0), [UML Diagrams](https://www.figma.com/board/eqWkYTSakFSjIw95uzFJ5A) e [Database Diagram Builder](https://www.figma.com/design/KSFC7l25Nu0mVDmt6ODcJo)), o conteúdo já vem estruturado em [`docs/DIAGRAMAS_FIGMA.md`](docs/DIAGRAMAS_FIGMA.md): nós e conectores do fluxo com as regras de RBAC, classes e multiplicidades, e as 21 tabelas com colunas, chaves e restrições geradas do banco real.
 
 ### 8.1 Modelo de dados
 
@@ -415,10 +417,38 @@ Os 22 frames do protótipo, com rota, guarda de acesso e navegação, e as quatr
 | Frontend | React 19, React Router 7, Vite 7, **CSS puro** (design system com tokens), lucide-react, qrcode, Vitest + Testing Library |
 | Arquivos | Validação própria de STL/3MF/PDF, GD (WebP), ClamAV (antivírus, opcional), filas do Laravel |
 | Integrações | BrasilAPI (consulta de CNPJ) |
-| Qualidade | GitHub Actions (Pint, Pest em PostgreSQL e SQLite, Vitest, build), Playwright (validação visual de 22 telas) |
+| Qualidade | GitHub Actions (Pint, Pest em PostgreSQL e SQLite, Vitest, build), Playwright (validação visual das telas em 1440, 820 e 390 px) |
 | Design e gestão | Figma (diagramas, mapa de telas e referências visuais), Notion (documentação e Kanban) |
 
 ## 10. Como executar
+
+### Passo a passo rápido (banco novo)
+
+```bash
+# 1. Bancos (PostgreSQL rodando, usuário com permissão de criar banco)
+createdb ecohub3d          # desenvolvimento (DB_DATABASE do .env.example)
+createdb ecohub_test       # testes contra PostgreSQL
+
+# 2. API
+cd backend
+composer install
+cp .env.example .env       # ajuste DB_USERNAME e DB_PASSWORD
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve          # http://localhost:8000  (terminal 1)
+php artisan queue:work     # fila de verificação de anexos (terminal 2)
+
+# 3. Frontend
+cd ../frontend
+npm ci
+cp .env.example .env       # VITE_API_URL=http://localhost:8000/api
+npm run dev                # http://localhost:5173  (terminal 3)
+
+# 4. Conferir
+cd ../backend && php artisan test && cd ../frontend && npm test -- --run
+```
+
+Entre em `http://localhost:5173` com um dos usuários de demonstração abaixo (senha `Senha@123`). As seções seguintes detalham cada passo.
 
 ### Pré-requisitos
 
@@ -470,20 +500,24 @@ Criados pelo `--seed`, todos com a senha `Senha@123`:
 | Estudante | `estudante@ecohub3d.test` | Candidatar-se a vagas, currículo |
 | Moderador | `moderador@ecohub3d.test` | Moderar notícias e projetos, denúncias, **verificar instituições** |
 | Empresa pendente | `pendente@ecohub3d.test` | Ver uma conta institucional ainda sem perfis |
+| Estabelecimento (verificado) | `estabelecimento@ecohub3d.test` | Abrir chamados como oficina/loja |
+| Profissionais | `carla@ecohub3d.test` · `joao@ecohub3d.test` | Currículos no banco (um deles oculto) |
 
 Para ver o QR Code sem login, abra `http://localhost:5173/rastreio/01JECHB3DDEMNTE00000000001` (lote de demonstração).
 
 ## 11. Testes e qualidade
 
 ```bash
-# Backend — 100 testes de API (447 asserções): autenticação, perfis, verificação,
-# uploads, economia circular, rastreio, gamificação, moderação
+# Backend — 163 testes (826 asserções), de feature e unitários: autenticação, perfis (RBAC),
+# verificação, estabelecimentos, uploads STL/3MF/PDF, economia circular, rastreio,
+# gamificação, moderação, vagas e banco de currículos, CPF/CNPJ, volume de malhas
 cd backend && php artisan test
 
 # Mesmos testes contra PostgreSQL (constraints e triggers reais)
 DB_CONNECTION=pgsql DB_DATABASE=ecohub_test php artisan test
 
-# Frontend — 12 testes (cliente da API, guardas de rota, permissões)
+# Frontend — 54 testes (Vitest + Testing Library, API compatível com Jest): cliente da API,
+# sessão, rotas por perfil, formulários de registro, cadastro, vagas, carrossel, componentes
 cd frontend && npm test -- --run
 ```
 
@@ -501,8 +535,9 @@ Os testes de upload usam arquivos gerados na hora (`tests/Support/ArquivosDeTest
 | :--- | :--- | :--- |
 | Autenticação | `POST /api/usuario` · `POST /api/login` · `POST /api/logout` · `GET/PATCH/DELETE /api/usuario/me` | público (com limite) / autenticado |
 | Chamados | `GET/POST /api/chamado` · `GET /api/chamado/opcoes` · `POST /api/chamado/{id}/aceitar` · `/concluir` · `/cancelar` | solicitante, prestador, moderador |
-| Vagas e candidaturas | `GET/POST/PUT/DELETE /api/vaga` · `GET /api/vaga/{id}/candidaturas` · `GET/POST/PATCH/DELETE /api/candidatura` | contratante / candidato |
-| Currículos | `GET/POST/PUT/DELETE /api/curriculo` | autenticado (consulta: contratante) |
+| Vagas e candidaturas | `GET /api/vaga?q=&tema=&modalidade=&tipo_contrato=&nivel=&uf=&cidade=` · `GET /api/vaga/opcoes` · `POST/PATCH/DELETE /api/vaga` · `POST /api/vaga/{id}/encerrar` · `GET /api/vaga/{id}/candidaturas` · `GET/POST/PATCH/DELETE /api/candidatura` | público (mural) / contratante / candidato |
+| Currículos | `GET /api/curriculo?q=&especialidade=&uf=&modalidade=&disponibilidade=` (banco) · `GET /api/curriculo/meus` · `POST/PATCH/DELETE /api/curriculo` | banco: contratante · próprio: candidato |
+| Instituições | `GET /api/instituicoes?tipo=&q=&ordem=` · `GET /api/instituicoes/{id}` | autenticado |
 | Notícias | `GET/POST /api/noticia` · `POST /api/noticia/{id}/moderacao` · `PUT/DELETE /api/noticia/{id}/reacao` | autenticado / publicador / moderador |
 | Projetos e anexos | `GET/POST /api/projeto?area=&licenca=&q=` · `POST /api/projeto/{id}/anexos` · `GET /api/anexo/{id}/link` · `GET /api/anexo/{id}/arquivo` (assinado) | autenticado / autor / moderador |
 | Doações | `GET/POST/PUT/DELETE /api/doacao` · `GET /api/doacao/minhas` · `POST /api/doacao/{id}/fotos` | autenticado (edição: doador) |
@@ -512,7 +547,7 @@ Os testes de upload usam arquivos gerados na hora (`tests/Support/ArquivosDeTest
 | Denúncias | `POST /api/denuncia` · `GET /api/denuncia` · `POST /api/denuncia/{id}/resolver` | autenticado / moderador |
 | Públicos | `GET /api/rastreio/{codigo}` · `GET /api/ranking` · `GET /api/polimeros` | público |
 
-São 83 rotas no total. As listas são paginadas (`?per_page=`, máximo 100) no formato `{ data, links, meta }`. Os códigos de resposta seguem o padrão:
+São 88 rotas no total. As listas são paginadas (`?per_page=`, máximo 100) no formato `{ data, links, meta }`. Os códigos de resposta seguem o padrão:
 - **401:** sem login ("Faça login para continuar.");
 - **403:** perfil ou registro não permitido;
 - **404:** "Registro não encontrado.";
@@ -570,7 +605,9 @@ IC/
 ├── docs/
 │   ├── DIAGNOSTICO_E_ROADMAP.md   # relatório técnico: funções, banco, RBAC, segurança, roadmap
 │   ├── FERRAMENTAS_E_MCP.md       # instalação de MCPs, Skills, hooks e extensões
+│   ├── DIAGRAMAS_FIGMA.md         # conteúdo pronto para os templates de User Flow, UML e DER
 │   └── diagramas/                 # exportações do Figma
+├── SCREENS.md                     # índice das telas, RBAC da interface e galeria de capturas
 ├── .mcp.json                      # servidores MCP do projeto (Laravel Boost, PostgreSQL, Playwright, Figma)
 └── .github/workflows/ci.yml       # integração contínua
 ```
@@ -599,12 +636,12 @@ Os comandos de instalação, o papel de banco somente leitura, os *hooks* de for
 ## 17. Resultados e trabalhos futuros
 
 **Resultados alcançados:**
-- API com 83 rotas, sete perfis de acesso, verificação de instituições e 100 testes automatizados.
+- API com 88 rotas, sete perfis de acesso, cinco tipos de conta, verificação de instituições e 217 testes automatizados (163 no backend, 54 no frontend).
 - Cinco dos seis módulos do documento de requisitos com banco, API e tela.
 - Ciclo completo de economia circular: doação → coleta → lote → laudo → QR Code público.
 - Uploads de STL, 3MF, imagens e PDFs com validação por conteúdo e antivírus.
 - Esquema PostgreSQL versionado, compatível com o banco original e ampliado com rastreabilidade, laudos, gamificação, moderação e anexos.
-- Frontend com 22 telas e design system próprio em CSS, sem dependências de UI de terceiros.
+- Frontend com 22 telas (incluindo os cinco formulários de registro) clonadas dos arquivos do Figma, design system próprio em CSS e movimento acessível.
 
 **Próximas etapas** (detalhadas em [`docs/DIAGNOSTICO_E_ROADMAP.md`](docs/DIAGNOSTICO_E_ROADMAP.md), seção 6.2):
 1. Polímeros aceitos e capacidade por laboratório; geolocalização por CEP.

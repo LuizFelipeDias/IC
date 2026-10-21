@@ -1,28 +1,28 @@
 # EcoHub 3D — Relatório técnico: diagnóstico, banco de dados, permissões e roadmap
 
-> **Versão 3 (outubro/2026).** Substitui a versão 2 (commit `7936a2c`); as versões anteriores estão no histórico do Git.
+> **Versão 4 (outubro/2026).** Atualiza a versão 3 com o tipo *estabelecimento*, o diretório de instituições, vagas e banco de currículos estruturados e o frontend clonado dos arquivos do Figma. As versões anteriores estão no histórico do Git.
 > **Artefatos analisados:** repositório (branch `Claude-Branch`), *Requisitos Plataforma Eco Hub 3d — Adapta One (outubro/2026)* e o script DDL PostgreSQL do banco em uso (`script.sql`).
 > **Como foi verificado:**
 > - O DDL foi carregado num PostgreSQL 16 e comparado com o esquema gerado pelas migrations (diff de `information_schema` e `pg_constraint`): **idêntico em 103 itens**.
 > - As migrations novas rodaram sobre uma **cópia do banco legado com dados**, sem perda de registros.
-> - A suíte de **100 testes de API** (447 asserções) passa em **PostgreSQL e SQLite**; o frontend tem 12 testes Vitest.
+> - A suíte de **163 testes do backend** (Pest, feature e unit) passa em **PostgreSQL e SQLite**; o frontend tem **54 testes** Vitest + Testing Library.
 > - As 22 telas foram percorridas com cada perfil num navegador real (Chromium headless), em 1440 px e 390 px.
-> - Os diagramas UML, o modelo de dados e o mapa de telas estão no Figma e exportados em [`docs/diagramas/`](diagramas/).
+> - Os diagramas UML, o modelo de dados e o mapa de telas estão no Figma e exportados em [`docs/diagramas/`](diagramas/); o conteúdo para os templates de User Flow, UML e DER está em [`DIAGRAMAS_FIGMA.md`](DIAGRAMAS_FIGMA.md) e o índice de telas em [`SCREENS.md`](../SCREENS.md).
 
 ---
 
 ## Sumário executivo
 
-| Indicador | Commit inicial (`2ba4c42`) | Versão 2 | Agora (v3) |
-| :--- | :--- | :--- | :--- |
-| Rotas de API | 25 (1 protegida) | 55 (44 protegidas) | **83** (70 protegidas; as públicas são login, cadastro, leituras de conteúdo publicado, polímeros, ranking, rastreio e o download assinado) |
-| Controle de acesso | Inexistente | Middleware + 6 Policies + banco | Middleware `perfil` + **13 Policies** + CHECKs/triggers + **verificação de instituições** |
-| Migrations | 2 | 18 | **21** |
-| Testes automatizados | 0 | 73 + 12 | **100** (API, PostgreSQL e SQLite) + 12 (frontend) + CI |
-| Módulos dos requisitos com API e tela | ~1,5 de 6 | 2 de 6 | **5 de 6** (falta o Hub de conexão, §2.3) |
-| Uploads | — | Inexistente | STL, 3MF, imagens e PDF de laudo validados pelo **conteúdo**, disco privado, hash, antivírus em fila e URL assinada |
-| Idioma da API | inglês | inglês | **português** (validação, autenticação e erros) |
-| Frontend | páginas estáticas | 3 telas integradas | **22 telas** integradas, design system próprio em CSS puro |
+| Indicador | Commit inicial (`2ba4c42`) | Versão 2 | Versão 3 | Agora (v4) |
+| :--- | :--- | :--- | :--- | :--- |
+| Rotas de API | 25 (1 protegida) | 55 (44 protegidas) | 83 | **88** (as protegidas incluem `/instituicoes`, `/vaga/{id}/encerrar` e `/curriculo/meus`; as públicas são login, cadastro, leituras de conteúdo publicado, polímeros, ranking, rastreio e o download assinado) |
+| Controle de acesso | Inexistente | Middleware + 6 Policies + banco | 13 Policies | Middleware `perfil` + **13 Policies** + CHECKs/triggers + **verificação de instituições** |
+| Migrations | 2 | 18 | 21 | **23** |
+| Testes automatizados | 0 | 73 + 12 | 100 + 12 | **163** (backend, PostgreSQL e SQLite) + **54** (frontend) + CI |
+| Módulos dos requisitos com API e tela | ~1,5 de 6 | 2 de 6 | 5 de 6 | **5 de 6**, com o banco de currículos completo (falta o Hub de conexão, §2.3) |
+| Uploads | — | Inexistente | Validados | STL, 3MF, imagens e PDF de laudo validados pelo **conteúdo**, disco privado, hash, antivírus em fila e URL assinada |
+| Idioma da API | inglês | inglês | português | **português** (validação, autenticação e erros) |
+| Frontend | páginas estáticas | 3 telas integradas | 22 telas | **28 páginas** clonadas dos arquivos do Figma, formulários no estilo Squarespace, movimento com `prefers-reduced-motion` |
 
 **Riscos que continuam abertos** (detalhados em §1.4 e §7):
 - usuários legados sem e-mail não conseguem fazer login;
@@ -61,14 +61,24 @@ Todas as linhas abaixo têm teste automatizado em `backend/tests/Feature/Api/`.
 #### Vagas e candidaturas (banco de currículos)
 | Rota | Acesso | Regra |
 | :--- | :--- | :--- |
-| `GET /api/vaga`, `/vaga/{id}` | público | Lista paginada (`?per_page`, máx. 100). |
+| `GET /api/vaga`, `/vaga/{id}` | público | Lista paginada (`?per_page`, máx. 100) com filtros `q`, `modalidade`, `tipo_contrato`, `nivel`, `uf`, `cidade`, `habilidade`, `salario_min` e `situacao` (abertas por padrão). |
+| `GET /api/vaga/opcoes` | público | Rótulos de modalidade, contrato, nível, status e UFs para os formulários. |
+| `POST /api/vaga/{id}/encerrar` | contratante, dono | Encerra a vaga e grava `encerrada_em`; candidaturas novas numa vaga encerrada ou vencida (`encerra_em`) recebem **409**. |
 | `POST/PUT/DELETE /api/vaga` | **contratante** (PJ) | Autor vem do token; só o autor altera ou exclui. O trigger `trg_bloquear_estudante_vaga` repete a regra no banco. |
 | `GET /api/vaga/minhas`, `/vaga/{id}/candidaturas` | contratante, dono | Painel do empregador. |
 | `POST/GET/DELETE /api/candidatura` | **candidato** (PF) | Uma candidatura por vaga (`candidatura_unica`); começa "Em análise"; só o candidato desiste. |
 | `PATCH /api/candidatura/{id}` | contratante, dono da vaga | Muda o status (Em análise, Aprovada, Reprovada, Cancelada). |
-| `GET/POST/PUT/DELETE /api/curriculo` | autenticado | O dono gerencia; empresas consultam o banco de currículos; os demais veem só o próprio. |
+| `GET /api/curriculo` | **contratante** | Banco de currículos: só os marcados `visivel_no_banco`, com filtros `q`, `especialidade`, `uf`, `cidade`, `disponibilidade` e `modalidade`. |
+| `GET /api/curriculo/meus` | autenticado | Currículos do próprio usuário. |
+| `POST/PUT/DELETE /api/curriculo` | **candidato** (PF), dono | Cidade, UF, disponibilidade, modalidade preferida, portfólio e especialidades (lista normalizada, sem repetição). |
 
-#### Chamados (pedidos de escolas públicas e empresas)
+#### Instituições (diretório de empresas)
+| Rota | Acesso | Regra |
+| :--- | :--- | :--- |
+| `GET /api/instituicoes` | autenticado | Só pessoas jurídicas **verificadas**; filtros `tipo` (empresa, escola, laboratório, estabelecimento), `q` e `ordem` (nome, pontos, recentes). |
+| `GET /api/instituicoes/{id}` | autenticado | Perfil público com números: vagas, projetos publicados, chamados abertos e resolvidos, lotes. Instituição não verificada responde 404. |
+
+#### Chamados (pedidos de escolas públicas, empresas e estabelecimentos)
 | Rota | Acesso | Regra |
 | :--- | :--- | :--- |
 | `GET /api/chamado`, `/chamado/{id}`, `/chamado/opcoes` | solicitante, prestador, moderador | O solicitante vê os próprios; o prestador vê os **abertos** e os que atende; o moderador vê todos. `opcoes` lista tipos de serviço e **locais de atendimento**. |
@@ -218,7 +228,7 @@ erDiagram
 | 2. Receptores e reciclagem | ✅ | ✅ | ✅ | Polímeros aceitos e capacidade por laboratório (`laboratorio_polimeros`). |
 | 3. Repositório de projetos | ✅ | ✅ | ✅ | Instruções de impressão estruturadas (`jsonb`) e visualizador 3D (three.js). |
 | 4. Pedidos de escolas | ✅ | ✅ | ✅ | Índice de vulnerabilidade (INSE/IDEB) para priorizar e sugestão automática de prestadores. |
-| 5. Banco de currículos | 🟡 | ✅ | ✅ | Especialidades estruturadas, portfólio de peças, busca por filtros. |
+| 5. Banco de currículos | ✅ | ✅ | ✅ | Portfólio de peças com upload (hoje é um link). |
 | 6. Hub de conexão | ❌ | ❌ | ❌ | `anuncios` (demanda/oferta), `anuncio_interesses`, mensagens e notificações. |
 
 Funcionalidades sugeridas já entregues: **rastreabilidade por QR**, **controle de qualidade com laudo**, **gamificação** (pontos, selos, ranking), **curadoria** (moderação e denúncias) e **verificação de instituições**.
@@ -258,6 +268,8 @@ As colunas detalhadas estão na versão 1 deste relatório.
 | Estado | `AuthContext` com usuário, perfis e `pode()`; estado de servidor local em cada página. | TanStack Query. |
 | Consumo da API | Cliente único `services/api.js`: token, 401 encerra a sessão, 422 por campo, `FormData` para uploads, `query()` e `baixarAnexo()` (link assinado). | Gerar o cliente a partir do OpenAPI. |
 | Rotas | Rotas em minúsculas com `:id`, *lazy loading* (bundle inicial de 259 kB, 84 kB gzip), endereços antigos redirecionados, rastreio público fora do login. | — |
+| Movimento | `styles/animacoes.css` (entrada ao rolar com `data-revelar`, transição de página, `.eleva`, `.zoom-imagem`, esqueletos), `RevelarAoRolar`, `Carrossel` (setas, pontos, troca automática, arrastar, teclado), `Contador`, diálogos com saída animada e `AreaEnvio` reativa. Tudo desligado com `prefers-reduced-motion`. | — |
+| Testes | Vitest + Testing Library (API compatível com Jest): sessão, rotas por perfil, carrossel, componentes, formulários de chamado, cadastro e vagas. | Playwright contra o seed. |
 | Referências visuais | Login e cadastro: *Register Page for Web*; Home: *Modern Product Launch*; Notícias: *New York Times News Portal*; Projetos: *Personal Portfolio*; Chamados: *Squarespace* + *Mockfit*; Nav e rodapé: *Web Footer Templates*. | Ver nota sobre arquivos da Comunidade no README (§ Telas). |
 
 ---
@@ -266,41 +278,42 @@ As colunas detalhadas estão na versão 1 deste relatório.
 
 ### 4.1 Modelo
 
-- **Tipo de usuário** (`tipo_usuario`, escolhido no cadastro e imutável): `pessoa_fisica`, `empresa`, `escola`, `laboratorio`. Os booleanos legados continuam: `estudante` = pessoa física e `empresa` = pessoa jurídica.
+- **Tipo de usuário** (`tipo_usuario`, escolhido no cadastro e imutável): `pessoa_fisica`, `empresa`, `escola`, `laboratorio`, `estabelecimento`. Os booleanos legados continuam: `estudante` = pessoa física e `empresa` = pessoa jurídica.
 - **Atributo de pessoa física:** `prestador_servico` (maker/voluntário), que a própria pessoa liga e desliga.
 - **Papel administrativo** (`papel`): `usuario`, `moderador`, `admin`. Só muda direto no banco ou por um admin.
 - **Perfis de acesso** (enum `Perfil`), calculados em `Usuario::temPerfil()`:
 
 | Perfil | Quem tem | O que libera |
 | :--- | :--- | :--- |
-| `solicitante` | escola ou empresa **verificada** ("Escola" ou "CNPJ") | criar e acompanhar chamados |
+| `solicitante` | escola, empresa ou estabelecimento **verificado** ("Escola", "CNPJ", "Empresas/Estabelecimentos") | criar e acompanhar chamados |
 | `prestador` | laboratório verificado; pessoa física com `prestador_servico` | ver chamados abertos, **escolher o local de atendimento**, aceitar e concluir |
 | `contratante` | empresa, escola ou laboratório **verificados** ("CNPJ/Instituição") | publicar vagas e gerir candidatos |
-| `candidato` | pessoa física | candidatar-se a vagas |
+| `candidato` | pessoa física | candidatar-se a vagas e cadastrar currículo |
 | `publicador` | pessoa jurídica **verificada** ou moderador | publicar notícias (sujeitas a moderação) |
-| `receptor` | laboratório **verificado** | solicitar coletas, criar lotes, registrar eventos e emitir laudos |
+| `receptor` | laboratório **verificado** (receptor homologado) | requisitar as peças doadas (coletas), criar lotes, registrar eventos e emitir laudos |
 | `moderador` | `papel` moderador ou admin | aprovar e rejeitar conteúdo, resolver denúncias, ver todos os chamados |
 
 ### 4.2 Matriz de permissões
 
-| Ação | PF | PF maker | Empresa | Escola | Laboratório | Moderador | Visitante |
-| :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| Abrir e ver os próprios chamados | | | ✅ | ✅ | | (vê todos) | |
-| Ver chamados abertos, escolher local, aceitar | | ✅ | | | ✅ | | |
-| Concluir chamado | | responsável | | | responsável | | |
-| Publicar vaga e ver candidatos | | | ✅ | ✅ | ✅ | | |
-| Candidatar-se | ✅ | ✅ | | | | | |
-| Publicar notícia (em revisão) | | | ✅ | ✅ | ✅ | ✅ (publica direto) | |
-| Submeter projeto (em revisão) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| Ver notícia ou projeto publicado | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Ver rascunho ou rejeitado | autor | autor | autor | autor | autor | ✅ | |
-| Editar ou excluir notícia/projeto | autor | autor | autor | autor | autor | ✅ | |
-| Moderar e resolver denúncias | | | | | | ✅ (exceto o próprio) | |
-| Consultar banco de currículos | o próprio | o próprio | ✅ | o próprio | o próprio | o próprio | |
-| Doar resíduo e acompanhar coletas | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
-| Solicitar coleta, criar lote, emitir laudo | | | | | ✅ | | |
-| Verificar instituições | | | | | | ✅ | |
-| Rastreio por QR Code e ranking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ação | PF | PF maker | Empresa | Estabelecimento | Escola | Laboratório | Moderador | Visitante |
+| :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Abrir e ver os próprios chamados | | | ✅ | ✅ | ✅ | | (vê todos) | |
+| Ver chamados abertos, escolher local, aceitar | | ✅ |  | | | ✅ | | |
+| Concluir chamado | | responsável |  | | | responsável | | |
+| Publicar vaga e ver candidatos | | | ✅ | ✅ | ✅ | ✅ | | |
+| Candidatar-se e cadastrar currículo | ✅ | ✅ | | | | | | |
+| Publicar notícia (em revisão) | | | ✅ | ✅ | ✅ | ✅ | ✅ (publica direto) | |
+| Submeter projeto (em revisão) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Ver notícia ou projeto publicado | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ver rascunho ou rejeitado | autor | autor | autor | autor | autor | autor | ✅ | |
+| Editar ou excluir notícia/projeto | autor | autor | autor | autor | autor | autor | ✅ | |
+| Moderar e resolver denúncias | | |  | | | | ✅ (exceto o próprio) | |
+| Consultar banco de currículos | | | ✅ | ✅ | ✅ | ✅ | | |
+| Cadastrar doação de peças/resíduo e acompanhar | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Requisitar doação (coleta), criar lote, emitir laudo | | |  | | | ✅ | | |
+| Verificar instituições | | |  | | | | ✅ | |
+| Diretório de empresas e instituições | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | |
+| Rastreio por QR Code e ranking | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 > Em todas as colunas de instituição, as ações só valem depois que um moderador **verifica** o CNPJ/INEP. Enquanto a conta está pendente ou rejeitada, ela age como visitante autenticado (lê, doa, envia projeto e denuncia).
 
@@ -312,7 +325,8 @@ As colunas detalhadas estão na versão 1 deste relatório.
 4. **Banco**: CHECKs (`chk_prestador_pessoa_fisica`, `chk_chamados_prestador_diferente`...) e triggers legados.
 
 > **Decisões a validar com a orientação.** As duas primeiras ficam em `Usuario::temPerfil()` e mudam numa linha.
-> - **Laboratório não abre chamados:** "CNPJ", no requisito, foi interpretado como *empresa*.
+> - **Laboratório não abre chamados:** "CNPJ", no requisito, foi interpretado como *empresa*; estabelecimentos (comércio e serviços) ganharam tipo próprio e também abrem chamados.
+> - **Doações de peças:** qualquer conta cadastra (makers incluídos); só o receptor homologado (laboratório verificado) requisita a coleta.
 > - **Escola pode publicar vagas**, por ser instituição com CNPJ.
 > - **Notícias exigem moderação** mesmo para instituições.
 
@@ -423,6 +437,21 @@ frontend/src/
 | 29 | `0ab1d59 feat(frontend): repaginação completa com design system em CSS puro` | 22 telas |
 | 30–33 | `1b3594d` · `7155033` · `3b5e407` · `21d8f6a` | Login/cadastro, portfólio de projetos, nav/rodapé, painel de chamados |
 | 34 | `5e4a95c docs: diagramas UML, banco de dados e mapa de telas feitos no Figma` | Diagramas |
+
+### 6.1c Executados na branch `Claude-Branch` (versão 4)
+
+| # | Commit | O que entrega |
+| :-: | :--- | :--- |
+| 35 | `fca538f` | Base de animações, entrada ao rolar e carrossel reutilizável |
+| 36 | `ba8eb22` · `82ed024` | Projetos (Personal Portfolio) e Home (Modern Product Launch) clonados |
+| 37 | `a46429d` | Estabelecimentos abrem chamados; diretório de instituições verificadas |
+| 38 | `2cc76e9` | Conteúdo dos diagramas para os templates do Figma |
+| 39 | `9198b05` · `3f52e79` | Movimento em todas as telas |
+| 40 | `7b338f1` | Formulários de registro e listagens de Doações e Empresas no estilo Squarespace |
+| 41 | `484e9ed` · `ebe43b7` | Testes de frontend (sessão, carrossel, componentes, formulários, rotas por perfil) |
+| 42 | `713d9d0` | `SCREENS.md` |
+| 43 | `9d82113` · `590be20` | Portal de notícias refeito com fidelidade ao frame do NYT |
+| 44 | `8caea48` · `9633a42` | Vagas e banco de currículos estruturados (banco, API e telas) |
 
 ### 6.2 Próximos commits sugeridos (na ordem)
 

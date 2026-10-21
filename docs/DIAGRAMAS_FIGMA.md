@@ -491,6 +491,16 @@ Colunas `created_at`/`updated_at` omitidas.
 |  | `cidade` | varchar |  |
 |  | `texto` | text |  |
 |  | `data_publicacao` | timestamptz |  |
+|  | `modalidade` | varchar |  |
+|  | `tipo_contrato` | varchar |  |
+|  | `nivel` | varchar |  |
+|  | `uf` | bpchar |  |
+|  | `salario_min` | numeric |  |
+|  | `salario_max` | numeric |  |
+|  | `habilidades` | json |  |
+|  | `status` | varchar |  |
+|  | `encerra_em` | date |  |
+|  | `encerrada_em` | timestamptz |  |
 
 **`candidaturas`** — legado (script.sql) + colunas novas
 
@@ -514,6 +524,13 @@ Colunas `created_at`/`updated_at` omitidas.
 |  | `data_inicio` | date |  |
 |  | `data_fim` | date |  |
 |  | `texto` | text |  |
+|  | `cidade` | varchar |  |
+|  | `uf` | bpchar |  |
+|  | `disponibilidade` | varchar |  |
+|  | `modalidade_preferida` | varchar |  |
+|  | `portfolio_url` | varchar |  |
+|  | `especialidades` | json |  |
+|  | `visivel_no_banco` | bool |  |
 
 #### Economia circular (doações → laudo)
 
@@ -654,3 +671,5 @@ Colunas `created_at`/`updated_at` omitidas.
 - `lotes_filamento`: UNIQUE `codigo` (ULID) e `peso_saida_g ≤ peso_entrada_g`.
 - `pontuacoes`: UNIQUE (usuário, ação, origem).
 - `candidaturas`: UNIQUE (vaga, usuário).
+- `vagas`: `chk_vagas_*` (modalidade, contrato, nível, UF, salário ≥ 0 e máximo ≥ mínimo, status `NOT VALID`).
+- `curriculo`: `chk_curriculo_*` (disponibilidade, modalidade, UF, `portfolio_url` em https, especialidades como array JSON).
