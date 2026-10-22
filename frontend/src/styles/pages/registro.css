@@ -1,0 +1,744 @@
+/* ==========================================================================
+   Formulários de registro (notícia, projeto, chamado, vaga, doação) no
+   visual "Website Templates — Squarespace", o mesmo do painel de chamados.
+
+   Usa as peças sq- de chamados.css (Section 01, linha de resultados,
+   botões, caixas de seleção) e acrescenta a organização de formulário:
+   - linha em duas colunas: à esquerda número, rótulo de 11 px (0.75 de
+     espaçamento, caixa alta) e ajuda em #706F6F, como as colunas de filtro;
+     à direita os campos;
+   - entradas de cantos retos com borda #CCC (#000 no foco), separadores
+     #E8E4E4 entre os blocos;
+   - botão contornado de 2 px preto + botão preto preenchido;
+   - campos entram escalonados quando o bloco aparece na tela.
+   ========================================================================== */
+
+.rg {
+    --rg-erro: #c5221f;
+    --rg-fundo-erro: #fdf3f2;
+    padding-bottom: 99px;
+}
+
+/* ---------- Section 01 ---------- */
+.rg-topo {
+    padding-bottom: 50px;
+}
+
+.rg-topo__titulo {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.rg-topo__sobrelinha {
+    color: var(--sq-cinza);
+}
+
+.rg-etapas {
+    padding-bottom: 50px;
+}
+
+/* ---------- Formulário ---------- */
+.rg-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.rg-form > .rg-erro-geral,
+.rg-form > .rg-sucesso {
+    margin-bottom: 40px;
+}
+
+.rg-bloco {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr);
+    gap: 54px;
+    padding: 40px 0 48px;
+    border-top: 1px solid var(--sq-platina);
+}
+
+.rg-bloco__info {
+    position: sticky;
+    top: calc(var(--altura-nav, 64px) + 24px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-self: start;
+}
+
+.rg-bloco__numero {
+    margin-bottom: 14px;
+    font-size: 50px;
+    font-weight: 700;
+    line-height: 50px;
+    font-variant-numeric: tabular-nums;
+}
+
+.rg-bloco__info h2.sq-rotulo {
+    font-family: var(--sq-fonte);
+    font-weight: 400;
+}
+
+.rg-bloco__info p {
+    max-width: 320px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--sq-cinza);
+}
+
+.rg-campos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 20px;
+    align-content: start;
+    min-width: 0;
+}
+
+.rg-inteiro {
+    grid-column: 1 / -1;
+}
+
+/* ---------- Campo ---------- */
+.rg-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.rg-campo__topo {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rg-campo__rotulo {
+    margin: 0;
+    padding: 0;
+    font-family: var(--sq-fonte);
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 16px;
+    letter-spacing: 0.75px;
+    text-transform: uppercase;
+    color: var(--sq-preto);
+}
+
+legend.rg-campo__rotulo {
+    margin-bottom: 12px;
+}
+
+.rg-entrada {
+    display: block;
+    width: 100%;
+    min-height: 52px;
+    padding: 14px 16px;
+    border: 1px solid var(--sq-cinza-claro);
+    border-radius: 0;
+    background: #fff;
+    font-family: var(--sq-fonte);
+    font-size: 16px;
+    line-height: 22.4px;
+    letter-spacing: -0.16px;
+    color: var(--sq-preto);
+    box-shadow: none;
+    transition:
+        border-color 0.2s var(--curva-suave),
+        box-shadow 0.25s var(--curva-suave),
+        background 0.2s;
+}
+
+.rg-entrada::placeholder {
+    color: #9a9999;
+    opacity: 1;
+}
+
+.rg-entrada:hover {
+    border-color: var(--sq-cinza);
+}
+
+.rg-entrada:focus {
+    outline: none;
+    border-color: var(--sq-preto);
+    box-shadow: inset 0 0 0 1px var(--sq-preto);
+}
+
+.rg-entrada:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+textarea.rg-entrada {
+    min-height: 180px;
+    resize: vertical;
+}
+
+textarea.rg-entrada--longo {
+    min-height: 320px;
+}
+
+select.rg-entrada {
+    padding-right: 44px;
+    appearance: none;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center;
+    cursor: pointer;
+}
+
+.rg-entrada--maiuscula {
+    text-transform: uppercase;
+}
+
+.rg-campo--erro .rg-entrada {
+    border-color: var(--rg-erro);
+    background-color: var(--rg-fundo-erro);
+}
+
+.rg-campo--erro .rg-entrada:focus {
+    box-shadow: inset 0 0 0 1px var(--rg-erro);
+}
+
+.rg-campo__ajuda {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--sq-cinza);
+}
+
+.rg-campo__erro {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--rg-erro);
+    animation: rg-erro-entra 0.35s var(--curva-suave);
+}
+
+.rg-campo__erro::before {
+    content: "";
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+    transform: translateY(-1px);
+}
+
+@keyframes rg-erro-entra {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+.rg-contagem {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--sq-cinza);
+    font-variant-numeric: tabular-nums;
+}
+
+.rg-contagem--perto {
+    color: var(--rg-erro);
+}
+
+/* ---------- Grupos de opções (caixas do template) ---------- */
+.rg-opcoes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px 20px;
+}
+
+.rg-opcoes .sq-caixa {
+    min-height: 24px;
+}
+
+.rg-campo--erro .sq-caixa__quadro {
+    border-color: var(--rg-erro);
+}
+
+.rg-cartoes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.rg-cartao-opcao {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px;
+    border: 1px solid var(--sq-platina);
+    background: #fff;
+    cursor: pointer;
+    transition:
+        border-color 0.25s var(--curva-suave),
+        box-shadow 0.35s var(--curva-suave),
+        transform 0.35s var(--curva-suave);
+}
+
+.rg-cartao-opcao input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.rg-cartao-opcao:hover {
+    border-color: var(--sq-cinza);
+    transform: translateY(-2px);
+}
+
+.rg-cartao-opcao:has(input:checked) {
+    border-color: var(--sq-preto);
+    box-shadow: var(--sq-sombra);
+}
+
+.rg-cartao-opcao:has(input:checked) .sq-caixa__quadro {
+    background: var(--sq-cinza-claro);
+}
+
+.rg-cartao-opcao:has(input:focus-visible) {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+.rg-cartao-opcao__topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rg-cartao-opcao__topo strong {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 22.4px;
+}
+
+.rg-cartao-opcao__texto {
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--sq-cinza);
+}
+
+.rg-campo--erro .rg-cartao-opcao {
+    border-color: var(--rg-erro);
+}
+
+/* ---------- Envio de arquivos (AreaEnvio) no visual do template ---------- */
+.rg .area-envio {
+    gap: 10px;
+    padding: 36px 24px;
+    border: 1px dashed var(--sq-cinza-claro);
+    border-radius: 0;
+    background: var(--sq-fundo);
+    font-family: var(--sq-fonte);
+    font-size: 14px;
+    color: var(--sq-cinza);
+}
+
+.rg .area-envio strong {
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: -0.16px;
+    color: var(--sq-preto);
+}
+
+.rg .area-envio svg {
+    color: var(--sq-preto);
+}
+
+.rg .area-envio:hover,
+.rg .area-envio:focus-within {
+    border-color: var(--sq-preto);
+    background: #fff;
+}
+
+.rg .area-envio:focus-within {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+.rg .area-envio--arrastando {
+    border-style: solid;
+    border-color: var(--sq-preto);
+    background: #fff;
+    box-shadow: var(--sq-sombra);
+}
+
+.rg .progresso {
+    height: 4px;
+    border-radius: 0;
+    background: var(--sq-platina);
+}
+
+.rg .progresso > span {
+    border-radius: 0;
+    background: var(--sq-preto);
+}
+
+/* Miniaturas das fotos escolhidas antes do envio */
+.rg-miniaturas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rg-miniaturas li {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: 1px solid var(--sq-platina);
+    background: var(--sq-fundo);
+    animation: rg-miniatura-entra 0.45s var(--curva-mola) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.rg-miniaturas img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.rg-miniaturas button {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: var(--sq-preto);
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.25s var(--curva-mola);
+}
+
+.rg-miniaturas button:hover {
+    transform: scale(1.1);
+}
+
+.rg-miniaturas button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+}
+
+@keyframes rg-miniatura-entra {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+}
+
+/* Lista de anexos do projeto (.lista-arquivos) dentro do formulário */
+.rg .lista-arquivos {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rg .lista-arquivos li {
+    border-bottom: 1px solid var(--sq-platina);
+    font-family: var(--sq-fonte);
+}
+
+.rg .lista-arquivos li:first-child {
+    border-top: 1px solid var(--sq-platina);
+}
+
+.rg .lista-arquivos__icone {
+    border: 1px solid var(--sq-platina);
+    border-radius: 0;
+    background: var(--sq-fundo);
+    color: var(--sq-preto);
+}
+
+.rg .lista-arquivos__info strong {
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.rg .lista-arquivos__info span {
+    font-size: 13px;
+    color: var(--sq-cinza);
+}
+
+.rg-remover {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    padding: 0;
+    border: 1px solid var(--sq-cinza-claro);
+    background: #fff;
+    color: var(--sq-preto);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.rg-remover:hover {
+    border-color: var(--rg-erro);
+    color: var(--rg-erro);
+}
+
+.rg-remover:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+.rg-mensagens {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+}
+
+.rg-mensagens li {
+    padding-left: 14px;
+    border-left: 3px solid var(--sq-preto);
+    animation: rg-erro-entra 0.35s var(--curva-suave);
+}
+
+.rg-mensagens li.rg-mensagens--erro {
+    border-color: var(--rg-erro);
+    color: var(--rg-erro);
+}
+
+/* ---------- Ações ---------- */
+.rg-acoes {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr);
+    gap: 54px;
+    align-items: center;
+    padding-top: 40px;
+    border-top: 1px solid var(--sq-platina);
+}
+
+.rg-acoes__nota {
+    max-width: 320px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--sq-cinza);
+}
+
+.rg-acoes__botoes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 11px;
+}
+
+.rg-contorno {
+    border-color: var(--sq-preto);
+}
+
+.sq-botao.rg-enviar {
+    width: auto;
+    min-width: 240px;
+    gap: 10px;
+}
+
+.sq-botao.rg-enviar--ok,
+.sq-botao.rg-enviar--ok:disabled {
+    opacity: 1;
+    cursor: default;
+}
+
+.rg-enviar--ok svg {
+    animation: sq-marcar 0.45s var(--curva-mola);
+}
+
+.sq-botao:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 3px;
+}
+
+/* ---------- Sucesso e erro geral ---------- */
+.rg-sucesso {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: center;
+    padding: 28px 32px;
+    background: var(--sq-preto);
+    color: #fff;
+    animation: rg-sucesso-entra 0.55s var(--curva-mola);
+}
+
+.rg-sucesso strong {
+    display: block;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 26.4px;
+    letter-spacing: -0.22px;
+}
+
+.rg-sucesso p {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: var(--sq-cinza-claro);
+}
+
+.rg-sucesso__icone {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@keyframes rg-sucesso-entra {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+    }
+}
+
+.rg-erro-geral {
+    padding: 16px 20px;
+    border-left: 3px solid var(--rg-erro);
+    background: var(--rg-fundo-erro);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--rg-erro);
+    animation: rg-erro-entra 0.35s var(--curva-suave);
+}
+
+.rg-info {
+    padding: 16px 20px;
+    border: 1px solid var(--sq-platina);
+    background: var(--sq-fundo);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* ---------- Campos entram escalonados quando o bloco aparece ---------- */
+.rg-bloco .rg-campos > * {
+    opacity: 0;
+}
+
+.rg-bloco.visivel .rg-campos > * {
+    animation: rg-campo-entra 0.55s var(--curva-suave) forwards;
+    animation-delay: 140ms;
+}
+
+.rg-bloco.visivel .rg-campos > :nth-child(2) { animation-delay: 200ms; }
+.rg-bloco.visivel .rg-campos > :nth-child(3) { animation-delay: 260ms; }
+.rg-bloco.visivel .rg-campos > :nth-child(4) { animation-delay: 320ms; }
+.rg-bloco.visivel .rg-campos > :nth-child(5) { animation-delay: 380ms; }
+.rg-bloco.visivel .rg-campos > :nth-child(6) { animation-delay: 440ms; }
+.rg-bloco.visivel .rg-campos > :nth-child(n + 7) { animation-delay: 500ms; }
+
+@keyframes rg-campo-entra {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.rg-bloco__numero {
+    transition: transform 0.4s var(--curva-mola);
+}
+
+.rg-bloco:focus-within .rg-bloco__numero {
+    transform: translateX(6px);
+}
+
+.rg-bloco:focus-within .rg-bloco__info h2 {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 960px) {
+    .rg-bloco,
+    .rg-acoes {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .rg-bloco__info {
+        position: static;
+    }
+
+    .rg-bloco__numero {
+        margin-bottom: 6px;
+        font-size: 36px;
+        line-height: 38px;
+    }
+
+    .rg-bloco__info p,
+    .rg-acoes__nota {
+        max-width: none;
+    }
+}
+
+@media (max-width: 560px) {
+    .rg {
+        padding-bottom: 64px;
+    }
+
+    .rg-topo {
+        padding-bottom: 32px;
+    }
+
+    .rg-etapas {
+        padding-bottom: 32px;
+    }
+
+    .rg-bloco {
+        padding: 32px 0 36px;
+    }
+
+    .rg-campos {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .rg-acoes__botoes {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .sq-botao.rg-enviar {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .rg-sucesso {
+        grid-template-columns: 1fr;
+        padding: 24px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rg-bloco .rg-campos > * {
+        opacity: 1;
+        animation: none !important;
+    }
+
+    .rg-cartao-opcao:hover {
+        transform: none;
+    }
+}

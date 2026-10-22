@@ -1,334 +1,448 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
-import Footer from "../components/Footer.jsx";
-import Navbar from "../components/Nav.jsx";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+    Boxes, Briefcase, Check, ClipboardList, Factory, FlaskConical, Gift, GraduationCap, Landmark, Newspaper, QrCode, Recycle, School, Sprout, Truck, Users, X,
+} from "lucide-react";
+import Carrossel from "../components/Carrossel";
+import { Aviso } from "../components/ui";
+import { useAuth } from "../contexts/AuthContext";
+import { api, lista } from "../services/api";
+import { tempoRelativo } from "../utils/formatar";
+import telaPainel from "../assets/home/tela-painel.webp";
+import montanhas from "../assets/home/montanhas.webp";
+import cilindros from "../assets/home/cilindros.webp";
+import esferas from "../assets/home/esferas.webp";
+import aerea from "../assets/home/aerea.webp";
+import "../styles/pages/home.css";
 
-const GRID_ITEMS = [
-    { title: "CHAMADOS", link: "VEJA MAIS >", path: "/chamados" },
-    { title: "VAGAS", link: "VEJA MAIS >", path: "/vaga" },
-    { title: "CURRÍCULO", link: "VEJA MAIS >", path: "/cadastro/curriculo" },
-    { title: "PROJETOS", link: "VEJA MAIS >", path: "/projetos" },
-    { title: "NOTÍCIAS", link: "VEJA MAIS >", path: "/noticias" },
+/*
+ * Home — clone do arquivo "Modern Product Launch" (frame Desktop 1:29):
+ * título Crimson Text de 160 px, iPad sobre o cartão verde, nuvem de
+ * parceiros, benefícios em 4 colunas, "Features carousel", tabela
+ * comparativa, depoimento, 3 passos, foto aérea e chamada centralizada.
+ */
+
+const PARCEIROS = [
+    { icone: Landmark, nome: "UEPG" },
+    { icone: FlaskConical, nome: "Lab. de Polímeros" },
+    { icone: School, nome: "Escolas estaduais" },
+    { icone: Users, nome: "Makerspaces" },
+    { icone: Factory, nome: "Indústria regional" },
+    { icone: GraduationCap, nome: "PIBITI" },
 ];
 
-function FeatureGrid() {
-    const navigate = useNavigate();
+const BENEFICIOS = [
+    { icone: Gift, titulo: "Doe o que sobrou", texto: "Sobras, suportes, carretéis vazios e peças com falha entram num mural visto por laboratórios da região." },
+    { icone: Truck, titulo: "Coleta combinada", texto: "O laboratório solicita, você aceita e a data é combinada na própria plataforma, com peso conferido na entrega." },
+    { icone: FlaskConical, titulo: "Filamento com laudo", texto: "Cada lote reciclado passa por ensaio de diâmetro, tração e temperatura antes de voltar a circular." },
+    { icone: QrCode, titulo: "Rastreio por QR Code", texto: "O carretel leva um código público que mostra de onde veio o material e o resultado do laudo." },
+];
 
+const VANTAGENS = [
+    "Mostre o caminho do material: da doação ao laudo, tudo registrado.",
+    "Una a rede: escolas, makers, laboratórios e empresas no mesmo lugar.",
+    "Comprove o impacto: pontos, selos e ranking de quem mais recicla.",
+    "Publique com segurança: arquivos STL/3MF validados e curadoria.",
+];
+
+const IMAGENS_DESTAQUE = [
+    { src: cilindros, alt: "Três cilindros brancos sobre fundo creme" },
+    { src: esferas, alt: "Esfera de concreto equilibrada entre duas maiores" },
+    { src: montanhas, alt: "Cordilheira colorida com neve" },
+    { src: aerea, alt: "Vista aérea de colinas verdes e uma estrada sinuosa" },
+];
+
+const COMPARATIVO = [
+    {
+        nome: "EcoHub 3D",
+        itens: [
+            [true, "Rastreio por QR Code"],
+            [true, "Laudo de qualidade em PDF"],
+            [true, "Coletas agendadas"],
+            [true, "Instituições verificadas"],
+            [true, "Pontos, selos e ranking"],
+            [true, "Arquivos STL/3MF validados"],
+        ],
+    },
+    {
+        nome: "Grupos e planilhas",
+        itens: [
+            [true, "Contato rápido"],
+            [true, "Avisos de sobras"],
+            [true, "Combinação informal"],
+            [false, "Sem origem do material"],
+            [true, "Sem custo"],
+            [false, "Arquivos sem verificação"],
+        ],
+    },
+    {
+        nome: "Descarte comum",
+        itens: [
+            [false, "Plástico no aterro"],
+            [false, "Nenhum registro"],
+            [false, "Sem reaproveitamento"],
+            [false, "Sem parceiros"],
+            [false, "Sem impacto medido"],
+            [false, "Sem nova peça"],
+        ],
+    },
+];
+
+const PASSOS = [
+    { titulo: "Crie sua conta", texto: "Pessoa física, empresa, escola ou laboratório: cada perfil libera ações diferentes." },
+    { titulo: "Doe, peça ou atenda", texto: "Publique uma doação, abra um chamado ou aceite um pedido perto de você." },
+    { titulo: "Acompanhe o impacto", texto: "Siga o lote reciclado até o laudo e suba no ranking de impacto." },
+];
+
+const ATALHOS = [
+    { para: "/chamados", icone: ClipboardList, titulo: "Chamados", perfis: ["solicitante", "prestador", "moderador"], imagem: montanhas },
+    { para: "/doacoes", icone: Gift, titulo: "Doações e coletas", imagem: aerea },
+    { para: "/projetos", icone: Boxes, titulo: "Repositório de projetos", imagem: esferas },
+    { para: "/vagas", icone: Briefcase, titulo: "Vagas e currículos", imagem: cilindros },
+    { para: "/noticias", icone: Newspaper, titulo: "EcoHub Notícias", imagem: montanhas },
+    { para: "/lotes", icone: Factory, titulo: "Lotes e laudos", perfis: ["receptor"], imagem: aerea },
+    { para: "/rastreio", icone: QrCode, titulo: "Rastrear um lote", imagem: esferas },
+];
+
+const total = (resposta) => resposta?.meta?.total ?? lista(resposta).length;
+
+/* Botões dos componentes "Button" e "Button linkout" do arquivo. */
+function BotaoClaro({ para, children }) {
     return (
-        <div className="w-full bg-white">
-            <div className="max-w-[1280px] mx-auto flex flex-col md:flex-row flex-wrap">
-                {GRID_ITEMS.map((item, index) => (
-                    <div
-                        key={index}
-                        onClick={() => navigate(item.path)}
-                        className="flex-1 min-w-[200px] h-[250px] flex flex-col items-center justify-center transition-all duration-300 hover:bg-gray-50 group cursor-pointer"
-                    >
-                        <h3 className="font-['Open_Sans',sans-serif] font-bold text-[24px] tracking-tight text-black mt-4 group-hover:text-[#3800df] transition-colors">
-                            {item.title}
-                        </h3>
-                        <div className="mt-12 flex flex-col items-center gap-4">
-                            <span className="font-['Open_Sans',sans-serif] font-medium text-[11px] text-[#3800df] cursor-pointer hover:opacity-70 uppercase tracking-[0.3em] transition-all">
-                                {item.link}
-                            </span>
-                            <div className="w-10 h-[2px] bg-[#3800df] group-hover:w-16 transition-all duration-500" />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+        <Link to={para} className="ml-botao">
+            {children}
+        </Link>
     );
 }
 
-const SLIDES = [
-    { id: 1, nome: "PRODUTO ALPHA", desc: "Descrição do primeiro produto incrível", cor: "#f3f4f6" },
-    { id: 2, nome: "PRODUTO BETA", desc: "Este aqui tem funcionalidades únicas", cor: "#e5e7eb" },
-    { id: 3, nome: "PRODUTO GAMMA", desc: "A melhor escolha para sua biblioteca", cor: "#d1d5db" },
-];
-
-function Carrossel() {
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [scrollSnaps, setScrollSnaps] = useState([]);
-
-    const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [
-        Autoplay({ delay: 4000, stopOnInteraction: false }),
-    ]);
-
-    const scrollTo = useCallback(
-        (index) => emblaApi && emblaApi.scrollTo(index),
-        [emblaApi]
+function BotaoEscuro({ para, children, bloco = false }) {
+    return (
+        <Link to={para} className={`ml-botao ml-botao--escuro ${bloco ? "ml-botao--bloco" : ""}`}>
+            {children}
+            <span className="ml-botao__seta" aria-hidden="true">
+                ↗
+            </span>
+        </Link>
     );
+}
 
-    const onSelect = useCallback(() => {
-        if (!emblaApi) return;
-        setSelectedIndex(emblaApi.selectedScrollSnap());
-    }, [emblaApi]);
+/* Troca de imagem com fade (o "Features carousel"). */
+function useAlternador(total, intervalo) {
+    const [atual, setAtual] = useState(0);
+    const pausado = useRef(false);
+    const ir = useCallback((indice) => setAtual(((indice % total) + total) % total), [total]);
 
     useEffect(() => {
-        if (!emblaApi) return;
-        setScrollSnaps(emblaApi.scrollSnapList());
-        emblaApi.on("select", onSelect);
-        emblaApi.on("reInit", onSelect);
-    }, [emblaApi, onSelect]);
+        if (total < 2 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
+        const id = setInterval(() => !pausado.current && setAtual((a) => (a + 1) % total), intervalo);
+        return () => clearInterval(id);
+    }, [total, intervalo]);
 
-    return (
-        <section className="relative w-full h-[500px] overflow-hidden bg-white">
-            <div className="w-full h-full overflow-hidden" ref={emblaRef}>
-                <div className="flex h-full w-full">
-                    {SLIDES.map((slide) => (
-                        <div key={slide.id} className="relative flex-[0_0_100%] min-w-0 h-full w-full">
-                            <div className="absolute inset-0 w-full h-full" style={{ backgroundColor: slide.cor }} />
-                            <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
-                                <h2 className="text-[48px] font-bold text-black uppercase mb-4 tracking-tighter">
-                                    {slide.nome}
-                                </h2>
-                                <p className="text-[20px] text-gray-500 max-w-[450px]">
-                                    {slide.desc}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-3 z-30">
-                {scrollSnaps.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => scrollTo(index)}
-                        className={`transition-all duration-300 rounded-full h-2 border-none cursor-pointer ${
-                            index === selectedIndex ? "w-10 bg-[#1b85db]" : "w-2 bg-gray-400"
-                        }`}
-                    />
-                ))}
-            </div>
-        </section>
-    );
+    const pausar = { onMouseEnter: () => (pausado.current = true), onMouseLeave: () => (pausado.current = false) };
+    return [atual, ir, pausar];
 }
-
-const PaginacaoDash = ({ total, atual, setPagina, itensPorPagina }) => {
-    const totalPaginas = Math.ceil(total / itensPorPagina) || 1;
-    return (
-        <div className="flex gap-1.5 h-[4px]">
-            {Array.from({ length: totalPaginas }, (_, i) => (
-                <button
-                    key={i}
-                    onClick={() => setPagina(i)}
-                    className={`h-[4px] transition-all duration-300 border-none cursor-pointer ${
-                        atual === i ? "w-12 bg-[#3800df]" : "w-8 bg-[#e9ecef]"
-                    }`}
-                />
-            ))}
-        </div>
-    );
-};
 
 export default function Home() {
-    const [vagas, setVagas] = useState([]);
-    const [projetos, setProjetos] = useState([]);
+    const { usuario, pode } = useAuth();
+    const [numeros, setNumeros] = useState(null);
     const [noticias, setNoticias] = useState([]);
-
-    const [inputBusca, setInputBusca] = useState("");
-    const [filtroAtivo, setFiltroAtivo] = useState("");
+    const [polimeros, setPolimeros] = useState(0);
+    const [depoimento, irDepoimento, pausarDepoimento] = useAlternador(Math.max(noticias.length, 1), 7000);
 
     useEffect(() => {
-        const token = localStorage.getItem('@hub:token');
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
+        let ativo = true;
+        Promise.allSettled([api("/projeto?per_page=1"), api("/noticia?per_page=5"), api("/doacao?per_page=1"), api("/vaga?per_page=1"), api("/polimeros")]).then(
+            ([p, n, d, v, pol]) => {
+                if (!ativo) return;
+                const valor = (resultado) => (resultado.status === "fulfilled" ? resultado.value : null);
+                setNoticias(lista(valor(n)));
+                setPolimeros(lista(valor(pol)).length);
+                setNumeros({ projetos: total(valor(p)), noticias: total(valor(n)), doacoes: total(valor(d)), vagas: total(valor(v)) });
+            },
+        );
+        return () => {
+            ativo = false;
         };
-
-        const buscarDados = async () => {
-            try {
-                const [resVagas, resProjetos, resNoticias] = await Promise.all([
-                    fetch('http://localhost:8000/api/vaga', { headers }),
-                    fetch('http://localhost:8000/api/projeto', { headers }),
-                    fetch('http://localhost:8000/api/noticia', { headers })
-                ]);
-
-                if (resVagas.ok) {
-                    const data = await resVagas.json();
-                    setVagas(Array.isArray(data) ? data : (data.data || []));
-                }
-                if (resProjetos.ok) {
-                    const data = await resProjetos.json();
-                    setProjetos(Array.isArray(data) ? data : (data.data || []));
-                }
-                if (resNoticias.ok) {
-                    const data = await resNoticias.json();
-                    setNoticias(Array.isArray(data) ? data : (data.data || []));
-                }
-            } catch (err) {
-                console.error("Erro ao carregar dados da API:", err);
-            }
-        };
-
-        buscarDados().catch(console.error);
     }, []);
 
-    const handleFiltrar = (e) => {
-        e.preventDefault();
-        setFiltroAtivo(inputBusca.trim().toLowerCase());
-    };
-
-    const aplicarFiltro = (lista) => {
-        if (!filtroAtivo) return lista;
-        return lista.filter(item => {
-            const nome = (item.titulo || item.nome || "").toLowerCase();
-            const desc = (item.descricao || item.desc || "").toLowerCase();
-            return nome.includes(filtroAtivo) || desc.includes(filtroAtivo);
-        });
-    };
-
-    const SECOES_DATA = [
-        {
-            titulo: "Vagas",
-            path: "/vaga",
-            items: aplicarFiltro(vagas).map((v, i) => ({
-                id: v.id || `v-${i}`,
-                nome: v.titulo || v.nome || "Oportunidade Tech",
-                desc: v.descricao || v.desc || "Detalhes da vaga disponível.",
-            })),
-        },
-        {
-            titulo: "Projetos",
-            path: "/projetos",
-            items: aplicarFiltro(projetos).map((p, i) => ({
-                id: p.id || `p-${i}`,
-                nome: p.titulo || p.nome || "Projeto Ativo",
-                desc: p.descricao || p.desc || "Confira os detalhes deste projeto.",
-            })),
-        },
-        {
-            titulo: "Notícias",
-            path: "/noticias",
-            items: aplicarFiltro(noticias).map((n, i) => ({
-                id: n.id || `n-${i}`,
-                nome: n.titulo || n.nome || "Atualização de Mercado",
-                desc: n.descricao || n.desc || "Saiba as novidades recentes.",
-            })),
-        },
-    ];
+    const atalhos = ATALHOS.filter((a) => !a.perfis || pode(...a.perfis));
+    const ano = new Date().getFullYear();
+    const acaoPrincipal = pode("solicitante")
+        ? { para: "/chamados", rotulo: "Abrir chamado" }
+        : pode("receptor")
+          ? { para: "/doacoes", rotulo: "Buscar resíduos" }
+          : { para: "/doacoes/nova", rotulo: "Doar resíduos" };
+    const destaque = noticias[depoimento];
 
     return (
-        <main className="w-full bg-white">
-            <Navbar />
-            <style
-                dangerouslySetInnerHTML={{
-                    __html: `
-                        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Raleway:wght@400;500;600&display=swap');
-                    `,
-                }}
-            />
-            <Carrossel />
-            <FeatureGrid />
+        <div className="ml">
+            {/* ---------- Header ---------- */}
+            <header className="ml-topo">
+                <h1 className="ml-titulo" aria-label="Feche o ciclo.">
+                    {["Feche", "o", "ciclo."].map((palavra, i) => (
+                        <span key={palavra} className="ml-titulo__palavra" style={{ "--i": i }} aria-hidden="true">
+                            {palavra}
+                        </span>
+                    ))}
+                </h1>
 
-            <div className="w-full bg-white flex flex-col items-center pt-20 px-10 font-['Inter',sans-serif] overflow-hidden">
-                <div className="w-full max-w-[1280px]">
-                    <h1 className="text-black text-[24px] font-black tracking-[1.2em] uppercase text-center mb-16">
-                        Bem Vindo
-                    </h1>
-
-                    <form onSubmit={handleFiltrar} className="flex justify-center items-center gap-6 mb-20 w-full px-4">
-                        <div className="relative w-full max-w-[750px]">
-                            <label className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] text-[#858585] font-bold uppercase tracking-widest z-10 border-x border-gray-100">
-                                PESQUISAR
-                            </label>
-                            <input
-                                type="text"
-                                value={inputBusca}
-                                onChange={(e) => setInputBusca(e.target.value)}
-                                placeholder="Digite para filtrar..."
-                                className="w-full h-[65px] border-[1.5px] border-[#d1d1d1] px-6 outline-none focus:border-[#3800df] text-[14px] font-medium"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            className="h-[65px] px-20 bg-[#3800df] text-white text-[14px] font-black uppercase tracking-[0.3em] hover:brightness-110 transition-all shadow-lg active:scale-95 cursor-pointer"
-                        >
-                            FILTRO
-                        </button>
-                    </form>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 px-4 pb-20">
-                        {SECOES_DATA.map((secao) => (
-                            <ColunaLista key={secao.titulo} secao={secao} />
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <Footer />
-        </main>
-    );
-}
-
-function ColunaLista({ secao }) {
-    const navigate = useNavigate();
-    const [pagina, setPagina] = useState(0);
-    const itensPorPagina = 12;
-
-    const itemsSeguros = secao.items || [];
-    const itensExibidos = itemsSeguros.slice(
-        pagina * itensPorPagina,
-        (pagina + 1) * itensPorPagina
-    );
-
-    return (
-        <div className="flex flex-col">
-            <div className="flex items-center justify-between mb-8 border-b-[2.5px] border-[#1b85db] pb-1 px-2">
-                <h3 className="text-[#1b85db] text-[16px] font-black uppercase tracking-[0.2em]">
-                    {secao.titulo}
-                </h3>
-                <PaginacaoDash
-                    total={itemsSeguros.length}
-                    atual={pagina}
-                    setPagina={setPagina}
-                    itensPorPagina={itensPorPagina}
-                />
-            </div>
-
-            <div className="flex flex-col gap-8 mb-4 px-2 min-h-[400px]">
-                {itemsSeguros.length === 0 ? (
-                    <p className="text-[12px] text-gray-400 italic">Nenhum registro encontrado...</p>
-                ) : (
-                    itensExibidos.map((item) => (
-                        <div
-                            key={item.id}
-                            className="flex items-center gap-4 group cursor-pointer transition-opacity hover:opacity-70"
-                        >
-                            <div className="size-[70px] bg-[#ced4da] flex-shrink-0" />
-                            <div className="flex flex-col text-left">
-                                <h4 className="text-[12px] font-bold text-black uppercase leading-tight font-['Open_Sans',serif] group-hover:text-[#3800df] transition-colors">
-                                    {item.nome}
-                                </h4>
-                                <p className="text-[11px] text-[#8a8a8a] font-medium mt-1 leading-snug font-['Raleway',sans-serif]">
-                                    {item.desc}
-                                </p>
+                <div className="ml-hero" aria-label="Painel do EcoHub sobre uma paisagem, com os números da rede">
+                    <div className="ml-hero__fundo" />
+                    <div className="ml-ipad">
+                        <div className="ml-ipad__tela">
+                            <img src={telaPainel} alt="" />
+                            <div className="ml-tela">
+                                <span className="ml-tela__trilha">
+                                    Painel <span aria-hidden="true">›</span> <b>Visão geral</b>
+                                </span>
+                                <div className="ml-tela__linha">
+                                    <span className="ml-tela__numero">{numeros ? numeros.doacoes : "—"}</span>
+                                    <span className="ml-tela__rotulo">Doações à espera de coleta</span>
+                                    <span className="ml-tela__seletor">
+                                        Todos os polímeros ({polimeros || "—"}) <span aria-hidden="true">▾</span>
+                                    </span>
+                                </div>
+                                <div className="ml-tela__anos">
+                                    {[ano - 3, ano - 2, ano - 1, ano].map((a) => (
+                                        <span key={a}>{a}</span>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    ))
-                )}
-            </div>
-
-            <div className="mt-5 border-t-[2.5px] border-[#1b85db] pt-3 px-2">
-                <div className="flex items-center justify-between">
-                    <button
-                        onClick={() => navigate(secao.path)}
-                        className="text-[13px] font-black text-black uppercase tracking-[0.3em] hover:text-[#3800df] transition-all cursor-pointer bg-transparent border-none p-0"
-                    >
-                        VEJA MAIS
-                    </button>
-                    <PaginacaoDash
-                        total={itemsSeguros.length}
-                        atual={pagina}
-                        setPagina={setPagina}
-                        itensPorPagina={itensPorPagina}
-                    />
+                    </div>
                 </div>
-            </div>
+            </header>
+
+            {usuario?.verificacao_status === "pendente" && (
+                <div className="ml-aviso">
+                    <Aviso tom="alerta">
+                        <strong>Cadastro em análise.</strong> A equipe está conferindo o CNPJ de {usuario.nome}. Assim que for aprovado, você poderá publicar
+                        vagas e notícias{usuario.tipo_usuario === "laboratorio" ? ", receber resíduos e atender chamados" : " e abrir chamados"}.
+                    </Aviso>
+                </div>
+            )}
+            {usuario?.verificacao_status === "rejeitado" && (
+                <div className="ml-aviso">
+                    <Aviso tom="perigo">
+                        <strong>Verificação recusada.</strong> {usuario.motivo_verificacao} Corrija o documento no seu perfil para uma nova análise.
+                    </Aviso>
+                </div>
+            )}
+
+            <main className="ml-principal">
+                {/* ---------- Logo cloud ---------- */}
+                <section className="ml-logos" aria-label="Quem faz parte">
+                    <p data-revelar="fade">Quem faz parte:</p>
+                    <ul>
+                        {PARCEIROS.map(({ icone: Icone, nome }, i) => (
+                            <li key={nome} data-revelar style={{ "--atraso": `${i * 70}ms` }}>
+                                <Icone size={22} strokeWidth={2.2} aria-hidden="true" />
+                                {nome}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+
+                {/* ---------- Atalhos por perfil (componente "Photo row") ---------- */}
+                <section className="ml-atalhos" aria-labelledby="ml-atalhos-titulo">
+                    <div className="ml-atalhos__topo" data-revelar>
+                        <h2 id="ml-atalhos-titulo" className="ml-legenda">
+                            Seus atalhos
+                        </h2>
+                    </div>
+                    <Carrossel rotulo="Atalhos" automatico={6000} classe="ml-atalhos__carrossel">
+                        {atalhos.map(({ para, icone: Icone, titulo, imagem: foto }) => (
+                            <Link key={para} to={para} className="ml-foto">
+                                <span className="ml-foto__imagem zoom-imagem">
+                                    <img src={foto} alt="" loading="lazy" draggable="false" />
+                                    <span className="ml-foto__icone">
+                                        <Icone size={20} aria-hidden="true" />
+                                    </span>
+                                </span>
+                                <span className="ml-foto__link">{titulo}</span>
+                            </Link>
+                        ))}
+                    </Carrossel>
+                </section>
+
+                {/* ---------- Benefits section ---------- */}
+                <section className="ml-beneficios">
+                    <div className="ml-beneficios__texto">
+                        <h2 className="ml-legenda" data-revelar>
+                            Benefícios
+                        </h2>
+                        <p className="ml-h1" data-revelar style={{ "--atraso": "80ms" }}>
+                            Desvendamos o ciclo do plástico.
+                        </p>
+                        <p className="ml-paragrafo" data-revelar style={{ "--atraso": "160ms" }}>
+                            O EcoHub 3D mostra o caminho real do material, sem planilhas perdidas.
+                        </p>
+                    </div>
+                    <div className="ml-icones">
+                        {BENEFICIOS.map(({ icone: Icone, titulo, texto }, i) => (
+                            <section key={titulo} className="ml-icone" aria-label={`Benefício ${i + 1} de 4`} data-revelar style={{ "--atraso": `${i * 110}ms` }}>
+                                <Icone size={24} strokeWidth={2} aria-hidden="true" />
+                                <div>
+                                    <p className="ml-h3">{titulo}</p>
+                                    <p className="ml-paragrafo">{texto}</p>
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                </section>
+                <div className="ml-imagem-grande zoom-imagem" data-revelar="escala">
+                    <img src={montanhas} alt="Cordilheira colorida com neve" loading="lazy" />
+                </div>
+
+                {/* ---------- Features carousel ---------- */}
+                <section className="ml-recursos">
+                    <div className="ml-recursos__texto">
+                        <div className="ml-recursos__titulo">
+                            <p className="ml-h1" data-revelar>
+                                Veja o quadro completo
+                            </p>
+                            <p className="ml-paragrafo" data-revelar style={{ "--atraso": "80ms" }}>
+                                O EcoHub transforma doações, coletas e laudos em informação clara para cada instituição da rede.
+                            </p>
+                        </div>
+                        <ol className="ml-lista">
+                            {VANTAGENS.map((texto, i) => (
+                                <li key={texto} data-revelar="esquerda" style={{ "--atraso": `${120 + i * 90}ms` }}>
+                                    <b>{String(i + 1).padStart(2, "0")}</b>
+                                    <span>{texto}</span>
+                                </li>
+                            ))}
+                        </ol>
+                        <span data-revelar style={{ "--atraso": "480ms" }}>
+                            <BotaoClaro para="/rastreio">Descobrir mais</BotaoClaro>
+                        </span>
+                    </div>
+                    <div className="ml-recursos__galeria" data-revelar="direita">
+                        <Carrossel rotulo="Imagens do EcoHub" automatico={5000} classe="ml-galeria">
+                            {IMAGENS_DESTAQUE.map((foto) => (
+                                <div key={foto.alt} className="ml-galeria__slide zoom-imagem">
+                                    <img src={foto.src} alt={foto.alt} loading="lazy" draggable="false" />
+                                </div>
+                            ))}
+                        </Carrossel>
+                    </div>
+                </section>
+
+                {/* ---------- Specifications table ---------- */}
+                <section className="ml-specs">
+                    <div className="ml-specs__texto">
+                        <h2 className="ml-legenda" data-revelar>
+                            Comparativo
+                        </h2>
+                        <p className="ml-h1" data-revelar style={{ "--atraso": "80ms" }}>
+                            Por que o EcoHub 3D?
+                        </p>
+                        <p className="ml-paragrafo" data-revelar style={{ "--atraso": "160ms" }}>
+                            Grupos de mensagens e planilhas não mostram de onde veio o plástico. Por isso criamos uma rede com rastreio, laudo e
+                            instituições verificadas.
+                        </p>
+                        <span data-revelar style={{ "--atraso": "240ms" }}>
+                            <BotaoClaro para="/projetos">Ver projetos</BotaoClaro>
+                        </span>
+                    </div>
+                    <div className="ml-tabela" role="table" aria-label="Comparação entre o EcoHub 3D, grupos e planilhas e o descarte comum">
+                        {COMPARATIVO.map((coluna, c) => (
+                            <section key={coluna.nome} className={`ml-tabela__coluna ${c === 0 ? "ml-tabela__coluna--destaque" : ""}`} role="rowgroup" data-revelar style={{ "--atraso": `${c * 120}ms` }}>
+                                <div className={`ml-tabela__cabeca ml-tabela__cabeca--${c}`} role="columnheader">
+                                    {coluna.nome}
+                                </div>
+                                {coluna.itens.map(([sim, texto]) => (
+                                    <div key={texto} className="ml-tabela__item" role="cell">
+                                        {sim ? (
+                                            <Check size={14} strokeWidth={2.5} className={c === 0 ? "ml-ok" : "ml-ok ml-ok--fraco"} aria-label="Sim" />
+                                        ) : (
+                                            <X size={14} strokeWidth={2.5} className="ml-nao" aria-label="Não" />
+                                        )}
+                                        <span>{texto}</span>
+                                    </div>
+                                ))}
+                            </section>
+                        ))}
+                    </div>
+                </section>
+
+                {/* ---------- Testimonial section (com as últimas notícias) ---------- */}
+                <section className="ml-depoimento" {...pausarDepoimento}>
+                    <div className="ml-depoimento__imagem zoom-imagem" data-revelar="esquerda">
+                        <img src={esferas} alt="Esfera de concreto equilibrada entre duas maiores" loading="lazy" />
+                    </div>
+                    <section className="ml-depoimento__citacao" aria-label="Destaque do EcoHub Notícias" aria-live="polite" data-revelar="direita">
+                        {destaque ? (
+                            <Link key={destaque.id} to={`/noticias/${destaque.id}`} className="ml-depoimento__texto">
+                                “{destaque.titulo}”
+                            </Link>
+                        ) : (
+                            <p className="ml-depoimento__texto">“Nenhum grama de plástico de impressão 3D precisa terminar no aterro.”</p>
+                        )}
+                        <div className="ml-depoimento__autor">
+                            <p>{destaque?.usuario?.nome ?? "EcoHub 3D"}</p>
+                            <p className="ml-legenda">{destaque ? `${destaque.tema} · ${tempoRelativo(destaque.data_publicacao)}` : "Manifesto"}</p>
+                        </div>
+                        {noticias.length > 1 && (
+                            <div className="ml-depoimento__pontos">
+                                {noticias.map((n, i) => (
+                                    <button key={n.id} type="button" aria-label={`Notícia ${i + 1}`} aria-current={i === depoimento} onClick={() => irDepoimento(i)} />
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </section>
+
+                {/* ---------- How it works section ---------- */}
+                <section className="ml-passos">
+                    <div className="ml-passos__topo">
+                        <p className="ml-h1" data-revelar>
+                            Mapeie seu impacto
+                        </p>
+                        <span data-revelar style={{ "--atraso": "100ms" }}>
+                            <BotaoClaro para="/ranking">Ver ranking</BotaoClaro>
+                        </span>
+                    </div>
+                    <div className="ml-passos__grade">
+                        {PASSOS.map(({ titulo, texto }, i) => (
+                            <section key={titulo} className="ml-passo" aria-label={`Passo ${i + 1} de 3`} data-revelar style={{ "--atraso": `${i * 140}ms` }}>
+                                <p className="ml-passo__numero">{String(i + 1).padStart(2, "0")}</p>
+                                <div>
+                                    <p className="ml-h3">{titulo}</p>
+                                    <p className="ml-paragrafo">{texto}</p>
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                </section>
+
+                {/* ---------- Hero image ---------- */}
+                <div className="ml-aerea" data-revelar="escala">
+                    <div className="ml-aerea__imagem zoom-imagem">
+                        <img src={aerea} alt="Vista aérea de colinas verdes e uma estrada sinuosa" loading="lazy" />
+                    </div>
+                </div>
+
+                {/* ---------- Centered CTA ---------- */}
+                <section className="ml-cta">
+                    <p className="ml-h1" data-revelar>
+                        Conecte-se à rede
+                    </p>
+                    <p className="ml-paragrafo" data-revelar style={{ "--atraso": "80ms" }}>
+                        {numeros
+                            ? `${numeros.projetos} projetos, ${numeros.vagas} vagas e ${numeros.noticias} notícias já circulam por aqui. Falta a sua parte.`
+                            : "Makers, laboratórios, escolas públicas e empresas trocando resíduos, conhecimento e oportunidades."}
+                    </p>
+                    <span className="ml-cta__botao" data-revelar style={{ "--atraso": "160ms" }}>
+                        <BotaoEscuro para={acaoPrincipal.para} bloco>
+                            {acaoPrincipal.rotulo}
+                        </BotaoEscuro>
+                    </span>
+                    <span className="ml-cta__selo" data-revelar="fade" style={{ "--atraso": "240ms" }}>
+                        <Recycle size={14} aria-hidden="true" /> Economia circular da impressão 3D <Sprout size={14} aria-hidden="true" />
+                    </span>
+                </section>
+            </main>
         </div>
     );
 }

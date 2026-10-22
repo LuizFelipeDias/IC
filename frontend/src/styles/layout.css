@@ -1,0 +1,707 @@
+/* ==========================================================================
+   Estrutura: barra de navegação, conteúdo e rodapé
+   Referência: frame "footer" 113:7361 do arquivo Figma "Footers — a collection
+   of sleek and versatile footer designs" (1440 × 539). O arquivo não tem barra
+   de navegação; a nav usa a mesma linguagem: fundo #122031, Inter Medium 14,
+   textos brancos a 75%, círculos com borda branca a 13% e pílula laranja.
+   ========================================================================== */
+
+.nav,
+.rodape {
+    --rodape-fundo: #122031;
+    --rodape-laranja: #db5d23;
+    --rodape-laranja-hover: #c44f1a;
+    --rodape-traco: #14447c;
+    --rodape-borda: rgba(255, 255, 255, 0.13);
+    --rodape-largura: 1440px;
+    --rodape-margem: 40px;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.app__conteudo {
+    flex: 1;
+    padding-bottom: var(--esp-20);
+}
+
+/* ---------- Marca (comum) ---------- */
+.marca {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--esp-2);
+    font-family: var(--fonte-display);
+    font-size: var(--texto-lg);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.marca__simbolo {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--cor-primaria) 0%, #6a3dff 55%, var(--cor-eco) 100%);
+    color: #fff;
+}
+
+.marca__3d {
+    color: var(--cor-primaria);
+}
+
+/* Marca branca sobre o azul-marinho (como o "Logoipsum" do Figma: 24 px de altura) */
+.nav .marca,
+.rodape .marca {
+    gap: 6px;
+    font-family: var(--fonte-ui);
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: #fff;
+}
+
+.nav .marca__simbolo,
+.rodape .marca__simbolo {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--rodape-fundo);
+}
+
+.nav .marca__simbolo svg,
+.rodape .marca__simbolo svg {
+    width: 14px;
+    height: 14px;
+}
+
+.nav .marca__3d,
+.rodape .marca__3d {
+    color: #fff;
+}
+
+/* ---------- Barra de navegação ---------- */
+.nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: var(--rodape-fundo);
+    color: #fff;
+    transition:
+        background 360ms var(--curva-suave),
+        box-shadow 360ms var(--curva-suave);
+}
+
+/* Depois de rolar: fundo levemente translúcido com desfoque e sombra */
+.nav--rolada {
+    background: rgba(18, 32, 49, 0.92);
+    backdrop-filter: saturate(160%) blur(14px);
+    box-shadow: 0 12px 32px -18px rgba(5, 10, 20, 0.75);
+}
+
+.nav .marca__simbolo {
+    transition: transform 700ms var(--curva-mola);
+}
+
+.nav a:hover .marca__simbolo,
+.rodape a:hover .marca__simbolo {
+    transform: rotate(180deg);
+}
+
+.nav__interno.container {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    max-width: var(--rodape-largura);
+    height: var(--altura-nav);
+    padding-inline: var(--rodape-margem);
+}
+
+.nav__links {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-left: auto;
+}
+
+/* Sublinhado laranja que desliza entre os links (posição calculada em Nav.jsx) */
+.nav__indicador {
+    position: absolute;
+    left: 0;
+    bottom: calc(50% - 14px);
+    height: 2px;
+    border-radius: 2px;
+    background: var(--rodape-laranja);
+    pointer-events: none;
+    transition:
+        transform 460ms var(--curva-suave),
+        width 460ms var(--curva-suave);
+}
+
+.nav__link {
+    font-family: var(--fonte-ui);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+    opacity: 0.75;
+    transition: opacity var(--transicao);
+}
+
+.nav__link:hover,
+.nav__link.ativo {
+    opacity: 1;
+}
+
+.nav__link {
+    position: relative;
+}
+
+.nav__acoes {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 40px;
+}
+
+.nav__circulo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 10px;
+    border: 1px solid var(--rodape-borda);
+    border-radius: 50px;
+    background: none;
+    color: #fff;
+    transition:
+        border-color var(--transicao),
+        background var(--transicao),
+        transform 320ms var(--curva-mola);
+}
+
+.nav__circulo:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+    transform: scale(1.08);
+}
+
+/* Troca animada entre os ícones de menu e fechar */
+.nav__icone-troca {
+    position: relative;
+    display: grid;
+    width: 16px;
+    height: 16px;
+}
+
+.nav__icone-troca svg {
+    grid-area: 1 / 1;
+    transition:
+        opacity 260ms var(--curva-suave),
+        transform 360ms var(--curva-suave);
+}
+
+.nav__icone-troca svg:last-child {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.6);
+}
+
+.nav__icone-troca.aberto svg:first-child {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.6);
+}
+
+.nav__icone-troca.aberto svg:last-child {
+    opacity: 1;
+    transform: none;
+}
+
+.nav__botao {
+    display: inline-flex;
+    align-items: flex-start;
+    padding: 10px 20px;
+    border-radius: 40px;
+    background: var(--rodape-laranja);
+    font-family: var(--fonte-ui);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+    white-space: nowrap;
+    transition:
+        background var(--transicao),
+        transform 320ms var(--curva-mola),
+        box-shadow 320ms var(--curva-suave);
+}
+
+.nav__botao:hover {
+    background: var(--rodape-laranja-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px -12px rgba(219, 93, 35, 0.8);
+}
+
+.nav__usuario {
+    position: relative;
+}
+
+.nav__usuario-botao {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 3px 14px 3px 3px;
+    border: 1px solid var(--rodape-borda);
+    border-radius: 50px;
+    background: none;
+    font-family: var(--fonte-ui);
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+}
+
+.nav__usuario-botao {
+    transition:
+        border-color var(--transicao),
+        background var(--transicao);
+}
+
+.nav__usuario-botao:hover,
+.nav__usuario-botao[aria-expanded="true"] {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.nav__usuario-botao .avatar {
+    transition: transform 420ms var(--curva-mola);
+}
+
+.nav__usuario-botao:hover .avatar {
+    transform: rotate(-8deg) scale(1.06);
+}
+
+.nav__usuario-botao .avatar {
+    width: 28px;
+    height: 28px;
+    background: var(--rodape-laranja);
+    font-size: 11px;
+    color: #fff;
+}
+
+.nav__usuario-nome {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menu-suspenso {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 260px;
+    padding: var(--esp-2);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-lg);
+    background: var(--cor-superficie);
+    box-shadow: var(--sombra-2);
+    color: var(--cor-texto);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px) scale(0.97);
+    transform-origin: top right;
+    transition:
+        opacity 220ms var(--curva-suave),
+        transform 320ms var(--curva-suave),
+        visibility 0s linear 320ms;
+}
+
+.menu-suspenso.aberto {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+        opacity 220ms var(--curva-suave),
+        transform 360ms var(--curva-mola),
+        visibility 0s;
+}
+
+.menu-suspenso.aberto > * {
+    animation: surgir 360ms var(--curva-suave) both;
+}
+
+.menu-suspenso.aberto > :nth-child(2) { animation-delay: 40ms; }
+.menu-suspenso.aberto > :nth-child(3) { animation-delay: 80ms; }
+.menu-suspenso.aberto > :nth-child(4) { animation-delay: 120ms; }
+
+.menu-suspenso__cabecalho {
+    padding: var(--esp-3);
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: var(--esp-2);
+}
+
+.menu-suspenso__item {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-3);
+    width: 100%;
+    padding: var(--esp-2) var(--esp-3);
+    border: 0;
+    border-radius: var(--raio-md);
+    background: none;
+    font-size: var(--texto-sm);
+    text-align: left;
+}
+
+.menu-suspenso__item {
+    transition:
+        background var(--transicao),
+        padding-left 260ms var(--curva-suave);
+}
+
+.menu-suspenso__item:hover {
+    background: var(--cor-superficie-2);
+    padding-left: calc(var(--esp-3) + 4px);
+}
+
+.nav__hamburguer {
+    display: none;
+}
+
+@media (max-width: 1100px) {
+    .nav__links {
+        position: absolute;
+        top: var(--altura-nav);
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        margin: 0;
+        padding: 10px var(--rodape-margem) 30px;
+        border-top: 1px solid var(--rodape-borda);
+        background: var(--rodape-fundo);
+        box-shadow: 0 24px 40px -24px rgba(5, 10, 20, 0.8);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-12px);
+        transition:
+            opacity 240ms var(--curva-suave),
+            transform 360ms var(--curva-suave),
+            visibility 0s linear 360ms;
+    }
+
+    .nav__links.aberto {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition:
+            opacity 240ms var(--curva-suave),
+            transform 360ms var(--curva-suave),
+            visibility 0s;
+    }
+
+    .nav__link {
+        padding: 12px 0;
+        font-size: 16px;
+        opacity: 0;
+        transform: translateX(-12px);
+        transition:
+            opacity 300ms var(--curva-suave),
+            transform 400ms var(--curva-suave);
+    }
+
+    .nav__links.aberto .nav__link {
+        opacity: 0.75;
+        transform: none;
+        transition-delay: calc(var(--i, 0) * 35ms);
+    }
+
+    .nav__links.aberto .nav__link.ativo {
+        opacity: 1;
+        padding-left: 12px;
+        box-shadow: inset 2px 0 0 var(--rodape-laranja);
+    }
+
+    .nav__indicador {
+        display: none;
+    }
+
+    .nav__acoes {
+        margin-left: auto;
+    }
+
+    .nav__hamburguer {
+        display: inline-flex;
+    }
+}
+
+@media (max-width: 560px) {
+    .nav__interno.container {
+        gap: 12px;
+        padding-inline: 16px;
+    }
+
+    .nav__links {
+        padding-inline: 16px;
+    }
+
+    .nav__acoes {
+        gap: 8px;
+    }
+
+    .nav__usuario-nome {
+        display: none;
+    }
+
+    .nav__usuario-botao {
+        padding: 3px;
+    }
+}
+
+/* ---------- Rodapé (frame 113:7361) ---------- */
+.rodape {
+    background: var(--rodape-fundo);
+    color: #fff;
+    font-family: var(--fonte-ui);
+}
+
+.rodape__interno {
+    max-width: var(--rodape-largura);
+    margin-inline: auto;
+    padding: 60px var(--rodape-margem);
+}
+
+/* Colunas nas posições do Figma: 40 | 385 | 615 | 845 px e botão a 40 px da direita */
+.rodape__topo,
+.rodape__base {
+    display: grid;
+    grid-template-columns: 345px 230px 230px minmax(0, 1fr) auto;
+}
+
+.rodape__topo {
+    align-items: start;
+    min-height: 343px;
+}
+
+.rodape__marca {
+    display: inline-flex;
+    height: 24px;
+    align-items: center;
+    justify-self: start;
+}
+
+.rodape__coluna h2 {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+}
+
+.rodape__coluna ul {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 30px;
+}
+
+.rodape__coluna li {
+    line-height: 1.4;
+}
+
+.rodape__coluna a {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: #fff;
+    opacity: 0.75;
+    background: linear-gradient(var(--rodape-laranja), var(--rodape-laranja)) 0 100% / 0 1px no-repeat;
+    transition:
+        opacity var(--transicao),
+        background-size 380ms var(--curva-suave);
+}
+
+.rodape__coluna a:hover,
+.rodape__coluna a:focus-visible {
+    opacity: 1;
+    background-size: 100% 1px;
+}
+
+.rodape__contato-botao {
+    grid-column: 5;
+    display: inline-flex;
+    align-items: flex-start;
+    padding: 10px 20px;
+    border-radius: 40px;
+    background: var(--rodape-laranja);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+    white-space: nowrap;
+    transition:
+        background var(--transicao),
+        transform 320ms var(--curva-mola),
+        box-shadow 320ms var(--curva-suave);
+}
+
+.rodape__contato-botao:hover {
+    background: var(--rodape-laranja-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -14px rgba(219, 93, 35, 0.85);
+}
+
+.rodape__base {
+    align-items: start;
+}
+
+.rodape__redes {
+    display: flex;
+    gap: 15px;
+    padding-top: 26px;
+}
+
+.rodape__redes a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    padding: 10px;
+    border: 1px solid var(--rodape-borda);
+    border-radius: 50px;
+    color: #fff;
+    transition:
+        border-color var(--transicao),
+        background 320ms var(--curva-suave),
+        transform 360ms var(--curva-mola);
+}
+
+.rodape__redes a:hover {
+    border-color: var(--rodape-laranja);
+    background: var(--rodape-laranja);
+    transform: translateY(-4px) rotate(-6deg);
+}
+
+/* Traço azul de 45 × 1 px acima do contato */
+.rodape__contato {
+    grid-column: 2 / span 2;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-top: 31px;
+    font-size: 14.14px;
+    line-height: 1.4;
+}
+
+.rodape__contato::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 45px;
+    height: 1px;
+    background: var(--rodape-traco);
+    transition: width 600ms var(--curva-suave);
+}
+
+.rodape__base:hover .rodape__contato::before {
+    width: 120px;
+}
+
+.rodape__contato span,
+.rodape__contato a {
+    color: #fff;
+    opacity: 0.75;
+}
+
+.rodape__contato a:hover {
+    opacity: 1;
+}
+
+.rodape__direitos {
+    grid-column: 5;
+    padding-top: 42px;
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: right;
+    color: #fff;
+    opacity: 0.25;
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .rodape__topo,
+    .rodape__base {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 40px 24px;
+    }
+
+    .rodape__topo {
+        min-height: 0;
+        padding-bottom: 60px;
+    }
+
+    .rodape__marca {
+        grid-column: 1 / 3;
+    }
+
+    .rodape__contato-botao {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+    }
+
+    .rodape__redes {
+        grid-column: 1;
+        padding-top: 0;
+    }
+
+    .rodape__contato {
+        grid-column: 2 / span 2;
+    }
+
+    .rodape__direitos {
+        grid-column: 1 / -1;
+        padding-top: 0;
+        text-align: left;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 560px) {
+    .rodape__interno {
+        padding: 40px 16px;
+    }
+
+    .rodape__topo,
+    .rodape__base {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .rodape__marca {
+        grid-column: 1;
+    }
+
+    .rodape__contato-botao {
+        grid-column: 2;
+    }
+
+    .rodape__coluna:first-of-type {
+        grid-column: 1 / -1;
+    }
+
+    .rodape__redes {
+        grid-column: 1 / -1;
+    }
+
+    .rodape__contato {
+        grid-column: 1 / -1;
+    }
+}

@@ -2,15 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Candidatura extends Model
 {
+    use HasFactory;
+
+    /** Valores aceitos na coluna status (varchar(50), default 'Em análise'). */
+    public const STATUS = ['Em análise', 'Aprovada', 'Reprovada', 'Cancelada'];
+
     protected $table = 'candidaturas';
 
     /**
-     * A tabela NÃO tem created_at/updated_at. Sem esta linha, todo insert
-     * do Eloquent quebra com "column created_at does not exist".
+     * A tabela NÃO tem created_at/updated_at.
      * O carimbo de tempo é o data_candidatura, com DEFAULT no banco.
      */
     public $timestamps = false;
@@ -21,18 +27,19 @@ class Candidatura extends Model
         'status',
     ];
 
-    protected $casts = [
-        'data_candidatura' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'data_candidatura' => 'datetime',
+        ];
+    }
 
-    // status tem DEFAULT 'Em análise' no banco: só envie se for mudar.
-
-    public function usuario()
+    public function usuario(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'id_usuario');
     }
 
-    public function vaga()
+    public function vaga(): BelongsTo
     {
         return $this->belongsTo(Vaga::class, 'id_vaga');
     }

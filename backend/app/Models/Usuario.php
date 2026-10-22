@@ -2,29 +2,48 @@
 
 namespace App\Models;
 
+use App\Enums\PapelUsuario;
+use App\Enums\Perfil;
+use App\Enums\TipoUsuario;
 use Database\Factories\UsuarioFactory;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-
+use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['nome', 'email', 'telefone', 'senha', 'estudante', 'empresa', 'cpf', 'sexo', 'profissao', 'cnpj',])]
-#[Hidden(['senha', 'remember_token'])]
-
 /**
+ * @property int $id
  * @property string $senha
  * @property string $email
+ * @property bool $empresa
+ * @property bool $estudante
+ * @property TipoUsuario $tipo_usuario
+ * @property PapelUsuario $papel
+ * @property bool $prestador_servico
  */
-
+#[Fillable([
+    'nome', 'email', 'telefone', 'senha', 'estudante', 'empresa', 'cpf', 'sexo', 'profissao', 'cnpj',
+    'tipo_usuario', 'prestador_servico', 'codigo_inep',
+])]
+#[Hidden(['senha', 'remember_token'])]
 class Usuario extends Authenticatable
 {
     /** @use HasFactory<UsuarioFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'usuario';
+
+    /** Mesmos defaults do banco, para o model recém-criado já tê-los. */
+    protected $attributes = [
+        'tipo_usuario' => 'pessoa_fisica',
+        'papel' => 'usuario',
+        'prestador_servico' => false,
+        'pontos_total' => 0,
+    ];
 
     public function getAuthPasswordName(): string
     {
@@ -38,6 +57,105 @@ class Usuario extends Authenticatable
             'empresa' => 'boolean',
             'sexo' => 'boolean',
             'senha' => 'hashed',
+            'tipo_usuario' => TipoUsuario::class,
+            'papel' => PapelUsuario::class,
+            'prestador_servico' => 'boolean',
+            'verificado_em' => 'datetime',
         ];
+    }
+
+    public function ehPessoaFisica(): bool
+    {
+        return $this->tipo_usuario === TipoUsuario::PessoaFisica;
+    }
+
+    /** Empresa, escola ou laboratório com CNPJ/INEP conferido por um moderador. */
+    public function instituicaoVerificada(): bool
+    {
+        return $this->tipo_usuario->ehPessoaJuridica() && $this->verificacao_status === 'verificado';
+    }
+
+    public function ehModerador(): bool
+    {
+        return in_array($this->papel, [PapelUsuario::Moderador, PapelUsuario::Admin], true);
+    }
+
+    /**
+     * Fonte única das regras de acesso por tipo de usuário (RBAC).
+     */
+    public function temPerfil(Perfil $perfil): bool
+    {
+        $verificada = $this->instituicaoVerificada();
+        $laboratorio = $this->tipo_usuario === TipoUsuario::Laboratorio;
+
+        return match ($perfil) {
+            Perfil::Solicitante => $verificada && in_array($this->tipo_usuario, [TipoUsuario::Escola, TipoUsuario::Empresa, TipoUsuario::Estabelecimento], true),
+            Perfil::Prestador => ($verificada && $laboratorio) || ($this->ehPessoaFisica() && $this->prestador_servico),
+            Perfil::Contratante => $verificada,
+            Perfil::Candidato => $this->ehPessoaFisica(),
+            Perfil::Publicador => $verificada || $this->ehModerador(),
+            Perfil::Receptor => $verificada && $laboratorio,
+            Perfil::Moderador => $this->ehModerador(),
+        };
+    }
+
+    /**
+     * Mapa perfil => bool enviado ao front para mostrar ou esconder ações.
+     *
+     * @return array<string, bool>
+     */
+    public function perfis(): array
+    {
+        return collect(Perfil::cases())
+            ->mapWithKeys(fn (Perfil $perfil) => [$perfil->value => $this->temPerfil($perfil)])
+            ->all();
+    }
+
+    public function selos(): BelongsToMany
+    {
+        return $this->belongsToMany(Selo::class, 'selos_usuario', 'id_usuario', 'id_selo')
+            ->withPivot('conquistado_em');
+    }
+
+    public function vagas(): HasMany
+    {
+        return $this->hasMany(Vaga::class, 'id_usuario');
+    }
+
+    public function candidaturas(): HasMany
+    {
+        return $this->hasMany(Candidatura::class, 'id_usuario');
+    }
+
+    public function curriculos(): HasMany
+    {
+        return $this->hasMany(Curriculo::class, 'id_usuario');
+    }
+
+    public function noticias(): HasMany
+    {
+        return $this->hasMany(Noticia::class, 'id_usuario');
+    }
+
+    public function projetos(): HasMany
+    {
+        return $this->hasMany(Projeto::class, 'id_usuario');
+    }
+
+    /** Chamados que a conta atende como prestadora (maker ou laboratório). */
+    public function chamadosAtendidos(): HasMany
+    {
+        return $this->hasMany(Chamado::class, 'id_prestador');
+    }
+
+    /** Lotes de filamento produzidos (laboratórios). */
+    public function lotes(): HasMany
+    {
+        return $this->hasMany(LoteFilamento::class, 'id_laboratorio');
+    }
+
+    public function chamados(): HasMany
+    {
+        return $this->hasMany(Chamado::class, 'id_usuario');
     }
 }

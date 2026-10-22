@@ -3,65 +3,65 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UsuarioRequest;
+use App\Http\Resources\UsuarioPrivadoResource;
+use App\Http\Resources\UsuarioResource;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class UsuarioController extends Controller
 {
-    public function login(Request $request)
-    {
-        // 1. Guardamos os dados validados em uma variável
-        $credenciais = $request->validate([
-            'email' => 'required',
-            'senha' => 'required',
-        ]);
-
-        // 2. Buscamos usando o array de credenciais validadas
-        $usuario = Usuario::where('email', $credenciais['email'])->first();
-
-        // 3. Comparamos a senha usando o array, evitando o "magic method" do $request
-        if(!$usuario || !Hash::check($credenciais['senha'], $usuario->senha)){
-            return response()->json([
-                'Mensagem' => "Email e/ou senha incorretos.",
-            ], 401);
-        }
-
-        $token = $usuario->createToken('Token de acesso')->plainTextToken;
-
-        return response()->json([
-            'Mensagem' => 'Logado com sucesso.',
-            'usuario' => $usuario,
-            'token' => $token
-        ]);
-    }
-
-    public function index()
-    {
-        return Usuario::all();
-    }
-
+    /**
+     * Cadastro público. Já devolve o token para o front fazer auto-login.
+     */
     public function store(UsuarioRequest $request)
     {
-        return Usuario::create($request->validated());
+        $usuario = new Usuario($request->safe()->except('senha_atual'));
+        // Instituições aguardam a conferência do CNPJ/INEP por um moderador.
+        $usuario->verificacao_status = $usuario->tipo_usuario->ehPessoaJuridica() ? 'pendente' : null;
+        $usuario->save();
+        $usuario->refresh();
+
+        return response()->json([
+            'message' => 'Cadastro realizado com sucesso.',
+            'usuario' => new UsuarioPrivadoResource($usuario),
+            'token' => $usuario->createToken('Token de acesso')->plainTextToken,
+        ], 201);
     }
 
+    /**
+     * Perfil público de outro usuário (sem documentos nem contato).
+     */
     public function show(Usuario $usuario)
     {
-        return $usuario;
+        return new UsuarioResource($usuario);
     }
 
-    public function update(UsuarioRequest $request, Usuario $usuario)
+    public function me(Request $request)
     {
-        $usuario->update($request->validated());
-
-        return $usuario;
+        return new UsuarioPrivadoResource($request->user());
     }
 
-    public function destroy(Usuario $usuario)
+    public function update(UsuarioRequest $request)
     {
+        $usuario = $request->user();
+        $usuario->fill($request->safe()->except('senha_atual'));
+
+        // Trocar o documento de uma instituição exige nova conferência.
+        if ($usuario->tipo_usuario->ehPessoaJuridica() && $usuario->isDirty(['cnpj', 'codigo_inep'])) {
+            $usuario->forceFill(['verificacao_status' => 'pendente', 'verificado_em' => null]);
+        }
+
+        $usuario->save();
+
+        return new UsuarioPrivadoResource($usuario);
+    }
+
+    public function destroy(Request $request)
+    {
+        $usuario = $request->user();
+        $usuario->tokens()->delete();
         $usuario->delete();
 
-        return response()->json();
+        return response()->noContent();
     }
 }

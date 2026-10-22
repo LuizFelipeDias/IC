@@ -1,0 +1,23 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": ["backend/artisan", "boost:mcp"]
+        },
+        "postgres": {
+            "command": "uvx",
+            "args": ["postgres-mcp", "--access-mode=restricted"],
+            "env": {
+                "DATABASE_URI": "${ECOHUB_DB_READONLY_URI:-postgresql://ecohub_leitura:troque-esta-senha@localhost:5432/ecohub_dev}"
+            }
+        },
+        "playwright": {
+            "command": "npx",
+            "args": ["-y", "@playwright/mcp@latest", "--headless"]
+        },
+        "figma": {
+            "type": "http",
+            "url": "https://mcp.figma.com/mcp"
+        }
+    }
+}

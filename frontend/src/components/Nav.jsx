@@ -1,148 +1,159 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { LogOut, Menu, QrCode, ShieldCheck, Star, X } from "lucide-react";
+import Marca from "./Marca";
+import { useAuth } from "../contexts/AuthContext";
+import { iniciais, TIPOS_USUARIO } from "../utils/formatar";
+
+// "perfis": o link só aparece para quem tem um deles (mesma regra da API).
+const LINKS = [
+    { para: "/home", rotulo: "Início" },
+    { para: "/chamados", rotulo: "Chamados", perfis: ["solicitante", "prestador", "moderador"] },
+    { para: "/vagas", rotulo: "Vagas" },
+    { para: "/projetos", rotulo: "Projetos" },
+    { para: "/noticias", rotulo: "Notícias" },
+    { para: "/doacoes", rotulo: "Doações" },
+    { para: "/instituicoes", rotulo: "Empresas" },
+    { para: "/lotes", rotulo: "Lotes", perfis: ["receptor"] },
+    { para: "/moderacao", rotulo: "Moderação", perfis: ["moderador"] },
+];
+
+const STATUS_VERIFICACAO = {
+    pendente: "Cadastro em análise",
+    verificado: "Instituição verificada",
+    rejeitado: "Verificação recusada",
+};
 
 export default function Nav() {
-
-    const [nomeUsuario, setNomeUsuario] = useState("PROFILE");
+    const { usuario, sair, pode } = useAuth();
+    const navigate = useNavigate();
+    const local = useLocation();
+    const [menuAberto, setMenuAberto] = useState(false);
+    const [linksAbertos, setLinksAbertos] = useState(false);
+    const [rolada, setRolada] = useState(false);
+    const [indicador, setIndicador] = useState(null);
+    const refMenu = useRef(null);
+    const refLinks = useRef(null);
 
     useEffect(() => {
-        const buscarUsuario = async () => {
-            try {
-                const token = localStorage.getItem("@hub:token");
+        setMenuAberto(false);
+        setLinksAbertos(false);
+    }, [local.pathname]);
 
-                if (!token) return;
-
-                const resposta = await fetch("http://localhost:8000/api/usuario/me", {
-                    method: "GET",
-                    headers: {
-                        "Accept": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-
-                if (resposta.ok) {
-                    const dados = await resposta.json();
-
-                    const nomeFinal = dados.nome || dados.name || "USUÁRIO";
-
-                    const primeiroNome = nomeFinal.split(" ")[0];
-
-                    setNomeUsuario(primeiroNome);ch
-                }
-            } catch (erro) {
-                console.error("Erro ao buscar usuário logado:", erro);
-            }
-        };
-
-        buscarUsuario().catch(console.error);
+    useEffect(() => {
+        const fecharFora = (evento) => refMenu.current && !refMenu.current.contains(evento.target) && setMenuAberto(false);
+        document.addEventListener("mousedown", fecharFora);
+        return () => document.removeEventListener("mousedown", fecharFora);
     }, []);
 
-    // Função para lidar com a saída (logout)
-    const handleExit = () => {
-        localStorage.removeItem("@hub:token");
-        window.location.href = "/";
+    // A barra encolhe e ganha sombra depois que a página rola um pouco.
+    useEffect(() => {
+        const aoRolar = () => setRolada(window.scrollY > 8);
+        aoRolar();
+        window.addEventListener("scroll", aoRolar, { passive: true });
+        return () => window.removeEventListener("scroll", aoRolar);
+    }, []);
+
+    // Sublinhado laranja que desliza até o link ativo.
+    const medirIndicador = useCallback(() => {
+        const ativo = refLinks.current?.querySelector(".nav__link.ativo");
+        setIndicador(ativo && ativo.offsetParent ? { x: ativo.offsetLeft, largura: ativo.offsetWidth } : null);
+    }, []);
+
+    useLayoutEffect(() => {
+        medirIndicador();
+    }, [local.pathname, usuario, medirIndicador]);
+
+    useEffect(() => {
+        window.addEventListener("resize", medirIndicador);
+        document.fonts?.ready.then(medirIndicador);
+        return () => window.removeEventListener("resize", medirIndicador);
+    }, [medirIndicador]);
+
+    const encerrar = async () => {
+        await sair();
+        navigate("/", { replace: true });
     };
 
+    const links = LINKS.filter((link) => !link.perfis || pode(...link.perfis));
+
     return (
-        <div style={{ width: "100%" }}>
-            <style>
-                {`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
+        <header className={`nav ${rolada ? "nav--rolada" : ""}`}>
+            <nav className="container nav__interno" aria-label="Principal">
+                <Link to="/home" aria-label="EcoHub 3D — início">
+                    <Marca />
+                </Link>
 
-          .nav-bg {
-            background-color: white; 
-            height: 67px;              
-            width: 100%;
-            display: flex;
-            align-items: center;       
-            justify-content: space-between; 
-            padding: 0 48px;           
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-          }
+                <div ref={refLinks} className={`nav__links ${linksAbertos ? "aberto" : ""}`}>
+                    {links.map((link, i) => (
+                        <NavLink key={link.para} to={link.para} style={{ "--i": i }} className={({ isActive }) => `nav__link ${isActive ? "ativo" : ""}`}>
+                            {link.rotulo}
+                        </NavLink>
+                    ))}
+                    {indicador && <span className="nav__indicador" aria-hidden="true" style={{ width: indicador.largura, transform: `translateX(${indicador.x}px)` }} />}
+                </div>
 
-          .logo {
-            font-size: 25px;
-            font-weight: 800;
-            color: #000;
-            margin: 0;
-            cursor: pointer;
-          }
+                <div className="nav__acoes">
+                    <Link to="/rastreio" className="nav__circulo" title="Rastrear lote por QR Code">
+                        <QrCode size={16} aria-hidden="true" />
+                        <span className="sr-only">Rastrear lote</span>
+                    </Link>
 
-          .nav-group {
-            display: flex;
-            align-items: center;       
-            gap: 40px;                 
-          }
+                    {usuario && (
+                        <div className="nav__usuario" ref={refMenu}>
+                            <button type="button" className="nav__usuario-botao" aria-expanded={menuAberto} onClick={() => setMenuAberto((aberto) => !aberto)}>
+                                <span className="avatar">{iniciais(usuario.nome)}</span>
+                                <span className="nav__usuario-nome">{usuario.tipo_usuario === "pessoa_fisica" ? usuario.nome.split(" ")[0] : usuario.nome}</span>
+                            </button>
 
-          .nav-link {
-            font-size: 14px;
-            font-weight: 700;
-            color: #000;
-            text-decoration: none;
-            text-transform: uppercase;
-            cursor: pointer;
-            position: relative;
-          }
+                            <div className={`menu-suspenso ${menuAberto ? "aberto" : ""}`} inert={!menuAberto} aria-hidden={!menuAberto}>
+                                <div className="menu-suspenso__cabecalho">
+                                    <strong>{usuario.nome}</strong>
+                                    <div className="texto-suave" style={{ fontSize: "var(--texto-xs)" }}>
+                                        {TIPOS_USUARIO[usuario.tipo_usuario]}
+                                        {usuario.prestador_servico && " · maker/voluntário"}
+                                    </div>
+                                    {usuario.verificacao_status && (
+                                        <div className="linha" style={{ marginTop: "var(--esp-2)", gap: "var(--esp-1)", fontSize: "var(--texto-xs)" }}>
+                                            <ShieldCheck size={14} aria-hidden="true" /> {STATUS_VERIFICACAO[usuario.verificacao_status]}
+                                        </div>
+                                    )}
+                                </div>
+                                <Link to="/ranking" className="menu-suspenso__item">
+                                    <Star size={16} aria-hidden="true" /> {usuario.pontos_total ?? 0} pontos · ranking
+                                </Link>
+                                {pode("candidato") && (
+                                    <Link to="/curriculo" className="menu-suspenso__item">
+                                        Meu currículo
+                                    </Link>
+                                )}
+                                <button type="button" className="menu-suspenso__item" onClick={encerrar}>
+                                    <LogOut size={16} aria-hidden="true" /> Sair
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
-          .nav-link:not(.btn-exit)::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            bottom: -5px;
-            left: 0;
-            background-color: #e31c1c;
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-          }
+                    {!usuario && (
+                        <Link to="/" className="nav__botao">
+                            Entrar
+                        </Link>
+                    )}
 
-          .nav-link:hover::after {
-            transform: scaleX(1);
-          }
-
-          .btn-exit {
-            border: 1px solid #ff0066;
-            color: #ff0066;
-            padding: 8px 20px;
-            border-radius: 6px;
-            background: transparent;
-            font-weight: 700;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .btn-exit:hover {
-            background-color: #ff0066;
-            color: #fff;
-          }
-
-          @media (max-width: 900px) {
-            .hide-tablet { display: none; }
-            .nav-bg { padding: 0 20px; }
-            .nav-group { gap: 20px; }
-          }
-        `}
-            </style>
-
-            <nav className="nav-bg">
-                <h1 className="logo">3D HUB</h1>
-
-                <div className="nav-group">
-                    <span className="nav-link hide-tablet">
-                        NOTIFICATIONS
-                    </span>
-                    <span className="nav-link">MENU</span>
-
-                    {/* Aqui o nome do usuário será exibido corretamente */}
-                    <span className="nav-link">{nomeUsuario}</span>
-
-                    <span className="nav-link btn-exit" onClick={handleExit}>
-                        EXIT
-                    </span>
+                    <button
+                        type="button"
+                        className="nav__circulo nav__hamburguer"
+                        aria-label={linksAbertos ? "Fechar menu" : "Abrir menu"}
+                        aria-expanded={linksAbertos}
+                        onClick={() => setLinksAbertos((aberto) => !aberto)}
+                    >
+                        <span className={`nav__icone-troca ${linksAbertos ? "aberto" : ""}`} aria-hidden="true">
+                            <Menu size={16} />
+                            <X size={16} />
+                        </span>
+                    </button>
                 </div>
             </nav>
-        </div>
+        </header>
     );
 }

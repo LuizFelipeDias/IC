@@ -1,519 +1,570 @@
-import React, { useState, useMemo } from "react";
-import {
-    Search as SearchIcon,
-    Add as Plus,
-    KeyboardArrowDown as ChevronDown,
-    Close as X,
-    ArrowBack as ArrowLeft,
-    ArrowForward as ArrowRight
-} from "@mui/icons-material";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Check, ClipboardList, Inbox, MapPin, Search } from "lucide-react";
+import { Aviso, Chip, Vazio } from "../components/ui";
+import { useAuth } from "../contexts/AuthContext";
+import { api, lista } from "../services/api";
+import { formatarData, formatarDia, STATUS_CHAMADO } from "../utils/formatar";
+import "../styles/pages/chamados.css";
 
-// ─── DATA ─────────────────────────────────────────────────────────────────────
+/* ==================================================================
+ * Chamados (pedidos de escolas e empresas)
+ *   solicitante (escola/empresa verificada): abre, acompanha, edita enquanto aberto e cancela
+ *   prestador (laboratório/maker): vê os abertos, escolhe o local de atendimento e aceita; conclui
+ *   moderador: acompanha todos
+ *
+ * Visual: "Browse templates" do arquivo Website Templates — Squarespace
+ * (título de 64 px + texto à direita, colunas de filtro com caixas de
+ * seleção, linha de resultados sublinhada, cartões com borda #E8E4E4 e
+ * sombra, faixa preta com botão branco) + estrutura de painel do Mockfit
+ * (barra lateral, KPIs "00.000", gráfico grande e lista de linhas).
+ * ================================================================== */
 
-const CHAMADOS_DATA = [
-    { id:"c1",  num:"#2401", quemChamou:"Ana Souza",      avatarChamou:"AS", onde:"Filial SP – Sala 3",    quemAtende:"Carlos Lima",    avatarAtende:"CL", urgencia:"Crítica",  status:"Em Atendimento", data:"17/07/2025", desc:"Servidor de produção fora do ar. Toda a equipe de vendas sem acesso ao sistema." },
-    { id:"c2",  num:"#2400", quemChamou:"Bruno Ferreira", avatarChamou:"BF", onde:"HQ – TI Andar 8",       quemAtende:"Juliana Paz",    avatarAtende:"JP", urgencia:"Alta",     status:"Em Atendimento", data:"17/07/2025", desc:"Falha no backup automático. Última cópia bem-sucedida foi há 4 dias." },
-    { id:"c3",  num:"#2399", quemChamou:"Carla Mendes",   avatarChamou:"CM", onde:"Filial RJ – Recepção",  quemAtende:null,             urgencia:"Média",    status:"Aberto",         data:"16/07/2025", desc:"Impressora de recepção não reconhece os cartuchos após substituição." },
-    { id:"c4",  num:"#2398", quemChamou:"Diego Alves",    avatarChamou:"DA", onde:"HQ – Financeiro",       quemAtende:"Marcos Braga",   avatarAtende:"MB", urgencia:"Crítica",  status:"Em Atendimento", data:"16/07/2025", desc:"ERP retornando erro 500 ao gerar relatórios de fechamento mensal." },
-    { id:"c5",  num:"#2397", quemChamou:"Elisa Ramos",    avatarChamou:"ER", onde:"Remoto",                quemAtende:"Carlos Lima",    avatarAtende:"CL", urgencia:"Baixa",    status:"Resolvido",      data:"15/07/2025", desc:"Solicitação de acesso ao novo repositório do projeto Alpha." },
-    { id:"c6",  num:"#2396", quemChamou:"Fernando Costa", avatarChamou:"FC", onde:"Filial MG – Lab",       quemAtende:"Patrícia Nunes", avatarAtende:"PN", urgencia:"Alta",     status:"Resolvido",      data:"15/07/2025", desc:"VPN bloqueando acesso ao ambiente de staging após atualização." },
-    { id:"c7",  num:"#2395", quemChamou:"Gabi Lopes",     avatarChamou:"GL", onde:"HQ – Marketing",        quemAtende:null,             urgencia:"Média",    status:"Aberto",         data:"14/07/2025", desc:"Licença do Adobe Creative Cloud expirada para 3 usuários do setor." },
-    { id:"c8",  num:"#2394", quemChamou:"Henrique Melo",  avatarChamou:"HM", onde:"HQ – Jurídico",         quemAtende:"Juliana Paz",    avatarAtende:"JP", urgencia:"Alta",     status:"Em Atendimento", data:"14/07/2025", desc:"Sistema de assinatura digital não envia e-mail de confirmação." },
-    { id:"c9",  num:"#2393", quemChamou:"Isabela Teixeira",avatarChamou:"IT",onde:"Filial SP – Depósito",  quemAtende:"Marcos Braga",   avatarAtende:"MB", urgencia:"Média",    status:"Resolvido",      data:"13/07/2025", desc:"Leitor de código de barras desconfigurado após queda de energia." },
-    { id:"c10", num:"#2392", quemChamou:"João Pinheiro",  avatarChamou:"JP", onde:"Remoto",                quemAtende:null,             urgencia:"Baixa",    status:"Cancelado",      data:"13/07/2025", desc:"Pedido de novo monitor cancelado — compra aprovada via outro canal." },
-    { id:"c11", num:"#2391", quemChamou:"Karla Barbosa",  avatarChamou:"KB", onde:"HQ – RH",               quemAtende:"Patrícia Nunes", avatarAtende:"PN", urgencia:"Alta",     status:"Resolvido",      data:"12/07/2025", desc:"Portal de benefícios sem carregamento de dados para novos colaboradores." },
-    { id:"c12", num:"#2390", quemChamou:"Lucas Vieira",   avatarChamou:"LV", onde:"Filial RS – Logística", quemAtende:null,             urgencia:"Crítica",  status:"Aberto",         data:"12/07/2025", desc:"Sistema de roteirização parado. 40 entregas pendentes de despacho." },
-    { id:"c13", num:"#2389", quemChamou:"Mariana Duarte", avatarChamou:"MD", onde:"HQ – Comercial",        quemAtende:"Carlos Lima",    avatarAtende:"CL", urgencia:"Média",    status:"Em Atendimento", data:"11/07/2025", desc:"CRM não sincronizando dados com planilha de forecast do diretoria." },
-    { id:"c14", num:"#2388", quemChamou:"Natan Rocha",    avatarChamou:"NR", onde:"Filial PR – Escritório", quemAtende:"Juliana Paz",   avatarAtende:"JP", urgencia:"Baixa",    status:"Resolvido",      data:"11/07/2025", desc:"Configuração de e-mail corporativo em novo notebook do colaborador." },
-    { id:"c15", num:"#2387", quemChamou:"Olívia Santos",  avatarChamou:"OS", onde:"HQ – Diretoria",        quemAtende:"Marcos Braga",   avatarAtende:"MB", urgencia:"Crítica",  status:"Resolvido",      data:"10/07/2025", desc:"Projetor da sala de reunião da presidência sem sinal de vídeo." },
-    { id:"c16", num:"#2386", quemChamou:"Pedro Guimarães",avatarChamou:"PG", onde:"Remoto",                quemAtende:null,             urgencia:"Média",    status:"Aberto",         data:"10/07/2025", desc:"Acesso à VPN instável durante videoconferências. Desconexões frequentes." },
-    { id:"c17", num:"#2385", quemChamou:"Rafaela Cunha",  avatarChamou:"RC", onde:"Filial SP – Atendimento",quemAtende:"Patrícia Nunes",avatarAtende:"PN", urgencia:"Alta",     status:"Resolvido",      data:"09/07/2025", desc:"Telefonia VoIP com eco e latência alta após troca de roteador." },
-    { id:"c18", num:"#2384", quemChamou:"Samuel Faria",   avatarChamou:"SF", onde:"HQ – TI Andar 8",       quemAtende:"Carlos Lima",    avatarAtende:"CL", urgencia:"Baixa",    status:"Cancelado",      data:"09/07/2025", desc:"Instalação de software duplicado — usuário resolveu via self-service." },
+const ETAPAS = ["Aberto", "Em Atendimento", "Resolvido"];
+
+function Etapas({ status }) {
+    if (status === "Cancelado") return <Chip tom="perigo" ponto>Cancelado pelo solicitante</Chip>;
+    const atual = ETAPAS.indexOf(status);
+    return (
+        <ol className="etapas" aria-label="Andamento">
+            {ETAPAS.map((etapa, i) => (
+                <li key={etapa} className={`etapa ${i < atual || status === "Resolvido" ? "etapa--feita" : ""} ${i === atual && status !== "Resolvido" ? "etapa--atual" : ""}`}>
+                    {etapa}
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+
+const KPIS = [
+    ["Aberto", "Abertos"],
+    ["Em Atendimento", "Em atendimento"],
+    ["Resolvido", "Resolvidos"],
+    ["Cancelado", "Cancelados"],
 ];
 
-// ─── STYLE MAPS ───────────────────────────────────────────────────────────────
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-const URG_STYLE = {
-    Crítica: { pill: "bg-red-50 text-red-700", dot: "bg-red-600" },
-    Alta:    { pill: "bg-orange-50 text-orange-700", dot: "bg-orange-600" },
-    Média:   { pill: "bg-amber-50 text-amber-700", dot: "bg-amber-500" },
-    Baixa:   { pill: "bg-gray-100 text-gray-600", dot: "bg-gray-400" },
-};
+// KPI no formato do Mockfit ("00,000"), com separador brasileiro.
+const numeroPainel = (n) => n.toLocaleString("pt-BR", { minimumIntegerDigits: 5 });
 
-const ST_STYLE = {
-    "Aberto":         { pill: "bg-[#3800df]/10 text-[#3800df]",  dot: "bg-[#3800df]" },
-    "Em Atendimento": { pill: "bg-green-100 text-green-700", dot: "bg-green-600" },
-    "Resolvido":      { pill: "bg-green-100 text-green-700", dot: "bg-green-600" },
-    "Cancelado":      { pill: "bg-red-100 text-red-700",     dot: "bg-red-600" },
-};
+const codigo = (id) => `CH-${String(id).padStart(5, "0")}`;
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const semMovimento = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-function Avatar({ initials, size = "sm" }) {
-    const colors = {
-        A:"bg-blue-100 text-blue-700", B:"bg-purple-100 text-purple-700",
-        C:"bg-green-100 text-green-700", D:"bg-orange-100 text-orange-700",
-        E:"bg-pink-100 text-pink-700", F:"bg-teal-100 text-teal-700",
-        G:"bg-indigo-100 text-indigo-700", H:"bg-red-100 text-red-700",
-        I:"bg-amber-100 text-amber-700", J:"bg-cyan-100 text-cyan-700",
-        K:"bg-lime-100 text-lime-700", L:"bg-violet-100 text-violet-700",
-        M:"bg-fuchsia-100 text-fuchsia-700", N:"bg-emerald-100 text-emerald-700",
-        O:"bg-sky-100 text-sky-700", P:"bg-rose-100 text-rose-700",
-        R:"bg-blue-100 text-blue-700", S:"bg-slate-100 text-slate-700",
-    };
-    const cl = colors[initials[0]] ?? "bg-gray-100 text-gray-700";
-    const dim = size === "sm" ? "w-7 h-7 text-[10px]" : "w-9 h-9 text-[12px]";
+/* Contagem animada (count-up) quando o elemento entra na tela; sem animação se o usuário pediu menos movimento. */
+function useContagem(alvo, duracao = 1100) {
+    const ref = useRef(null);
+    const [valor, setValor] = useState(0);
+    const [visto, setVisto] = useState(false);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el || typeof IntersectionObserver === "undefined") {
+            setVisto(true);
+            return undefined;
+        }
+        const observador = new IntersectionObserver(([entrada]) => {
+            if (entrada.isIntersecting) {
+                setVisto(true);
+                observador.disconnect();
+            }
+        }, { threshold: 0.3 });
+        observador.observe(el);
+        return () => observador.disconnect();
+    }, []);
+
+    useEffect(() => {
+        if (!visto || alvo == null) return undefined;
+        if (semMovimento()) {
+            setValor(alvo);
+            return undefined;
+        }
+        let quadro;
+        const inicio = performance.now();
+        const de = 0;
+        const passo = (agora) => {
+            const t = Math.min(1, (agora - inicio) / duracao);
+            const suave = 1 - Math.pow(1 - t, 3);
+            setValor(Math.round(de + (alvo - de) * suave));
+            if (t < 1) quadro = requestAnimationFrame(passo);
+        };
+        quadro = requestAnimationFrame(passo);
+        return () => cancelAnimationFrame(quadro);
+    }, [visto, alvo, duracao]);
+
+    return [ref, valor];
+}
+
+function Kpi({ rotulo, valor, indice }) {
+    const [ref, exibido] = useContagem(valor);
     return (
-        <div className={`${dim} ${cl} rounded-full flex items-center justify-center font-bold flex-shrink-0`}>
-            {initials}
+        <div ref={ref} className="sq-cartao sq-kpi" data-revelar style={{ "--atraso": `${indice * 90}ms` }}>
+            <span className="sq-rotulo">{rotulo.toUpperCase()}</span>
+            <strong>{valor == null ? "—" : numeroPainel(exibido)}</strong>
         </div>
     );
 }
 
-function UrgPill({ u }) {
-    const s = URG_STYLE[u];
+/* Esqueleto da lista enquanto os chamados carregam. */
+function EsqueletoLista() {
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase ${s.pill}`}>
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
-            {u}
-        </span>
+        <ul className="sq-cartao sq-lista sq-lista--esqueleto" aria-busy="true" aria-label="Carregando chamados">
+            {[0, 1, 2, 3].map((i) => (
+                <li key={i} className="sq-esqueleto-linha">
+                    <span className="esqueleto sq-esqueleto-linha__marca" />
+                    <span className="sq-esqueleto-linha__texto">
+                        <span className="esqueleto" style={{ width: `${70 - i * 8}%` }} />
+                        <span className="esqueleto" style={{ width: `${45 + i * 5}%` }} />
+                    </span>
+                </li>
+            ))}
+        </ul>
     );
 }
 
-function StatusPill({ st }) {
-    const s = ST_STYLE[st];
+/* Caixa de seleção quadrada de 14 px do template (cinza #CCC quando marcada). */
+function OpcaoCaixa({ marcada, aoMarcar, children }) {
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase ${s.pill}`}>
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
-            {st}
-        </span>
+        <button type="button" role="radio" aria-checked={marcada} className="sq-caixa" onClick={aoMarcar}>
+            <span className="sq-caixa__quadro" aria-hidden="true">{marcada && <Check size={12} strokeWidth={3} />}</span>
+            {children}
+        </button>
     );
 }
 
-// ─── NEW TICKET MODAL ─────────────────────────────────────────────────────────
-
-function NovoChamadoModal({ onClose }) {
-    const [done, setDone] = useState(false);
+/* Item de lista com seta (coluna "TOPIC" do template). */
+function OpcaoSeta({ marcada, aoMarcar, children }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 font-['Inter',sans-serif]" onClick={onClose}>
-            <div className="bg-white rounded-xl border border-[#e5e7eb] w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e7eb]">
-                    <div>
-                        <p className="text-[10px] text-[#858585] font-black uppercase tracking-widest">Sistema de Chamados</p>
-                        <h2 className="text-[18px] font-black text-black uppercase mt-1">Abrir Novo Chamado</h2>
-                    </div>
-                    <button onClick={onClose} className="text-[#858585] hover:text-black transition-colors p-1">
-                        <X sx={{ fontSize: 20 }} />
-                    </button>
+        <button type="button" role="radio" aria-checked={marcada} className="sq-seta" onClick={aoMarcar}>
+            {marcada && <ArrowRight size={14} aria-hidden="true" />}
+            {children}
+        </button>
+    );
+}
+
+/* Gráfico de barras em SVG puro: chamados por mês (últimos 6) ou por tipo de serviço. */
+function Grafico({ chamados, opcoes }) {
+    const [modo, setModo] = useState("mes");
+    const [foco, setFoco] = useState(null);
+
+    const dados = useMemo(() => {
+        if (modo === "tipo") {
+            return opcoes.tipos_servico.map((t) => ({ rotulo: t.rotulo, valor: chamados.filter((c) => c.tipo_servico === t.valor).length }));
+        }
+        const hoje = new Date();
+        return Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(hoje.getFullYear(), hoje.getMonth() - 5 + i, 1);
+            const valor = chamados.filter((c) => {
+                const criado = new Date(c.data_criacao);
+                return criado.getFullYear() === d.getFullYear() && criado.getMonth() === d.getMonth();
+            }).length;
+            return { rotulo: `${MESES[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`, valor };
+        });
+    }, [modo, chamados, opcoes]);
+
+    const L = 720, A = 280, base = 240, topo = 24;
+    const maximo = Math.max(1, ...dados.map((d) => d.valor));
+    const passo = L / dados.length;
+    const largura = Math.min(64, passo * 0.5);
+    const linhas = [0, 0.25, 0.5, 0.75, 1];
+
+    return (
+        <section className="sq-cartao sq-grafico" aria-labelledby="titulo-grafico" data-revelar>
+            <div className="sq-grafico__topo">
+                <p className="sq-rotulo" id="titulo-grafico">{modo === "mes" ? "CHAMADOS POR MÊS" : "CHAMADOS POR TIPO DE SERVIÇO"}</p>
+                <div className="sq-abas" role="tablist" aria-label="Agrupar gráfico">
+                    <button type="button" role="tab" aria-selected={modo === "mes"} onClick={() => setModo("mes")}>Por mês</button>
+                    <button type="button" role="tab" aria-selected={modo === "tipo"} onClick={() => setModo("tipo")}>Por serviço</button>
                 </div>
+            </div>
+            <div className="sq-grafico__area">
+            {foco !== null && dados[foco] && (
+                <span
+                    className="sq-grafico__dica"
+                    style={{ left: `${((foco * passo + passo / 2) / L) * 100}%`, top: `${((base - (dados[foco].valor / maximo) * (base - topo)) / (A + 30)) * 100}%` }}
+                    role="status"
+                >
+                    <strong>{dados[foco].valor}</strong> {dados[foco].valor === 1 ? "chamado" : "chamados"} · {dados[foco].rotulo}
+                </span>
+            )}
+            <svg key={modo} viewBox={`0 0 ${L} ${A + 30}`} className="sq-grafico__svg" role="img" aria-label={dados.map((d) => `${d.rotulo}: ${d.valor}`).join(", ")}>
+                {linhas.map((f) => {
+                    const y = base - f * (base - topo);
+                    return (
+                        <g key={f}>
+                            <line x1="0" x2={L} y1={y} y2={y} className="sq-grafico__grade" />
+                            <text x="0" y={y - 6} className="sq-grafico__eixo">{Math.round(f * maximo)}</text>
+                        </g>
+                    );
+                })}
+                {dados.map((d, i) => {
+                    const h = (d.valor / maximo) * (base - topo);
+                    const x = i * passo + (passo - largura) / 2;
+                    return (
+                        <g
+                            key={d.rotulo}
+                            className={`sq-grafico__coluna ${foco === i ? "sq-grafico__coluna--foco" : ""}`}
+                            style={{ "--i": i }}
+                            onMouseEnter={() => setFoco(i)}
+                            onMouseLeave={() => setFoco(null)}
+                        >
+                            <rect x={i * passo} y={topo} width={passo} height={base - topo} className="sq-grafico__alvo" />
+                            <rect x={x} y={base - h} width={largura} height={Math.max(h, d.valor ? 2 : 0)} className="sq-grafico__barra" />
+                            {d.valor > 0 && <text x={x + largura / 2} y={base - h - 8} textAnchor="middle" className="sq-grafico__valor">{d.valor}</text>}
+                            <text x={i * passo + passo / 2} y={base + 24} textAnchor="middle" className="sq-grafico__eixo">
+                                {d.rotulo.length > 18 ? `${d.rotulo.slice(0, 17)}…` : d.rotulo}
+                            </text>
+                        </g>
+                    );
+                })}
+            </svg>
+            </div>
+        </section>
+    );
+}
 
-                {!done ? (
-                    <div className="p-6 space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-[11px] font-black text-[#858585] uppercase tracking-wide mb-1.5">Quem Chamou</label>
-                                <input className="w-full border border-[#e5e7eb] rounded-lg px-3 py-2.5 text-[13px] text-black font-medium focus:outline-none focus:border-[#3800df] transition-colors bg-white" placeholder="Nome do solicitante" />
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-black text-[#858585] uppercase tracking-wide mb-1.5">Onde</label>
-                                <input className="w-full border border-[#e5e7eb] rounded-lg px-3 py-2.5 text-[13px] text-black font-medium focus:outline-none focus:border-[#3800df] transition-colors bg-white" placeholder="Local / filial" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-[11px] font-black text-[#858585] uppercase tracking-wide mb-1.5">Quem Irá Atender</label>
-                                <select className="w-full border border-[#e5e7eb] rounded-lg px-3 py-2.5 text-[13px] text-black font-medium focus:outline-none focus:border-[#3800df] transition-colors bg-white">
-                                    <option value="">— Não atribuído —</option>
-                                    <option>Carlos Lima</option>
-                                    <option>Juliana Paz</option>
-                                    <option>Marcos Braga</option>
-                                    <option>Patrícia Nunes</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-black text-[#858585] uppercase tracking-wide mb-1.5">Urgência</label>
-                                <select defaultValue="Média" className="w-full border border-[#e5e7eb] rounded-lg px-3 py-2.5 text-[13px] text-black font-medium focus:outline-none focus:border-[#3800df] transition-colors bg-white">
-                                    <option>Crítica</option>
-                                    <option>Alta</option>
-                                    <option value="Média">Média</option>
-                                    <option>Baixa</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-[11px] font-black text-[#858585] uppercase tracking-wide mb-1.5">Descrição do Problema</label>
-                            <textarea rows={4} className="w-full border border-[#e5e7eb] rounded-lg px-3 py-2.5 text-[13px] text-black font-medium focus:outline-none focus:border-[#3800df] transition-colors bg-white resize-none" placeholder="Descreva o problema em detalhes..." />
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                            <button onClick={() => setDone(true)} className="flex-1 bg-[#3800df] hover:bg-black text-white rounded-lg py-3 text-[11px] tracking-widest uppercase font-black transition-colors flex items-center justify-center gap-2">
-                                <Plus sx={{ fontSize: 18 }} /> Abrir Chamado
+function PainelChamado({ chamado, usuario, pode, opcoes, aoAtualizar, aoRemover }) {
+    const [local, setLocal] = useState("");
+    const [erro, setErro] = useState("");
+    const [processando, setProcessando] = useState(false);
+
+    useEffect(() => {
+        setLocal("");
+        setErro("");
+    }, [chamado.id]);
+
+    const souSolicitante = chamado.id_usuario === usuario?.id;
+    const souPrestador = chamado.id_prestador === usuario?.id;
+    const aberto = chamado.status === "Aberto";
+    const emAtendimento = chamado.status === "Em Atendimento";
+
+    const executar = async (acao, corpo) => {
+        setProcessando(true);
+        setErro("");
+        try {
+            aoAtualizar(await api(`/chamado/${chamado.id}/${acao}`, { method: "POST", body: corpo }));
+        } catch (e) {
+            setErro(e.message);
+        } finally {
+            setProcessando(false);
+        }
+    };
+
+    const excluir = async () => {
+        if (!window.confirm(`Excluir o chamado "${chamado.titulo}"?`)) return;
+        try {
+            await api(`/chamado/${chamado.id}`, { method: "DELETE" });
+            aoRemover(chamado.id);
+        } catch (e) {
+            setErro(e.message);
+        }
+    };
+
+    const contato = chamado.contato && (souPrestador ? chamado.contato.solicitante : chamado.contato.prestador);
+    const podeAceitar = pode("prestador") && aberto && !souSolicitante;
+    const temAcoes = podeAceitar || (souPrestador && emAtendimento) || (souSolicitante && (aberto || emAtendimento));
+
+    return (
+        <aside key={chamado.id} className="sq-detalhe sq-detalhe--troca" aria-label="Detalhes do chamado">
+            <div className="sq-cartao sq-detalhe__capa">
+                <div className="sq-detalhe__topo">
+                    <Chip tom={STATUS_CHAMADO[chamado.status]} ponto>{chamado.status}</Chip>
+                    <span className="sq-rotulo">{chamado.tipo_servico_rotulo ?? "Serviço"}</span>
+                </div>
+                <h3>{chamado.titulo}</h3>
+                <Etapas status={chamado.status} />
+            </div>
+            <div className="sq-legenda">
+                <span>{codigo(chamado.id)}</span>
+                <span className="sq-legenda__icone" title={[chamado.cidade, chamado.uf].filter(Boolean).join(" / ")}>
+                    <MapPin size={20} aria-hidden="true" />
+                </span>
+            </div>
+
+            <div className="sq-detalhe__corpo">
+                <dl className="sq-ficha">
+                    <div><dt>PRAZO</dt><dd>{formatarDia(chamado.data_limite)}</dd></div>
+                    <div><dt>SOLICITANTE</dt><dd>{chamado.usuario?.nome ?? "—"}</dd></div>
+                    <div><dt>LOCAL</dt><dd>{[chamado.cidade, chamado.uf].filter(Boolean).join(" / ") || "—"}</dd></div>
+                    <div><dt>ABERTO EM</dt><dd>{formatarData(chamado.data_criacao)}</dd></div>
+                    {chamado.prestador && (
+                        <>
+                            <div><dt>PRESTADOR</dt><dd>{chamado.prestador.nome}</dd></div>
+                            <div><dt>ONDE</dt><dd>{chamado.local_atendimento_rotulo}</dd></div>
+                            <div><dt>ACEITO EM</dt><dd>{formatarData(chamado.aceito_em)}</dd></div>
+                            {chamado.concluido_em && <div><dt>CONCLUÍDO EM</dt><dd>{formatarData(chamado.concluido_em)}</dd></div>}
+                        </>
+                    )}
+                </dl>
+
+                <p className="sq-detalhe__descricao">{chamado.descricao}</p>
+
+                {contato && (
+                    <Aviso tom="info">
+                        <strong>Contato:</strong> {contato.email} · {contato.telefone}
+                    </Aviso>
+                )}
+                {erro && <Aviso tom="perigo">{erro}</Aviso>}
+
+                {temAcoes && (
+                    <div className="sq-detalhe__acoes">
+                        {podeAceitar && (
+                            <>
+                                <fieldset className="sq-locais">
+                                    <legend className="sq-rotulo">ONDE VOCÊ VAI ATENDER?</legend>
+                                    {opcoes.locais_atendimento.map((opcao) => (
+                                        <label key={opcao.valor} className="sq-caixa">
+                                            <input type="radio" name={`local-${chamado.id}`} value={opcao.valor} checked={local === opcao.valor} onChange={() => setLocal(opcao.valor)} />
+                                            <span className="sq-caixa__quadro" aria-hidden="true">{local === opcao.valor && <Check size={12} strokeWidth={3} />}</span>
+                                            {opcao.rotulo}
+                                        </label>
+                                    ))}
+                                </fieldset>
+                                <button type="button" className="sq-botao sq-botao--preto" disabled={!local || processando} onClick={() => executar("aceitar", { local_atendimento: local })}>
+                                    ACEITAR CHAMADO
+                                </button>
+                            </>
+                        )}
+                        {souPrestador && emAtendimento && (
+                            <button type="button" className="sq-botao sq-botao--preto" disabled={processando} onClick={() => executar("concluir")}>
+                                MARCAR COMO CONCLUÍDO (+50 PONTOS)
                             </button>
-                            <button onClick={onClose} className="px-6 py-3 sm:py-0 border border-[#e5e7eb] rounded-lg text-[11px] tracking-widest uppercase font-black text-[#858585] hover:border-black hover:text-black transition-colors">
-                                Cancelar
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="p-8 text-center">
-                        <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
-                                <span className="text-white text-xs font-bold">✓</span>
+                        )}
+                        {souSolicitante && (aberto || emAtendimento) && (
+                            <div className="sq-linha">
+                                <button type="button" className="sq-botao" disabled={processando} onClick={() => executar("cancelar")}>CANCELAR CHAMADO</button>
+                                {aberto && <button type="button" className="sq-botao sq-botao--perigo" onClick={excluir}>EXCLUIR</button>}
                             </div>
-                        </div>
-                        <h3 className="text-[18px] font-black uppercase tracking-wide text-black mb-2">Chamado Aberto!</h3>
-                        <p className="text-[13px] font-medium text-[#858585] mb-6">Seu chamado foi registrado e a equipe de suporte foi notificada.</p>
-                        <button onClick={onClose} className="border border-black rounded-lg px-8 py-2.5 text-[11px] font-black tracking-widest uppercase text-black hover:bg-black hover:text-white transition-colors">
-                            Fechar
-                        </button>
+                        )}
                     </div>
                 )}
             </div>
-        </div>
+        </aside>
     );
 }
 
-// ─── DETAIL MODAL ─────────────────────────────────────────────────────────────
+export default function Chamados() {
+    const { usuario, pode } = useAuth();
+    const [chamados, setChamados] = useState(null);
+    const [opcoes, setOpcoes] = useState({ tipos_servico: [], locais_atendimento: [] });
+    const [erro, setErro] = useState("");
+    const [selecionado, setSelecionado] = useState(null);
+    const [busca, setBusca] = useState("");
+    const [status, setStatus] = useState("");
+    const [tipo, setTipo] = useState("");
+    const [aba, setAba] = useState("todos");
 
-function DetalheModal({ c, onClose }) {
+    const carregar = useCallback(async () => {
+        try {
+            const [respostaLista, respostaOpcoes] = await Promise.all([api("/chamado?per_page=100"), api("/chamado/opcoes")]);
+            const itens = lista(respostaLista);
+            setChamados(itens);
+            setOpcoes(respostaOpcoes);
+            setSelecionado((atual) => atual ?? itens[0]?.id ?? null);
+        } catch (e) {
+            setErro(e.message);
+            setChamados([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        carregar();
+    }, [carregar]);
+
+    const ehPrestador = pode("prestador");
+    const ehSolicitante = pode("solicitante");
+
+    const visiveis = useMemo(() => {
+        const termo = busca.trim().toLowerCase();
+        return (chamados ?? [])
+            .filter((c) => aba !== "disponiveis" || c.status === "Aberto")
+            .filter((c) => aba !== "meus" || c.id_prestador === usuario?.id)
+            .filter((c) => !status || c.status === status)
+            .filter((c) => !tipo || c.tipo_servico === tipo)
+            .filter((c) => !termo || `${c.titulo} ${c.cidade ?? ""} ${c.usuario?.nome ?? ""}`.toLowerCase().includes(termo));
+    }, [chamados, aba, status, tipo, busca, usuario]);
+
+    const contagem = (s) => (chamados ?? []).filter((c) => c.status === s).length;
+    const atual = visiveis.find((c) => c.id === selecionado) ?? visiveis[0];
+    const ativos = (chamados ?? []).length - contagem("Cancelado");
+    const taxa = ativos ? Math.round((contagem("Resolvido") / ativos) * 100) : 0;
+    const substituir = (novo) => setChamados((itens) => itens.map((c) => (c.id === novo.id ? novo : c)));
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 font-['Inter',sans-serif]" onClick={onClose}>
-            <div className="bg-white rounded-xl border border-[#e5e7eb] w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e7eb]">
-                    <div className="flex items-center gap-3">
-                        <span className="text-[14px] font-black text-[#3800df]">{c.num}</span>
-                        <StatusPill st={c.status} />
-                    </div>
-                    <button onClick={onClose} className="text-[#858585] hover:text-black transition-colors">
-                        <X sx={{ fontSize: 20 }} />
-                    </button>
+        <div className="sq">
+            {/* Section 01 — título + texto e colunas de filtro */}
+            <section className="sq-secao sq-topo">
+                <div className="sq-topo__titulo" data-revelar>
+                    <h1>Meu painel de chamados.</h1>
+                    <p>
+                        {ehSolicitante
+                            ? "Peça treinamento, modelagem, digitalização ou impressão 3D para a sua instituição. Laboratórios e makers voluntários da rede respondem e você acompanha cada etapa por aqui."
+                            : ehPrestador
+                              ? "Pedidos de escolas públicas e empresas esperando atendimento. Escolha um chamado aberto, diga onde vai atender e aceite."
+                              : "Acompanhamento de todos os chamados da rede EcoHub 3D."}
+                    </p>
                 </div>
-                <div className="p-6 space-y-5">
-                    <div>
-                        <p className="text-[11px] font-black text-[#858585] uppercase tracking-widest mb-1">Descrição</p>
-                        <p className="text-[13px] font-medium text-black leading-relaxed">{c.desc}</p>
+
+                <div className="sq-filtros" data-revelar style={{ "--atraso": "120ms" }}>
+                    {ehPrestador && (
+                        <div className="sq-filtros__coluna" role="radiogroup" aria-label="Visão">
+                            <p className="sq-rotulo">VISÃO</p>
+                            {[["todos", "Todos os chamados"], ["disponiveis", "Disponíveis"], ["meus", "Meus atendimentos"]].map(([valor, rotulo]) => (
+                                <OpcaoSeta key={valor} marcada={aba === valor} aoMarcar={() => setAba(valor)}>{rotulo}</OpcaoSeta>
+                            ))}
+                        </div>
+                    )}
+                    <div className="sq-filtros__coluna" role="radiogroup" aria-label="Status">
+                        <p className="sq-rotulo">STATUS</p>
+                        <OpcaoCaixa marcada={status === ""} aoMarcar={() => setStatus("")}>Todos</OpcaoCaixa>
+                        {Object.keys(STATUS_CHAMADO).map((s) => (
+                            <OpcaoCaixa key={s} marcada={status === s} aoMarcar={() => setStatus(s)}>{s}</OpcaoCaixa>
+                        ))}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-[#f9f9f9] border border-[#e5e7eb] rounded-lg p-4">
-                            <p className="text-[10px] font-black text-[#858585] uppercase tracking-widest mb-2">Quem Chamou</p>
-                            <div className="flex items-center gap-2">
-                                <Avatar initials={c.avatarChamou} />
-                                <span className="text-[12px] font-black uppercase text-black">{c.quemChamou}</span>
-                            </div>
-                        </div>
-                        <div className="bg-[#f9f9f9] border border-[#e5e7eb] rounded-lg p-4">
-                            <p className="text-[10px] font-black text-[#858585] uppercase tracking-widest mb-2">Quem Atende</p>
-                            {c.quemAtende ? (
-                                <div className="flex items-center gap-2">
-                                    <Avatar initials={c.avatarAtende} />
-                                    <span className="text-[12px] font-black uppercase text-black">{c.quemAtende}</span>
-                                </div>
-                            ) : (
-                                <span className="text-[12px] font-bold text-[#858585] italic">Não atribuído</span>
-                            )}
-                        </div>
+                    <div className="sq-filtros__coluna" role="radiogroup" aria-label="Tipo de serviço">
+                        <p className="sq-rotulo">SERVIÇO</p>
+                        <OpcaoSeta marcada={tipo === ""} aoMarcar={() => setTipo("")}>Todos os serviços</OpcaoSeta>
+                        {opcoes.tipos_servico.map((t) => (
+                            <OpcaoSeta key={t.valor} marcada={tipo === t.valor} aoMarcar={() => setTipo(t.valor)}>{t.rotulo}</OpcaoSeta>
+                        ))}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="bg-[#f9f9f9] border border-[#e5e7eb] rounded-lg p-3">
-                            <p className="text-[10px] font-black text-[#858585] uppercase tracking-widest mb-1.5">Onde</p>
-                            <p className="text-[12px] font-bold text-black">{c.onde}</p>
-                        </div>
-                        <div className="bg-[#f9f9f9] border border-[#e5e7eb] rounded-lg p-3">
-                            <p className="text-[10px] font-black text-[#858585] uppercase tracking-widest mb-2">Urgência</p>
-                            <UrgPill u={c.urgencia} />
-                        </div>
-                        <div className="bg-[#f9f9f9] border border-[#e5e7eb] rounded-lg p-3">
-                            <p className="text-[10px] font-black text-[#858585] uppercase tracking-widest mb-1.5">Data</p>
-                            <p className="text-[12px] font-bold text-black">{c.data}</p>
-                        </div>
+                    <div className="sq-filtros__coluna">
+                        <label className="sq-rotulo" htmlFor="busca-chamados">BUSCAR</label>
+                        <span className="sq-busca">
+                            <Search size={14} aria-hidden="true" />
+                            <input id="busca-chamados" placeholder="Título, cidade ou solicitante" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                        </span>
+                    </div>
+                    <div className="sq-filtros__acoes">
+                        <p className="sq-rotulo">TAXA DE ATENDIMENTO · {chamados ? `${taxa}%` : "—"}</p>
+                        {ehSolicitante && (
+                            <Link to="/chamados/novo" className="sq-botao">
+                                NOVO CHAMADO
+                            </Link>
+                        )}
                     </div>
                 </div>
-            </div>
-        </div>
-    );
-}
+            </section>
 
-// ─── PAGINATION ───────────────────────────────────────────────────────────────
+            {/* Section 02 — linha de resultados */}
+            <section className="sq-secao sq-resultados" data-revelar="fade">
+                <p>
+                    <strong>{visiveis.length} {visiveis.length === 1 ? "chamado encontrado" : "chamados encontrados"}</strong>
+                    {KPIS.map(([valor, rotulo], i) => (
+                        <React.Fragment key={valor}>
+                            {i > 0 && ", "}
+                            <button type="button" className="sq-link" onClick={() => setStatus(status === valor ? "" : valor)}>
+                                {rotulo} ({contagem(valor)})
+                            </button>
+                        </React.Fragment>
+                    ))}
+                </p>
+            </section>
 
-function Pagination({ page, total, perPage, setPage }) {
-    const totalPages = Math.ceil(total / perPage);
-    const vis = 3;
-    let start = Math.max(0, page - Math.floor(vis / 2));
-    let end = Math.min(totalPages, start + vis);
-    if (end - start < vis) start = Math.max(0, end - vis);
+            {/* Painel (Mockfit): barra lateral + conteúdo */}
+            <div className="sq-secao sq-painel">
+                <nav className="sq-lateral" aria-label="Seções do painel" data-revelar="esquerda">
+                    <p className="sq-rotulo">PAINEL</p>
+                    <a href="#visao-geral">Visão geral</a>
+                    <a href="#lista-chamados">Chamados</a>
+                    <a href="#como-funciona">Como funciona</a>
+                    <div className="sq-lateral__taxa">
+                        <span className="sq-rotulo">ATENDIDOS</span>
+                        <strong>{chamados ? `${taxa}%` : "—"}</strong>
+                        <span className="sq-lateral__barra"><span style={{ "--taxa": `${taxa}%` }} /></span>
+                    </div>
+                </nav>
 
-    if (totalPages <= 1) return null;
-
-    return (
-        <div className="flex items-center gap-1.5">
-            <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-black text-[#858585] hover:bg-black hover:text-white disabled:opacity-40 transition-colors uppercase tracking-widest">
-                <ArrowLeft sx={{ fontSize: 14 }} />
-            </button>
-            <div className="flex items-center gap-1 hidden sm:flex">
-                {Array.from({ length: end - start }, (_, i) => start + i).map(p => (
-                    <button key={p} onClick={() => setPage(p)}
-                            className={`w-7 h-7 rounded flex items-center justify-center text-[11px] font-black transition-colors ${
-                                page === p ? "bg-[#3800df] text-white" : "text-[#858585] hover:bg-[#e5e7eb]"
-                            }`}>
-                        {p + 1}
-                    </button>
-                ))}
-                {end < totalPages && (
-                    <>
-                        <span className="text-[#858585] px-1 text-[11px] font-bold">...</span>
-                        <button onClick={() => setPage(totalPages - 1)}
-                                className="w-7 h-7 rounded flex items-center justify-center text-[11px] font-black text-[#858585] hover:bg-[#e5e7eb] transition-colors">
-                            {totalPages}
-                        </button>
-                    </>
-                )}
-            </div>
-            <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page === totalPages - 1}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-black text-[#858585] hover:bg-black hover:text-white disabled:opacity-40 transition-colors uppercase tracking-widest">
-                <ArrowRight sx={{ fontSize: 14 }} />
-            </button>
-        </div>
-    );
-}
-
-// ─── WAVE BG DECORATION ───────────────────────────────────────────────────────
-
-function WaveBg() {
-    return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-            <svg className="absolute -left-32 -top-32 opacity-[0.03] w-[700px] h-[700px]" viewBox="0 0 700 700" fill="none">
-                {[80,140,200,260,320,380,440,500].map((r, i) => (
-                    <circle key={i} cx="350" cy="350" r={r} stroke="#3800df" strokeWidth="2" fill="none" />
-                ))}
-            </svg>
-            <svg className="absolute -right-20 -bottom-20 opacity-[0.02] w-[500px] h-[500px]" viewBox="0 0 500 500" fill="none">
-                {[60,110,160,210,260,310].map((r, i) => (
-                    <circle key={i} cx="250" cy="250" r={r} stroke="#3800df" strokeWidth="2" fill="none" />
-                ))}
-            </svg>
-        </div>
-    );
-}
-
-// ─── SORT HEADER CELL ─────────────────────────────────────────────────────────
-
-function SortTh({ label, col, sortCol, sortDir, onClick }) {
-    const active = sortCol === col;
-    return (
-        <th className="text-left px-4 py-3 whitespace-nowrap">
-            <button onClick={() => onClick(col)}
-                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#858585] hover:text-[#3800df] transition-colors">
-                {label}
-                <ChevronDown sx={{ fontSize: 14 }} className={`transition-transform ${active && sortDir === "asc" ? "rotate-180" : ""} ${active ? "text-[#3800df]" : "text-[#d1d1d1]"}`} />
-            </button>
-        </th>
-    );
-}
-
-// ─── APP ─────────────────────────────────────────────────────────────────────
-
-const FILTERS = ["Todos", "Aberto", "Em Atendimento", "Resolvido", "Cancelado"];
-const PER_PAGE = 8;
-
-export default function ChamadosApp() {
-    const [search, setSearch]       = useState("");
-    const [filter, setFilter]       = useState("Todos");
-    const [urgFilter, setUrgFilter] = useState("Todos");
-    const [page, setPage]           = useState(0);
-    const [showNovo, setShowNovo]   = useState(false);
-    const [detail, setDetail]       = useState(null);
-    const [sortCol, setSortCol]     = useState("num");
-    const [sortDir, setSortDir]     = useState("desc");
-
-    const handleSort = (col) => {
-        if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-        else { setSortCol(col); setSortDir("asc"); }
-        setPage(0);
-    };
-
-    const filtered = useMemo(() => {
-        let list = CHAMADOS_DATA.filter(c => {
-            const q = search.toLowerCase();
-            const matchSearch = !q || c.num.includes(q) || c.quemChamou.toLowerCase().includes(q)
-                || c.onde.toLowerCase().includes(q) || (c.quemAtende?.toLowerCase().includes(q) ?? false);
-            const matchSt  = filter === "Todos" || c.status === filter;
-            const matchUrg = urgFilter === "Todos" || c.urgencia === urgFilter;
-            return matchSearch && matchSt && matchUrg;
-        });
-        list = [...list].sort((a, b) => {
-            let va = "", vb = "";
-            if (sortCol === "num")        { va = a.num; vb = b.num; }
-            if (sortCol === "quemChamou") { va = a.quemChamou; vb = b.quemChamou; }
-            if (sortCol === "onde")       { va = a.onde; vb = b.onde; }
-            if (sortCol === "urgencia")   { const o = ["Crítica","Alta","Média","Baixa"]; va = String(o.indexOf(a.urgencia)); vb = String(o.indexOf(b.urgencia)); }
-            if (sortCol === "status")     { va = a.status; vb = b.status; }
-            if (sortCol === "data")       { va = a.data.split("/").reverse().join(""); vb = b.data.split("/").reverse().join(""); }
-            return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
-        });
-        return list;
-    }, [search, filter, urgFilter, sortCol, sortDir]);
-
-    const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
-
-    const counts = {
-        aberto: CHAMADOS_DATA.filter(c => c.status === "Aberto").length,
-        atendimento: CHAMADOS_DATA.filter(c => c.status === "Em Atendimento").length,
-        critico: CHAMADOS_DATA.filter(c => c.urgencia === "Crítica" && c.status !== "Resolvido" && c.status !== "Cancelado").length,
-    };
-
-    return (
-        <div className="min-h-screen bg-[#f9f9f9] relative font-['Inter',sans-serif]">
-            <WaveBg />
-
-            {/* ── NAV ── */}
-            <nav className="bg-white border-b border-[#e5e7eb] relative z-10">
-                <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center justify-between w-full md:w-auto gap-6">
-                        <span className="font-black text-2xl tracking-widest uppercase text-black">NAMEDLY<span className="text-[#3800df]">.</span></span>
+                <div className="sq-principal">
+                    <h2 className="sq-titulo-secao" id="visao-geral" data-revelar>Visão geral</h2>
+                    <div className="sq-kpis">
+                        {KPIS.map(([valor, rotulo], i) => (
+                            <Kpi key={valor} rotulo={rotulo} valor={chamados ? contagem(valor) : null} indice={i} />
+                        ))}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center w-full md:w-auto gap-3 md:gap-4">
-                        <div className="flex items-center gap-2 border border-[#e5e7eb] rounded-lg bg-[#f9f9f9] px-3 py-2.5 w-full sm:w-auto">
-                            <SearchIcon sx={{ fontSize: 18 }} className="text-[#858585]" />
-                            <input
-                                value={search}
-                                onChange={e => { setSearch(e.target.value); setPage(0); }}
-                                className="w-full sm:w-48 text-[13px] text-black font-medium placeholder:text-[#858585] focus:outline-none bg-transparent"
-                                placeholder="Buscar chamados..."
+                    {chamados !== null && <Grafico chamados={chamados} opcoes={opcoes} />}
+
+                    <h2 className="sq-titulo-secao" id="lista-chamados" data-revelar>Chamados ({visiveis.length})</h2>
+
+                    {erro && <Aviso tom="perigo">{erro}</Aviso>}
+                    {chamados === null && <EsqueletoLista />}
+                    {chamados !== null && visiveis.length === 0 && (
+                        <Vazio icone={chamados.length ? Inbox : ClipboardList} titulo={chamados.length ? "Nenhum chamado com esses filtros" : "Nenhum chamado ainda"}>
+                            {ehSolicitante ? "Abra o primeiro pedido da sua instituição." : "Quando escolas e empresas abrirem pedidos, eles aparecem aqui."}
+                        </Vazio>
+                    )}
+
+                    {visiveis.length > 0 && atual && (
+                        <div className="sq-mestre">
+                                <ul className="sq-cartao sq-lista" data-revelar>
+                                {visiveis.map((c, i) => (
+                                    <li key={c.id} className="sq-lista__item" style={{ "--i": Math.min(i, 12) }}>
+                                        <button type="button" className="sq-linha-item" aria-current={c.id === atual.id} onClick={() => setSelecionado(c.id)}>
+                                            <span className="sq-linha-item__marca" aria-hidden="true">{c.tipo_servico_rotulo?.[0] ?? "C"}</span>
+                                            <span className="sq-linha-item__texto">
+                                                <strong>{c.titulo}</strong>
+                                                <span>{codigo(c.id)} · {c.usuario?.nome} · {[c.cidade, c.uf].filter(Boolean).join(" / ")}</span>
+                                            </span>
+                                            <span className="sq-linha-item__valor">
+                                                <Chip tom={STATUS_CHAMADO[c.status]} ponto>{c.status}</Chip>
+                                                <span>{formatarDia(c.data_limite)}</span>
+                                            </span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <PainelChamado
+                                chamado={atual}
+                                usuario={usuario}
+                                pode={pode}
+                                opcoes={opcoes}
+                                aoAtualizar={substituir}
+                                aoRemover={(id) => setChamados((itens) => itens.filter((c) => c.id !== id))}
                             />
                         </div>
-                        <button onClick={() => setShowNovo(true)}
-                                className="w-full sm:w-auto bg-[#3800df] hover:bg-black text-white rounded-lg px-4 py-2.5 text-[11px] font-black tracking-widest uppercase flex items-center justify-center gap-2 transition-colors">
-                            <Plus sx={{ fontSize: 16 }} /> Novo Chamado
-                        </button>
-                    </div>
-                </div>
-            </nav>
-
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-12 relative z-10">
-
-                {/* ── PAGE TITLE ── */}
-                <div className="mb-8 md:mb-10 text-center md:text-left">
-                    <h1 className="text-3xl md:text-4xl font-black text-black uppercase tracking-widest">Painel de Suporte</h1>
-                    <p className="text-[12px] font-bold text-[#858585] uppercase tracking-widest mt-2">Gerencie e acompanhe todos os chamados.</p>
-                </div>
-
-                {/* ── STAT CARDS ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
-                    {[
-                        { label: "Total", value: CHAMADOS_DATA.length, color: "text-black" },
-                        { label: "Em Aberto", value: counts.aberto, color: "text-[#3800df]" },
-                        { label: "Em Atendimento", value: counts.atendimento, color: "text-green-600" },
-                        { label: "Críticos Ativos", value: counts.critico, color: "text-red-600", icon: counts.critico > 0 },
-                    ].map(({ label, value, color, icon }) => (
-                        <div key={label} className="bg-white rounded-xl border border-[#e5e7eb] px-5 py-4 shadow-sm text-center md:text-left">
-                            <div className="flex flex-col md:flex-row items-center justify-between mb-2">
-                                <p className="text-[10px] text-[#858585] font-black uppercase tracking-widest">{label}</p>
-                                {icon && <span className="text-red-600 hidden md:block font-black text-[16px]">⚠️</span>}
-                            </div>
-                            <p className={`text-3xl md:text-4xl font-black ${color}`}>{value}</p>
-                        </div>
-                    ))}
-                </div>
-
-                {/* ── TABLE CARD ── */}
-                <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-sm">
-
-                    {/* Tab filters + urgência */}
-                    <div className="border-b border-[#e5e7eb] px-4 md:px-6 pt-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
-                        <div className="flex items-center overflow-x-auto w-full xl:w-auto hide-scrollbar pb-2 xl:pb-0">
-                            {FILTERS.map(f => (
-                                <button key={f} onClick={() => { setFilter(f); setPage(0); }}
-                                        className={`px-4 py-3 text-[11px] uppercase tracking-widest font-black border-b-[2.5px] transition-colors whitespace-nowrap ${
-                                            filter === f
-                                                ? "border-[#3800df] text-[#3800df]"
-                                                : "border-transparent text-[#858585] hover:text-black"
-                                        }`}>
-                                    {f}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2 pb-4 overflow-x-auto w-full xl:w-auto hide-scrollbar">
-                            {["Todos","Crítica","Alta","Média","Baixa"].map(u => (
-                                <button key={u} onClick={() => { setUrgFilter(u); setPage(0); }}
-                                        className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${
-                                            urgFilter === u
-                                                ? "bg-black text-white border-black"
-                                                : "border-[#e5e7eb] bg-[#f9f9f9] text-[#858585] hover:border-black hover:text-black"
-                                        }`}>
-                                    {u}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[900px]">
-                            <thead>
-                            <tr className="bg-[#f9f9f9] border-b border-[#e5e7eb]">
-                                <SortTh label="Chamado"      col="num"        sortCol={sortCol} sortDir={sortDir} onClick={handleSort} />
-                                <SortTh label="Quem Chamou"  col="quemChamou" sortCol={sortCol} sortDir={sortDir} onClick={handleSort} />
-                                <SortTh label="Onde"         col="onde"       sortCol={sortCol} sortDir={sortDir} onClick={handleSort} />
-                                <th className="text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-[#858585] whitespace-nowrap">Quem Atende</th>
-                                <SortTh label="Urgência"     col="urgencia"   sortCol={sortCol} sortDir={sortDir} onClick={handleSort} />
-                                <SortTh label="Status"       col="status"     sortCol={sortCol} sortDir={sortDir} onClick={handleSort} />
-                                <SortTh label="Data"         col="data"       sortCol={sortCol} sortDir={sortDir} onClick={handleSort} />
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {visible.length === 0 ? (
-                                <tr><td colSpan={7} className="px-4 py-16 text-center text-[13px] font-bold uppercase tracking-widest text-[#858585]">Nenhum chamado encontrado.</td></tr>
-                            ) : visible.map((c, i) => (
-                                <tr key={c.id}
-                                    onClick={() => setDetail(c)}
-                                    className="border-b border-[#e5e7eb] last:border-0 hover:bg-[#f9f9f9] cursor-pointer transition-colors">
-                                    <td className="px-4 py-4">
-                                        <span className="text-[13px] font-black text-[#3800df]">{c.num}</span>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar initials={c.avatarChamou} />
-                                            <span className="text-[12px] font-black text-black whitespace-nowrap uppercase">{c.quemChamou}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        <span className="text-[12px] font-bold text-[#858585] whitespace-nowrap">{c.onde}</span>
-                                    </td>
-                                    <td className="px-4 py-4">
-                                        {c.quemAtende ? (
-                                            <div className="flex items-center gap-3">
-                                                <Avatar initials={c.avatarAtende} />
-                                                <span className="text-[12px] font-black text-black whitespace-nowrap uppercase">{c.quemAtende}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-[11px] text-[#d1d1d1] font-black uppercase tracking-widest">Não atribuído</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap"><UrgPill u={c.urgencia} /></td>
-                                    <td className="px-4 py-4 whitespace-nowrap"><StatusPill st={c.status} /></td>
-                                    <td className="px-4 py-4">
-                                        <span className="text-[12px] font-bold text-[#858585] whitespace-nowrap">{c.data}</span>
-                                    </td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="border-t border-[#e5e7eb] px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <span className="text-[10px] font-black tracking-widest uppercase text-[#858585]">
-                            Exibindo {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, filtered.length)} de {filtered.length} chamados
-                        </span>
-                        <Pagination page={page} total={filtered.length} perPage={PER_PAGE} setPage={setPage} />
-                    </div>
+                    )}
                 </div>
             </div>
 
-            {showNovo && <NovoChamadoModal onClose={() => setShowNovo(false)} />}
-            {detail    && <DetalheModal c={detail} onClose={() => setDetail(null)} />}
+            {/* Section 04 — faixa preta com botão branco + painel claro */}
+            <section className="sq-secao sq-faixa" id="como-funciona">
+                <div className="sq-faixa__preta" data-revelar="esquerda">
+                    <div>
+                        <h2>{ehPrestador ? "Atenda escolas da sua região" : "Precisa de impressão 3D na escola?"}</h2>
+                        <p>
+                            {ehPrestador
+                                ? "Laboratórios e makers voluntários levam treinamento, modelagem e peças impressas para quem mais precisa — e cada atendimento concluído rende pontos e selos no ranking."
+                                : "Descreva o que sua instituição precisa, defina um prazo e acompanhe o atendimento do aceite à conclusão. O contato do prestador aparece assim que ele aceitar."}
+                        </p>
+                    </div>
+                    {ehSolicitante && (
+                        <Link to="/chamados/novo" className="sq-botao sq-botao--branco">ABRIR CHAMADO</Link>
+                    )}
+                    {ehPrestador && !ehSolicitante && (
+                        <button type="button" className="sq-botao sq-botao--branco" onClick={() => { setAba("disponiveis"); document.getElementById("lista-chamados")?.scrollIntoView({ behavior: "smooth" }); }}>
+                            VER DISPONÍVEIS
+                        </button>
+                    )}
+                </div>
+                <ol className="sq-faixa__passos" data-revelar="direita" style={{ "--atraso": "120ms" }}>
+                    {[
+                        ["01", "Abrir", "A escola ou empresa verificada descreve o pedido, o tipo de serviço e o prazo."],
+                        ["02", "Aceitar", "Um laboratório ou maker escolhe onde vai atender e assume o chamado."],
+                        ["03", "Concluir", "O prestador marca como resolvido e ganha 50 pontos no ranking."],
+                    ].map(([n, titulo, texto], i) => (
+                        <li key={n} style={{ "--i": i }}>
+                            <span>{n}</span>
+                            <strong>{titulo}</strong>
+                            <p>{texto}</p>
+                        </li>
+                    ))}
+                </ol>
+            </section>
+
         </div>
     );
 }
