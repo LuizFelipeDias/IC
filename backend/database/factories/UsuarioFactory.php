@@ -2,28 +2,96 @@
 
 namespace Database\Factories;
 
+use App\Enums\PapelUsuario;
+use App\Enums\TipoUsuario;
 use App\Models\Usuario;
+use App\Support\Documento;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 
+/**
+ * @extends Factory<Usuario>
+ */
 class UsuarioFactory extends Factory
 {
     protected $model = Usuario::class;
 
+    /** Senha em texto puro de todos os usuários de teste/seed. */
+    public const SENHA = 'Senha@123';
+
+    /** Pessoa física por padrão (estudante/profissional). */
     public function definition(): array
     {
         return [
-            'nome' => $this->faker->word(),
-            'telefone' => $this->faker->word(),
-            'senha' => $this->faker->word(),
-            'estudante' => $this->faker->boolean(),
-            'empresa' => $this->faker->boolean(),
-            'cpf' => $this->faker->word(),
-            'sexo' => $this->faker->boolean(),
-            'profissao' => $this->faker->word(),
-            'cnpj' => $this->faker->word(),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'nome' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
+            'telefone' => fake()->numerify('(42) 9####-####'),
+            'senha' => self::SENHA,
+            'tipo_usuario' => TipoUsuario::PessoaFisica,
+            'estudante' => true,
+            'empresa' => false,
+            'cpf' => Documento::gerarCpf(),
+            'sexo' => fake()->boolean(),
+            'profissao' => fake()->jobTitle(),
+            'cnpj' => null,
+            'codigo_inep' => null,
+            'prestador_servico' => false,
+            'verificacao_status' => null,
+            'motivo_verificacao' => null,
         ];
+    }
+
+    /** Maker/voluntário: pessoa física que atende chamados. */
+    public function prestador(): static
+    {
+        return $this->state(fn () => ['prestador_servico' => true]);
+    }
+
+    public function empresa(): static
+    {
+        return $this->pessoaJuridica(TipoUsuario::Empresa);
+    }
+
+    /** Estabelecimento comercial (loja, oficina, clínica) com CNPJ. */
+    public function estabelecimento(): static
+    {
+        return $this->pessoaJuridica(TipoUsuario::Estabelecimento);
+    }
+
+    public function escola(): static
+    {
+        return $this->pessoaJuridica(TipoUsuario::Escola)
+            ->state(fn () => ['codigo_inep' => fake()->unique()->numerify('4#######')]);
+    }
+
+    public function laboratorio(): static
+    {
+        return $this->pessoaJuridica(TipoUsuario::Laboratorio);
+    }
+
+    /** Instituição recém-cadastrada, aguardando a conferência do moderador. */
+    public function pendente(): static
+    {
+        return $this->state(fn () => ['verificacao_status' => 'pendente', 'verificado_em' => null]);
+    }
+
+    public function moderador(): static
+    {
+        return $this->state(fn () => ['papel' => PapelUsuario::Moderador]);
+    }
+
+    private function pessoaJuridica(TipoUsuario $tipo): static
+    {
+        return $this->state(fn () => [
+            'tipo_usuario' => $tipo,
+            'estudante' => false,
+            'empresa' => true,
+            'cpf' => null,
+            'sexo' => null,
+            'profissao' => null,
+            'cnpj' => Documento::gerarCnpj(),
+            'prestador_servico' => false,
+            'verificacao_status' => 'verificado',
+            'verificado_em' => now(),
+        ]);
     }
 }

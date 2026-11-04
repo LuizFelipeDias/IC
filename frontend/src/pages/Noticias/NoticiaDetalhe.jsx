@@ -1,0 +1,244 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Heart, Lightbulb, Pencil, ThumbsUp, Trash2 } from "lucide-react";
+import { BotaoDenunciar, BotoesModeracao } from "../../components/Curadoria";
+import { Aviso } from "../../components/ui";
+import { useAuth } from "../../contexts/AuthContext";
+import { api, lista } from "../../services/api";
+import { formatarData, iniciais, STATUS_PUBLICACAO, tempoRelativo } from "../../utils/formatar";
+import { Cabecalho, imagemDe, minutosDeLeitura, RodapeJornal, Tag } from "./Jornal";
+import "../../styles/pages/noticias.css";
+
+const REACOES = [
+    { tipo: "curtir", rotulo: "Curtir", icone: Heart },
+    { tipo: "util", rotulo: "Útil", icone: ThumbsUp },
+    { tipo: "inspirador", rotulo: "Inspirador", icone: Lightbulb },
+];
+
+/** Barra fina no topo da janela que acompanha a leitura da matéria. */
+function BarraLeitura({ alvo }) {
+    const [progresso, setProgresso] = useState(0);
+
+    useEffect(() => {
+        let quadro = 0;
+        const medir = () => {
+            quadro = 0;
+            const el = alvo.current;
+            if (!el) return;
+            const caixa = el.getBoundingClientRect();
+            const percurso = caixa.height - window.innerHeight * 0.6;
+            const lido = Math.min(1, Math.max(0, -caixa.top / Math.max(percurso, 1)));
+            setProgresso(lido);
+        };
+        const agendar = () => {
+            if (!quadro) quadro = requestAnimationFrame(medir);
+        };
+        medir();
+        window.addEventListener("scroll", agendar, { passive: true });
+        window.addEventListener("resize", agendar);
+        return () => {
+            window.removeEventListener("scroll", agendar);
+            window.removeEventListener("resize", agendar);
+            if (quadro) cancelAnimationFrame(quadro);
+        };
+    }, [alvo]);
+
+    return (
+        <div className="nyt-progresso" role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progresso * 100)}>
+            <span style={{ transform: `scaleX(${progresso})` }} />
+        </div>
+    );
+}
+
+function EsqueletoMateria() {
+    return (
+        <div className="nyt">
+            <div className="nyt__pagina">
+                <div className="nyt-materia nyt-esqueleto" aria-busy="true" aria-label="Carregando matéria">
+                    <div className="nyt-materia__artigo">
+                        <span className="esqueleto" style={{ height: 14, width: 120 }} />
+                        <span className="esqueleto" style={{ height: 40, width: "95%" }} />
+                        <span className="esqueleto" style={{ height: 40, width: "70%" }} />
+                        <span className="esqueleto" style={{ height: 16, width: "40%" }} />
+                        <span className="esqueleto nyt-esqueleto__foto" />
+                        {[92, 100, 96, 88, 60].map((largura, i) => (
+                            <span key={i} className="esqueleto" style={{ height: 14, width: `${largura}%` }} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function NoticiaDetalhe() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { usuario, pode } = useAuth();
+    const [noticia, setNoticia] = useState(null);
+    const [reacoes, setReacoes] = useState({ totais: {}, reacoes: { data: [] } });
+    const [comentario, setComentario] = useState("");
+    const [erro, setErro] = useState("");
+    const [outras, setOutras] = useState([]);
+    const [todas, setTodas] = useState([]);
+    const artigo = useRef(null);
+
+    const carregarReacoes = useCallback(() => api(`/noticia/${id}/reacoes?per_page=50`).then(setReacoes).catch(() => {}), [id]);
+
+    useEffect(() => {
+        api(`/noticia/${id}`).then(setNoticia).catch((e) => setErro(e.message));
+        carregarReacoes();
+        api("/noticia?per_page=100")
+            .then((r) => {
+                const recebidas = lista(r);
+                setOutras(recebidas.filter((n) => String(n.id) !== String(id)).slice(0, 3));
+                setTodas(recebidas);
+            })
+            .catch(() => {});
+    }, [id, carregarReacoes]);
+
+    if (erro) return <div className="container" style={{ paddingTop: 40 }}><Aviso tom="perigo">{erro}</Aviso></div>;
+    if (!noticia) return <EsqueletoMateria />;
+
+    const minhaReacao = reacoes.reacoes.data.find((r) => r.id_usuario === usuario?.id);
+    const autor = noticia.id_usuario === usuario?.id;
+    const status = STATUS_PUBLICACAO[noticia.status];
+
+    const reagir = async (tipo) => {
+        if (minhaReacao?.tipo_reacao === tipo && !comentario) {
+            await api(`/noticia/${id}/reacao`, { method: "DELETE" });
+        } else {
+            await api(`/noticia/${id}/reacao`, { method: "PUT", body: { tipo_reacao: tipo, comentarios: comentario || minhaReacao?.comentarios || null } });
+        }
+        setComentario("");
+        carregarReacoes();
+    };
+
+    const excluir = async () => {
+        if (!window.confirm("Excluir esta notícia?")) return;
+        await api(`/noticia/${id}`, { method: "DELETE" });
+        navigate("/noticias", { replace: true });
+    };
+
+    return (
+        <div className="nyt">
+            <BarraLeitura alvo={artigo} />
+            <div className="nyt__pagina">
+                <Cabecalho noticias={todas} />
+
+                <div className="nyt-materia">
+                    <article className="nyt-materia__artigo nyt-materia__artigo--entrada" ref={artigo}>
+                        <Link to="/noticias" className="nyt-materia__voltar">
+                            <ArrowLeft size={12} aria-hidden="true" /> TODAS AS NOTÍCIAS
+                        </Link>
+
+                        {noticia.status !== "publicado" && (
+                            <Aviso tom={noticia.status === "rejeitado" ? "perigo" : "alerta"}>
+                                <strong>{status.rotulo}.</strong>{" "}
+                                {noticia.status === "rejeitado" ? `Motivo: ${noticia.motivo_rejeicao}` : "Só você e a curadoria veem esta notícia até a aprovação."}
+                            </Aviso>
+                        )}
+
+                        <p className="nyt-tags">
+                            <Tag forte>{(noticia.tema ?? "NOTÍCIA").toUpperCase()}</Tag>
+                            <Tag claro>{minutosDeLeitura(noticia.texto)}</Tag>
+                        </p>
+                        <h1>{noticia.titulo}</h1>
+
+                        <div className="nyt-materia__linha">
+                            <span className="nyt-materia__autor">
+                                <span className="nyt-coluna__avatar">{iniciais(noticia.usuario?.nome)}</span>
+                                <span>
+                                    Por <strong>{noticia.usuario?.nome ?? "Redação EcoHub"}</strong>
+                                    <br />
+                                    {formatarData(noticia.data_publicacao, { weekday: "long", month: "long" })}
+                                </span>
+                            </span>
+                            <span className="nyt-materia__acoes">
+                                {(autor || pode("moderador")) && (
+                                    <>
+                                        <Link to={`/noticias/${id}/editar`} className="botao botao--secundario botao--pequeno">
+                                            <Pencil size={14} aria-hidden="true" /> Editar
+                                        </Link>
+                                        <button type="button" className="botao botao--perigo botao--pequeno" onClick={excluir}>
+                                            <Trash2 size={14} aria-hidden="true" /> Excluir
+                                        </button>
+                                    </>
+                                )}
+                                {noticia.status === "publicado" && !autor && <BotaoDenunciar tipo="noticia" id={noticia.id} />}
+                            </span>
+                        </div>
+
+                        {pode("moderador") && noticia.status === "em_revisao" && !autor && (
+                            <div className="nyt-materia__curadoria">
+                                <p className="nyt-rotulo" style={{ marginBottom: 12 }}>Curadoria</p>
+                                <BotoesModeracao recurso="noticia" id={noticia.id} aoDecidir={setNoticia} />
+                            </div>
+                        )}
+
+                        <figure className="nyt-foto nyt-materia__foto">
+                            <span className="nyt-foto__quadro">
+                                <img src={imagemDe(noticia, Number(noticia.id) || 0)} alt="" />
+                            </span>
+                            <figcaption>{noticia.usuario?.nome ?? "Redação EcoHub"}/EcoHub Notícias</figcaption>
+                        </figure>
+
+                        <div className="nyt-materia__corpo materia__corpo">{noticia.texto}</div>
+
+                        {noticia.status === "publicado" && (
+                            <section className="nyt-reacoes" aria-labelledby="titulo-reacoes" data-revelar>
+                                <h2 id="titulo-reacoes" className="nyt-rotulo">Reações e comentários</h2>
+                                <div className="nyt-reacoes__botoes">
+                                    {REACOES.map(({ tipo, rotulo, icone: Icone }) => (
+                                        <button key={tipo} type="button" aria-pressed={minhaReacao?.tipo_reacao === tipo} onClick={() => reagir(tipo)}>
+                                            <Icone size={16} aria-hidden="true" />
+                                            {rotulo} · {reacoes.totais[tipo] ?? 0}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="nyt-comentar">
+                                    <label htmlFor="comentario" className="sr-only">Comentário</label>
+                                    <input id="comentario" maxLength={255} placeholder="Deixe um comentário curto com sua reação" value={comentario} onChange={(e) => setComentario(e.target.value)} />
+                                    <button type="button" className="nyt-botao" disabled={!comentario.trim()} onClick={() => reagir(minhaReacao?.tipo_reacao ?? "curtir")}>
+                                        COMENTAR
+                                    </button>
+                                </div>
+                                <ul className="nyt-comentarios">
+                                    {reacoes.reacoes.data.filter((r) => r.comentarios).map((r, i) => (
+                                        <li key={r.id} style={{ "--i": Math.min(i, 8) }}>
+                                            <strong>{r.usuario?.nome}</strong> <span>· {tempoRelativo(r.data_reacao)}</span>
+                                            <p>{r.comentarios}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        )}
+                    </article>
+
+                    <aside className="nyt__lateral" aria-label="Mais notícias">
+                        <section className="nyt-perdido" data-revelar="direita">
+                            <div className="nyt-perdido__topo">
+                                <h2 className="nyt-rotulo">Você pode ter perdido</h2>
+                                <p className="nyt-perdido__sub">Seleção da redação do EcoHub para você</p>
+                            </div>
+                            {outras.map((outra, i) => (
+                                <article key={outra.id} className="nyt-coluna nyt-coluna--alta" style={{ "--i": i }}>
+                                    <div className="nyt-coluna__texto">
+                                        <h3>
+                                            <Link to={`/noticias/${outra.id}`}>{outra.titulo}</Link>
+                                        </h3>
+                                        <Tag>{minutosDeLeitura(outra.texto)}</Tag>
+                                    </div>
+                                    <Link to={`/noticias/${outra.id}`} tabIndex={-1} aria-hidden="true" className="nyt-coluna__foto">
+                                        <img src={imagemDe(outra, [1, 3, 4][i] ?? i, "alta")} alt="" loading="lazy" />
+                                    </Link>
+                                </article>
+                            ))}
+                        </section>
+                    </aside>
+                </div>
+                <RodapeJornal />
+            </div>
+        </div>
+    );
+}

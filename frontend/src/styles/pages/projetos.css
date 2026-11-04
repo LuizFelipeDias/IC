@@ -1,0 +1,1149 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Playfair+Display:wght@700&family=Roboto:wght@500&display=swap");
+
+/* ==========================================================================
+   Projetos — clone do Figma "Personal Portfolio Website Template"
+   (frames "Portfolio with form" e "About with Form").
+   Tokens do arquivo: amarelo #FDC435, tinta #25282B, cinza #828282,
+   fundo #F9FAFF, borda de campo #E8ECF4; Playfair Display, Nunito e Roboto.
+   ========================================================================== */
+
+.pf {
+    --pf-amarelo: #fdc435;
+    --pf-tinta: #25282b;
+    --pf-titulo: #333333;
+    --pf-cinza: #828282;
+    --pf-fundo: #f9faff;
+    --pf-linha: #e8ecf4;
+    --pf-sombra: 0 6px 32px rgba(112, 144, 176, 0.1);
+    --pf-serifa: "Playfair Display", Georgia, serif;
+    --pf-texto: "Nunito", system-ui, sans-serif;
+    --pf-botao: "Roboto", system-ui, sans-serif;
+
+    position: relative;
+    overflow: hidden;
+    margin-bottom: calc(-1 * var(--esp-20));
+    background: var(--pf-fundo);
+    font-family: var(--pf-texto);
+    color: var(--pf-tinta);
+}
+
+/* ---------- Botões ("button / primary", "secondary", "botão / secundário") ---------- */
+.pf-botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: none;
+    font-family: var(--pf-botao);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--pf-tinta);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pf-botao--primario {
+    background: var(--pf-amarelo);
+}
+
+.pf-botao--primario:hover {
+    box-shadow: 0 6px 18px rgba(253, 196, 53, 0.45);
+}
+
+.pf-botao--secundario {
+    border-color: var(--pf-tinta);
+}
+
+.pf-botao--secundario:hover {
+    background: var(--pf-tinta);
+    color: #fff;
+}
+
+.pf-botao--pilula {
+    border-width: 1px;
+    border-color: var(--pf-tinta);
+    border-radius: 24px;
+}
+
+.pf-botao--pilula:hover,
+.pf-botao--pilula[aria-pressed="true"] {
+    background: var(--pf-tinta);
+    color: #fff;
+}
+
+.pf-botao--perigo {
+    border-width: 1px;
+    border-color: var(--cor-perigo);
+    border-radius: 24px;
+    color: var(--cor-perigo);
+}
+
+.pf-botao--pequeno {
+    padding: 4px 16px;
+    font-size: 15px;
+}
+
+.pf-botao:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ---------- Apresentação ("intro" + "image") ---------- */
+.pf-intro {
+    position: relative;
+    min-height: 629px;
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+.pf-intro__imagem {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 720px;
+    height: 629px;
+}
+
+/* A mancha fica num pseudo-elemento para poder "respirar" sem mover a ilustração */
+.pf-intro__imagem::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("../../assets/projetos/mancha-amarela.svg") no-repeat right top / 100% 100%;
+    transform-origin: 70% 30%;
+    animation: pf-mancha 14s ease-in-out infinite alternate;
+}
+
+.pf-intro__imagem img {
+    position: absolute;
+    right: 128px;
+    bottom: 28px;
+    width: 382px;
+    height: auto;
+}
+
+.pf-intro__texto {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 486px;
+    margin-left: 120px;
+    padding-top: 55px;
+}
+
+.pf-intro__cargo {
+    font-size: 20px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--pf-amarelo);
+}
+
+.pf-intro h1 {
+    font-family: var(--pf-serifa);
+    font-size: 64px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--pf-titulo);
+}
+
+.pf-intro p {
+    margin-top: 20px;
+    font-size: 24px;
+    line-height: 36px;
+    color: var(--pf-cinza);
+}
+
+.pf-botoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* ---------- Seções e título com sublinhado amarelo ("section-title") ---------- */
+.pf-secao {
+    position: relative;
+    width: min(992px, calc(100% - 32px));
+    margin: 0 auto;
+    padding-top: 144px;
+}
+
+.pf-titulo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 80px;
+    scroll-margin-top: calc(var(--altura-nav) + 24px);
+}
+
+.pf-titulo h2 {
+    font-family: var(--pf-serifa);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 72px;
+    text-align: center;
+    color: var(--pf-tinta);
+}
+
+.pf-titulo span {
+    width: 100px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--pf-amarelo);
+}
+
+/* Busca e filtros, no estilo dos campos e botões do arquivo */
+.pf-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.pf-busca {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    min-width: 240px;
+    height: 43px;
+    padding: 0 16px;
+    border: 1px solid var(--pf-linha);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--pf-cinza);
+}
+
+.pf-busca input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    font: 400 16px var(--pf-texto);
+    color: var(--pf-tinta);
+}
+
+.pf-select {
+    height: 43px;
+    padding: 0 36px 0 16px;
+    border: 1px solid var(--pf-linha);
+    border-radius: 8px;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2325282b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 12px center;
+    font: 400 16px var(--pf-texto);
+    color: var(--pf-tinta);
+    appearance: none;
+}
+
+.pf-areas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 20px 0 80px;
+}
+
+/* ---------- Cartões de projeto ("project1/2/3": 496 + 496 × 524) ---------- */
+.pf-projetos {
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+}
+
+.pf-projeto {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 524px;
+    overflow: hidden;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: var(--pf-sombra);
+}
+
+.pf-projeto--invertido .pf-projeto__imagem {
+    order: -1;
+}
+
+.pf-projeto__info {
+    display: flex;
+    align-items: center;
+    padding: 40px 39px 40px 50px;
+}
+
+.pf-projeto__info > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.pf-projeto h3 {
+    font-family: var(--pf-serifa);
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--pf-tinta);
+}
+
+.pf-projeto__info p {
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--pf-cinza);
+}
+
+.pf-projeto__info .pf-projeto__meta {
+    margin-top: -12px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--pf-tinta);
+}
+
+.pf-projeto__imagem {
+    display: block;
+    overflow: hidden;
+    background: #eceef4;
+}
+
+.pf-projeto__imagem img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.pf-projeto:hover .pf-projeto__imagem img {
+    transform: scale(1.03);
+}
+
+/* ---------- Formulário ("footer / form": coluna de 400 px) ---------- */
+.pf-secao--form {
+    padding-bottom: 56px;
+}
+
+.pf-form {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 24px;
+    width: min(400px, 100%);
+    margin: 0 auto;
+}
+
+.pf-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.pf-campo label {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--pf-tinta);
+}
+
+.pf-campo input,
+.pf-campo select,
+.pf-campo textarea {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--pf-linha);
+    border-radius: 8px;
+    background: #fff;
+    font: 400 16px var(--pf-texto);
+    color: var(--pf-tinta);
+}
+
+.pf-campo textarea {
+    height: 160px;
+    padding: 10px 12px;
+    resize: vertical;
+}
+
+.pf-campo select {
+    padding-right: 36px;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2325282b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right 12px center;
+    appearance: none;
+}
+
+.pf-campo :focus {
+    outline: none;
+    border-color: var(--pf-amarelo);
+    box-shadow: 0 0 0 3px rgba(253, 196, 53, 0.3);
+}
+
+.pf-campo [aria-invalid="true"] {
+    border-color: var(--cor-perigo);
+}
+
+.pf-erro {
+    font-size: 13px;
+    color: var(--cor-perigo);
+}
+
+/* ---------- Rodapé ("footer / icons" + onda) ---------- */
+.pf-rodape {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    padding-bottom: 300px;
+}
+
+.pf-icones {
+    display: flex;
+    gap: 24px;
+}
+
+.pf-icones a {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    color: var(--pf-tinta);
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.pf-icones a:hover {
+    color: #b98500;
+    transform: translateY(-2px);
+}
+
+.pf-rodape > p {
+    font-size: 16px;
+    color: var(--pf-cinza);
+}
+
+.pf-onda {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 344px;
+    background: url("../../assets/projetos/onda.svg") no-repeat center bottom / 100% 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.pf-rodape > :not(.pf-onda) {
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- Detalhe ("About with Form") ---------- */
+.pf-sobre {
+    display: grid;
+    grid-template-columns: 588px 524px;
+    justify-content: space-between;
+    align-items: start;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 38px 120px 0;
+}
+
+.pf-sobre__texto {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 32px;
+    padding-top: 106px;
+}
+
+.pf-migalhas {
+    margin-bottom: -16px;
+    font-size: 16px;
+    color: var(--pf-cinza);
+}
+
+.pf-migalhas a:hover {
+    color: var(--pf-tinta);
+}
+
+.pf .projeto__titulo {
+    font-family: var(--pf-serifa);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--pf-titulo);
+}
+
+.pf-sobre__corpo {
+    font-size: 24px;
+    line-height: 36px;
+    color: var(--pf-cinza);
+    white-space: pre-line;
+}
+
+.pf-sobre .pf-botoes {
+    margin-top: 0;
+}
+
+.pf-circulo {
+    position: relative;
+    width: 524px;
+    height: 524px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--pf-amarelo);
+}
+
+.pf-circulo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pf-circulo img.pf-circulo__ilustracao {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 86%;
+    height: auto;
+    transform: translateX(-46%);
+    object-fit: contain;
+}
+
+.pf-miniaturas {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.pf-miniaturas button {
+    width: 64px;
+    height: 64px;
+    overflow: hidden;
+    padding: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.pf-miniaturas button[aria-pressed="true"] {
+    border-color: var(--pf-amarelo);
+}
+
+.pf-miniaturas img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pf-cartao {
+    padding: 24px 40px;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: var(--pf-sombra);
+}
+
+.pf-nota {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--pf-cinza);
+}
+
+.pf-ficha {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: min(400px, 100%);
+    margin: 0 auto;
+}
+
+.pf-ficha dl {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pf-ficha dl div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pf-ficha dt,
+.pf-ficha__rotulo {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--pf-tinta);
+}
+
+.pf-ficha dd {
+    padding: 8px 12px;
+    border: 1px solid var(--pf-linha);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 16px;
+    color: var(--pf-tinta);
+}
+
+.pf-ficha__bloco {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pf-ficha__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Lista de arquivos (também usada pelo editor de projeto) */
+.lista-arquivos li {
+    display: flex;
+    align-items: center;
+    gap: var(--esp-4);
+    padding: var(--esp-4) 0;
+    border-bottom: 1px solid var(--pf-linha, var(--cor-borda));
+}
+
+.lista-arquivos__icone {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: #fff4d6;
+    color: #8a6100;
+}
+
+.lista-arquivos__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.lista-arquivos__info strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lista-arquivos__info span {
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+}
+
+/* Escolha de licença (editor de projeto) */
+.licencas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--esp-3);
+}
+
+.licencas label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--esp-4);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+}
+
+.licencas label strong {
+    font-size: var(--texto-sm);
+    color: var(--cor-texto);
+}
+
+.licencas label:has(input:checked) {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 1px var(--cor-primaria);
+}
+
+.licencas input {
+    position: absolute;
+    opacity: 0;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1240px) {
+    .pf-intro__imagem {
+        width: min(720px, 52vw);
+        height: auto;
+        aspect-ratio: 720 / 629;
+    }
+
+    .pf-intro__imagem img {
+        right: 18%;
+        width: 53%;
+    }
+
+    .pf-intro__texto {
+        margin-left: max(16px, 6vw);
+    }
+
+    .pf-sobre {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+        gap: 48px;
+        padding-inline: max(16px, 6vw);
+    }
+
+    .pf-circulo {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1;
+    }
+}
+
+@media (max-width: 900px) {
+    .pf-intro {
+        display: flex;
+        flex-direction: column-reverse;
+        min-height: 0;
+    }
+
+    .pf-intro__imagem {
+        position: relative;
+        width: 100%;
+        max-width: 520px;
+        margin-left: auto;
+    }
+
+    .pf-intro__texto {
+        width: auto;
+        margin: 0;
+        padding: 24px 16px 0;
+    }
+
+    .pf-intro h1 {
+        font-size: 44px;
+    }
+
+    .pf-intro p,
+    .pf-sobre__corpo {
+        font-size: 19px;
+        line-height: 30px;
+    }
+
+    .pf-secao {
+        padding-top: 88px;
+    }
+
+    .pf-titulo {
+        margin-bottom: 40px;
+    }
+
+    .pf-titulo h2 {
+        font-size: 38px;
+        line-height: 56px;
+    }
+
+    .pf-areas {
+        margin-bottom: 48px;
+    }
+
+    .pf-projetos {
+        gap: 40px;
+    }
+
+    .pf-projeto {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .pf-projeto__imagem,
+    .pf-projeto--invertido .pf-projeto__imagem {
+        order: -1;
+        height: 260px;
+    }
+
+    .pf-projeto__info {
+        padding: 28px 24px 32px;
+    }
+
+    .pf-projeto h3 {
+        font-size: 30px;
+        line-height: 1.25;
+    }
+
+    .pf-sobre {
+        grid-template-columns: 1fr;
+        padding: 24px 16px 0;
+    }
+
+    .pf-sobre__texto {
+        padding-top: 16px;
+    }
+
+    .pf .projeto__titulo {
+        font-size: 36px;
+    }
+
+    .pf-sobre__imagem {
+        order: -1;
+        width: min(320px, 80vw);
+        margin: 0 auto;
+    }
+
+    .pf-cartao {
+        padding: 16px 20px;
+    }
+
+    .lista-arquivos li {
+        flex-wrap: wrap;
+    }
+
+    .pf-rodape {
+        padding-bottom: 160px;
+    }
+
+    .pf-onda {
+        height: 180px;
+    }
+}
+
+/* ==========================================================================
+   Movimento e micro-interações (sobre o layout clonado, sem alterá-lo)
+   ========================================================================== */
+
+@keyframes pf-mancha {
+    0% {
+        transform: scale(1) rotate(0deg);
+        border-radius: 0;
+    }
+    50% {
+        transform: scale(1.025) rotate(-1.2deg) translate(-6px, 4px);
+    }
+    100% {
+        transform: scale(0.985) rotate(0.8deg) translate(4px, -6px);
+    }
+}
+
+@keyframes pf-flutuar {
+    0%,
+    100% {
+        translate: 0 0;
+    }
+    50% {
+        translate: 0 -12px;
+    }
+}
+
+@keyframes pf-surgir {
+    from {
+        opacity: 0;
+        transform: translateY(22px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.pf-intro__imagem img {
+    animation:
+        pf-surgir 0.9s var(--curva-suave) 0.25s both,
+        pf-flutuar 6s ease-in-out 1.2s infinite;
+}
+
+.pf-intro__imagem::before {
+    animation:
+        pf-mancha-entra 1s var(--curva-suave) both,
+        pf-mancha 14s ease-in-out 1s infinite alternate;
+}
+
+@keyframes pf-mancha-entra {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateX(40px);
+    }
+}
+
+/* Texto da apresentação entra em sequência ao abrir a página */
+.pf-intro__texto--entrada > * {
+    animation: pf-surgir 0.8s var(--curva-suave) both;
+}
+
+.pf-intro__texto--entrada > *:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.pf-intro__texto--entrada > *:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.pf-intro__texto--entrada > *:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+.pf-intro__texto--entrada > *:nth-child(n + 5) {
+    animation-delay: 0.4s;
+}
+
+/* Título de seção: o traço amarelo cresce do centro ao aparecer */
+.pf-titulo span {
+    transform: scaleX(0);
+    transition: transform 0.9s var(--curva-suave) 0.3s;
+}
+
+.pf-titulo.visivel span {
+    transform: scaleX(1);
+}
+
+/* Botões: preenchimento que sobe por baixo e resposta ao clique */
+.pf-botao {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    transition:
+        color 0.35s var(--curva-suave),
+        box-shadow 0.35s var(--curva-suave),
+        transform 0.25s var(--curva-suave),
+        background 0.25s ease;
+}
+
+.pf-botao::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--pf-tinta);
+    transform: translateY(101%);
+    transition: transform 0.4s var(--curva-suave);
+}
+
+.pf-botao--secundario:hover,
+.pf-botao--pilula:hover {
+    background: none;
+}
+
+.pf-botao--secundario:hover::before,
+.pf-botao--pilula:hover::before {
+    transform: none;
+}
+
+.pf-botao--pilula[aria-pressed="true"]::before {
+    transform: none;
+}
+
+.pf-botao--pilula[aria-pressed="true"] {
+    background: none;
+}
+
+.pf-botao--primario::before {
+    background: #ffd666;
+}
+
+.pf-botao--primario:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.pf-botao--primario:hover:not(:disabled)::before {
+    transform: none;
+}
+
+.pf-botao--perigo::before {
+    background: var(--cor-perigo);
+}
+
+.pf-botao--perigo:hover {
+    color: #fff;
+}
+
+.pf-botao--perigo:hover::before {
+    transform: none;
+}
+
+.pf-botao:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.pf-botao--seta span {
+    display: inline-block;
+    transition: transform 0.35s var(--curva-suave);
+}
+
+.pf-botao--seta:hover span,
+.pf-projeto:hover .pf-botao--seta span {
+    transform: translateX(4px);
+}
+
+/* Cartões de projeto: sobem com sombra amarela e a imagem aproxima */
+.pf-projeto {
+    transition:
+        transform 0.45s var(--curva-suave),
+        box-shadow 0.45s var(--curva-suave),
+        opacity var(--duracao-entrada, 0.7s) var(--curva-suave);
+}
+
+.pf-projeto[data-revelar].visivel:hover,
+.pf-projeto:not([data-revelar]):hover {
+    transform: translateY(-8px);
+    box-shadow: 0 28px 60px -28px rgba(112, 144, 176, 0.55), 0 0 0 1px rgba(253, 196, 53, 0.35);
+}
+
+.pf-projeto__imagem img {
+    transition: transform 0.9s var(--curva-suave), filter 0.6s ease;
+}
+
+.pf-projeto:hover .pf-projeto__imagem img {
+    transform: scale(1.07);
+    filter: saturate(1.08);
+}
+
+.pf-projeto h3 {
+    background: linear-gradient(var(--pf-amarelo), var(--pf-amarelo)) 0 88% / 0 30% no-repeat;
+    transition: background-size 0.5s var(--curva-suave);
+}
+
+.pf-projeto:hover h3 {
+    background-size: 100% 30%;
+}
+
+/* Esqueletos */
+.pf-projeto--esqueleto .pf-projeto__info > div {
+    gap: 14px;
+    width: 100%;
+}
+
+.pf-projeto--esqueleto .esqueleto {
+    display: block;
+}
+
+.pf-projeto--esqueleto .pf-projeto__imagem {
+    border-radius: 0;
+}
+
+.pf-sobre--esqueleto .pf-sobre__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 48px;
+}
+
+.pf-sobre--esqueleto .esqueleto {
+    display: block;
+}
+
+.pf-sobre--esqueleto .pf-circulo.esqueleto {
+    border-radius: 50%;
+}
+
+/* Formulário: campos destacam o foco com o amarelo do arquivo */
+.pf-campo input,
+.pf-campo select,
+.pf-campo textarea {
+    transition: border-color 0.25s ease, box-shadow 0.35s var(--curva-suave);
+}
+
+.pf-campo :focus {
+    box-shadow: 0 0 0 4px rgba(253, 196, 53, 0.35);
+}
+
+.pf-campo label {
+    transition: color 0.25s ease, transform 0.3s var(--curva-suave);
+}
+
+.pf-campo:focus-within label {
+    color: var(--pf-tinta);
+    transform: translateX(2px);
+}
+
+/* Rodapé do portfólio: ícones em sequência e onda ondulando */
+.pf-icones a {
+    transition: color 0.2s ease, transform 0.35s var(--curva-mola);
+}
+
+.pf-icones a:hover {
+    transform: translateY(-4px) rotate(-6deg);
+}
+
+.pf-icones.visivel a {
+    animation: pf-surgir 0.6s var(--curva-suave) both;
+}
+
+.pf-icones.visivel a:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.pf-icones.visivel a:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.pf-onda {
+    left: -4%;
+    right: -4%;
+    transform-origin: center bottom;
+    animation: pf-onda 9s ease-in-out infinite alternate;
+}
+
+@keyframes pf-onda {
+    0% {
+        transform: translateX(0) scaleY(1);
+    }
+    50% {
+        transform: translateX(-2%) scaleY(1.04);
+    }
+    100% {
+        transform: translateX(2%) scaleY(0.97);
+    }
+}
+
+/* Detalhe: círculo entra em escala e a imagem troca com fade */
+.pf-circulo img {
+    animation: pf-imagem-troca 0.6s ease both;
+}
+
+@keyframes pf-imagem-troca {
+    from {
+        opacity: 0;
+    }
+}
+
+.pf-circulo {
+    transition: transform 0.6s var(--curva-suave), box-shadow 0.6s var(--curva-suave);
+}
+
+.pf-sobre__imagem:hover .pf-circulo {
+    transform: scale(1.02);
+    box-shadow: 0 30px 60px -30px rgba(185, 133, 0, 0.55);
+}
+
+.pf-miniaturas button {
+    transition: border-color 0.25s ease, transform 0.35s var(--curva-mola);
+}
+
+.pf-miniaturas button:hover {
+    transform: translateY(-3px) scale(1.06);
+}
+
+.lista-arquivos li {
+    transition: background 0.25s ease, transform 0.35s var(--curva-suave);
+}
+
+.lista-arquivos li:hover {
+    transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pf-titulo span {
+        transform: none;
+    }
+
+    .pf-onda,
+    .pf-intro__imagem::before,
+    .pf-intro__imagem img {
+        animation: none;
+    }
+}

@@ -2,10 +2,16 @@
 
 namespace Database\Factories;
 
-use App\Http\Requests\Projeto;
+use App\Enums\AreaProjeto;
+use App\Enums\LicencaProjeto;
+use App\Enums\StatusPublicacao;
+use App\Models\Projeto;
+use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Carbon;
 
+/**
+ * @extends Factory<Projeto>
+ */
 class ProjetoFactory extends Factory
 {
     protected $model = Projeto::class;
@@ -13,14 +19,20 @@ class ProjetoFactory extends Factory
     public function definition(): array
     {
         return [
-            'id_usuario' => $this->faker->randomNumber(),
-            'titulo' => $this->faker->word(),
-            'tema' => $this->faker->word(),
-            'empresa' => $this->faker->word(),
-            'texto' => $this->faker->word(),
-            'data_publicacao' => $this->faker->word(),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'id_usuario' => Usuario::factory(),
+            'titulo' => fake()->sentence(4),
+            'tema' => fake()->randomElement(['Saúde', 'Educação', 'Agro', 'Acessibilidade']),
+            'empresa' => fake()->company(),
+            'texto' => fake()->paragraphs(3, true),
+            'data_publicacao' => now(),
+            'area' => fake()->randomElement(AreaProjeto::cases()),
+            'licenca' => fake()->randomElement(LicencaProjeto::cases()),
+            'status' => StatusPublicacao::Publicado,
         ];
+    }
+
+    public function emRevisao(): static
+    {
+        return $this->state(fn () => ['status' => StatusPublicacao::EmRevisao]);
     }
 }

@@ -1,0 +1,904 @@
+/* ==========================================================================
+   Vagas e banco de currículos — visual "Browse templates" (Website
+   Templates — Squarespace), como Chamados, Doações e Empresas.
+   As peças sq- vêm de chamados.css e as rg- de registro.css; aqui ficam:
+   - abas de visão do contratante, colunas de filtro com subtítulos,
+     seletor de UF sublinhado e selos de modalidade;
+   - painel de candidatos com decisão (Em análise / Aprovada / Reprovada);
+   - grade de cartões de currículo (monograma no lugar da imagem);
+   - entrada de etiquetas (habilidades/especialidades) e o interruptor
+     "visível no banco" dos formulários.
+   ========================================================================== */
+
+.vg {
+    --vg-sucesso: #0a7a43;
+    --vg-alerta: #8a5a00;
+    --vg-perigo: #c5221f;
+}
+
+/* ---------- Section 01 ---------- */
+.vg .sq-topo {
+    padding-bottom: 50px;
+}
+
+.vg-visoes {
+    flex-wrap: wrap;
+    gap: 28px;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--sq-platina);
+}
+
+.vg-visoes button {
+    margin-bottom: -3px;
+    padding: 0 0 10px;
+    border-bottom-width: 2px;
+    font-size: 16px;
+    letter-spacing: -0.16px;
+    transition: color 0.2s, border-color 0.3s var(--curva-suave);
+}
+
+.vg-visoes button:hover {
+    color: var(--sq-preto);
+}
+
+.vg-visoes button:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 4px;
+}
+
+.vg-filtros {
+    flex-wrap: wrap;
+    row-gap: 32px;
+}
+
+.vg-subrotulo {
+    margin-top: 18px !important;
+    margin-bottom: 8px;
+}
+
+.vg-coluna {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* Especialidades: lista longa em duas colunas */
+.vg-coluna--larga {
+    flex: 2 1 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 8px 20px;
+}
+
+.vg-coluna--larga > .sq-rotulo {
+    grid-column: 1 / -1;
+}
+
+.vg-local {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.vg-local .sq-busca {
+    flex: 1;
+}
+
+.vg-select {
+    min-width: 72px;
+    padding: 0 22px 6px 0;
+    border: 0;
+    border-bottom: 1px solid var(--sq-cinza-claro);
+    border-radius: 0;
+    appearance: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 2px top 3px;
+    font-family: var(--sq-fonte);
+    font-size: 14px;
+    color: var(--sq-preto);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.vg-select:hover,
+.vg-select:focus {
+    border-color: var(--sq-preto);
+    outline: none;
+}
+
+.vg-select:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 3px;
+}
+
+/* ---------- Section 02 ---------- */
+.vg-resultados {
+    padding-bottom: 30px;
+}
+
+.vg-resultados .sq-link[aria-pressed="true"] {
+    font-weight: 700;
+}
+
+.vg-resultados strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.vg-conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding-top: 20px;
+    padding-bottom: 99px;
+}
+
+.vg-visao {
+    animation: vg-visao-entra 0.5s var(--curva-suave);
+}
+
+@keyframes vg-visao-entra {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+.vg-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------- Lista ---------- */
+.vg-selo {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid var(--sq-platina);
+    font-size: 11px;
+    line-height: 16px;
+    letter-spacing: 0.75px;
+    text-transform: uppercase;
+    color: var(--sq-preto);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.vg-selo--remoto { background: #e3e9f6; border-color: #e3e9f6; }
+.vg-selo--hibrido { background: #f8ecd2; border-color: #f8ecd2; }
+.vg-selo--presencial { background: #ddeee3; border-color: #ddeee3; }
+
+.sq-linha-item:hover .vg-selo,
+.sq-linha-item[aria-current="true"] .vg-selo {
+    border-color: var(--sq-preto);
+    background: var(--sq-preto);
+    color: #fff;
+}
+
+.vg-contagem-candidatos {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sq-preto);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Detalhe ---------- */
+.vg-capa {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Círculo de luz que cresce no canto da capa (como os cartões de Empresas) */
+.vg-capa::after {
+    content: "";
+    position: absolute;
+    right: -30%;
+    bottom: -70%;
+    width: 80%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9), transparent);
+    transition: transform 0.8s var(--curva-suave);
+    pointer-events: none;
+}
+
+.sq-detalhe:hover .vg-capa::after {
+    transform: scale(1.4);
+}
+
+.vg-chips {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vg-chips li {
+    padding: 5px 10px;
+    background: var(--sq-preto);
+    font-size: 12px;
+    line-height: 16px;
+    color: #fff;
+    animation: vg-chip-entra 0.45s var(--curva-mola) both;
+    animation-delay: calc(var(--i, 0) * 45ms + 150ms);
+}
+
+.vg-chips--claro li {
+    border: 1px solid var(--sq-platina);
+    background: var(--sq-fundo);
+    color: var(--sq-preto);
+}
+
+.vg-chips--claro li.vg-chips__destaque {
+    border-color: var(--sq-preto);
+    background: var(--sq-preto);
+    color: #fff;
+}
+
+@keyframes vg-chip-entra {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.92);
+    }
+}
+
+.vg-aviso {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 14px 18px;
+    background: var(--sq-preto);
+    font-size: 14px;
+    color: #fff;
+    animation: rg-sucesso-entra 0.5s var(--curva-mola);
+}
+
+.vg-candidatado {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px;
+    border: 1px solid var(--sq-platina);
+    background: var(--sq-fundo);
+}
+
+.vg-candidatado .sq-linha {
+    align-items: center;
+}
+
+.vg-titulo-candidatos {
+    margin-bottom: 12px;
+    padding-top: 18px;
+    border-top: 1px solid var(--sq-platina);
+}
+
+/* ---------- Candidatos (contratante) ---------- */
+.vg-candidatos {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.vg-candidatos__lista {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--sq-platina);
+}
+
+.vg-candidato {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    animation: sq-linha-entra 0.5s var(--curva-suave) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+    transition: background 0.25s;
+}
+
+.vg-candidato:hover {
+    background: #faf9f8;
+}
+
+.vg-candidato + .vg-candidato {
+    border-top: 1px solid var(--sq-platina);
+}
+
+.vg-candidato__topo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.vg-avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--sq-preto);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.vg-candidato__nome {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.vg-candidato__nome strong {
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.vg-candidato__nome a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    font-size: 13px;
+    color: var(--sq-cinza);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vg-candidato__nome a:hover {
+    color: var(--sq-preto);
+}
+
+.vg-candidato__data {
+    font-size: 12px;
+    color: var(--sq-cinza);
+}
+
+.vg-decisao {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--sq-cinza-claro);
+}
+
+.vg-decisao__botao {
+    position: relative;
+    padding: 10px 6px;
+    border: 0;
+    background: #fff;
+    font-family: var(--sq-fonte);
+    font-size: 13px;
+    color: var(--sq-cinza);
+    cursor: pointer;
+    transition: background 0.25s var(--curva-suave), color 0.25s;
+}
+
+.vg-decisao__botao + .vg-decisao__botao {
+    border-left: 1px solid var(--sq-cinza-claro);
+}
+
+.vg-decisao__botao:hover {
+    color: var(--sq-preto);
+    background: var(--sq-fundo);
+}
+
+.vg-decisao__botao:focus-visible {
+    z-index: 1;
+    outline: 2px solid var(--sq-preto);
+    outline-offset: -2px;
+}
+
+.vg-decisao__botao[aria-checked="true"] {
+    color: #fff;
+    animation: sq-marcar 0.35s var(--curva-mola);
+}
+
+.vg-decisao__botao--alerta[aria-checked="true"] { background: var(--vg-alerta); }
+.vg-decisao__botao--sucesso[aria-checked="true"] { background: var(--vg-sucesso); }
+.vg-decisao__botao--perigo[aria-checked="true"] { background: var(--vg-perigo); }
+
+/* ---------- Banco de currículos: grade de cartões ---------- */
+.vg-grade {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 50px 20px;
+}
+
+.vg-cv {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.vg-cv__capa {
+    --vg-tom: #ecebe9;
+    --vg-tinta: #000;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border: 1px solid var(--sq-platina);
+    background: var(--vg-tom);
+    box-shadow: var(--sq-sombra);
+    color: var(--vg-tinta);
+    transition: transform 0.45s var(--curva-suave), box-shadow 0.45s var(--curva-suave);
+}
+
+.vg-cv__capa--remoto { --vg-tom: #e3e9f6; --vg-tinta: #1f3f8f; }
+.vg-cv__capa--hibrido { --vg-tom: #f8ecd2; --vg-tinta: #7a5200; }
+.vg-cv__capa--presencial { --vg-tom: #ddeee3; --vg-tinta: #0a5b35; }
+.vg-cv__capa--qualquer { --vg-tom: #f4e1e4; --vg-tinta: #8a1f35; }
+
+.vg-cv__capa::after {
+    content: "";
+    position: absolute;
+    inset: auto -20% -60% auto;
+    width: 70%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.55), transparent);
+    transition: transform 0.7s var(--curva-suave);
+    pointer-events: none;
+}
+
+.vg-cv:hover .vg-cv__capa {
+    transform: translateY(-6px);
+    box-shadow: 0 0 1px 0 rgba(0, 0, 0, 0.1), 0 28px 64px -8px rgba(0, 0, 0, 0.22);
+}
+
+.vg-cv:hover .vg-cv__capa::after {
+    transform: scale(1.6);
+}
+
+.vg-cv__monograma {
+    font-size: 96px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -2px;
+    transition: transform 0.6s var(--curva-mola);
+}
+
+.vg-cv:hover .vg-cv__monograma {
+    transform: scale(1.08) rotate(-3deg);
+}
+
+.vg-cv__selo,
+.vg-cv__modalidade {
+    position: absolute;
+    top: 16px;
+    padding: 6px 10px;
+    font-size: 11px;
+    line-height: 16px;
+    letter-spacing: 0.75px;
+}
+
+.vg-cv__selo {
+    left: 16px;
+    background: #fff;
+    color: var(--sq-preto);
+}
+
+.vg-cv__modalidade {
+    right: 16px;
+    background: var(--sq-preto);
+    color: #fff;
+}
+
+.vg-cv__legenda {
+    gap: 16px;
+    text-transform: none;
+}
+
+.vg-cv__nome {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.vg-cv__nome h3 {
+    margin: 0;
+    font-family: var(--sq-fonte);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 22.4px;
+    letter-spacing: -0.16px;
+    text-transform: uppercase;
+}
+
+.vg-cv__nome .sq-rotulo {
+    color: var(--sq-cinza);
+}
+
+.vg-cv__ficha {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--sq-platina);
+}
+
+.vg-cv__ficha dt {
+    font-size: 11px;
+    line-height: 16px;
+    letter-spacing: 0.75px;
+    color: var(--sq-cinza);
+}
+
+.vg-cv__ficha dd {
+    margin: 2px 0 0;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.vg-cv__resumo {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--sq-cinza);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+.vg-cv__acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 11px;
+    margin-top: auto;
+}
+
+.vg-cv__acoes .sq-botao {
+    flex: 1;
+    gap: 8px;
+    width: auto;
+    padding: 13px 18px;
+    font-size: 14px;
+}
+
+/* ---------- Formulários: etiquetas ---------- */
+.vg-etiquetas {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.vg-etiquetas__caixa {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vg-etiquetas__lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vg-etiqueta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 6px 6px 12px;
+    background: var(--sq-preto);
+    font-size: 14px;
+    color: #fff;
+    animation: vg-chip-entra 0.4s var(--curva-mola) both;
+}
+
+.vg-etiqueta button {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.25s var(--curva-mola);
+}
+
+.vg-etiqueta button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.vg-etiqueta button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+}
+
+.vg-etiquetas__entrada {
+    display: flex;
+}
+
+.vg-etiquetas__entrada .rg-entrada {
+    flex: 1;
+    min-width: 0;
+}
+
+.vg-etiquetas__adicionar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 52px;
+    border: 1px solid var(--sq-preto);
+    border-left: 0;
+    background: var(--sq-preto);
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.vg-etiquetas__adicionar:disabled {
+    border-color: var(--sq-cinza-claro);
+    background: var(--sq-platina);
+    color: var(--sq-cinza);
+    cursor: not-allowed;
+}
+
+.vg-etiquetas__adicionar:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+.vg-etiquetas__caixa--erro .rg-entrada {
+    border-color: var(--rg-erro);
+    background-color: var(--rg-fundo-erro);
+}
+
+.vg-etiquetas__sugestoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vg-sugestao {
+    padding: 7px 12px;
+    border: 1px solid var(--sq-cinza-claro);
+    background: #fff;
+    font-family: var(--sq-fonte);
+    font-size: 13px;
+    color: var(--sq-cinza);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.25s var(--curva-suave);
+}
+
+.vg-sugestao:hover:not(:disabled) {
+    border-color: var(--sq-preto);
+    color: var(--sq-preto);
+    transform: translateY(-2px);
+}
+
+.vg-sugestao[aria-pressed="true"] {
+    border-color: var(--sq-preto);
+    background: var(--sq-fundo);
+    color: var(--sq-preto);
+}
+
+.vg-sugestao[aria-pressed="true"]::before {
+    content: "✓ ";
+}
+
+.vg-sugestao:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.vg-sugestao:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+.vg-previa {
+    margin: -12px 0 0;
+    font-size: 14px;
+    color: var(--sq-cinza);
+}
+
+.vg-previa strong {
+    color: var(--sq-preto);
+}
+
+/* ---------- Interruptor "visível no banco" ---------- */
+.vg-interruptor {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid var(--sq-cinza-claro);
+    background: #fff;
+    font-family: var(--sq-fonte);
+    text-align: left;
+    color: var(--sq-preto);
+    cursor: pointer;
+    transition: border-color 0.25s, box-shadow 0.35s var(--curva-suave);
+}
+
+.vg-interruptor:hover {
+    border-color: var(--sq-preto);
+}
+
+.vg-interruptor[aria-checked="true"] {
+    border-color: var(--sq-preto);
+    box-shadow: var(--sq-sombra);
+}
+
+.vg-interruptor:focus-visible {
+    outline: 2px solid var(--sq-preto);
+    outline-offset: 2px;
+}
+
+.vg-interruptor__trilho {
+    position: relative;
+    flex-shrink: 0;
+    width: 48px;
+    height: 26px;
+    background: var(--sq-cinza-claro);
+    transition: background 0.3s;
+}
+
+.vg-interruptor__trilho span {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    transition: transform 0.35s var(--curva-mola);
+}
+
+.vg-interruptor[aria-checked="true"] .vg-interruptor__trilho {
+    background: var(--sq-preto);
+}
+
+.vg-interruptor[aria-checked="true"] .vg-interruptor__trilho span {
+    transform: translateX(22px);
+}
+
+.vg-interruptor__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.vg-interruptor__texto strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+.vg-interruptor__texto > span {
+    font-size: 14px;
+    color: var(--sq-cinza);
+}
+
+/* ---------- Minhas candidaturas (/curriculo) ---------- */
+.vg-candidaturas .rg-bloco {
+    border-top: 1px solid var(--sq-platina);
+}
+
+.vg-candidaturas .rg-bloco__numero {
+    font-variant-numeric: tabular-nums;
+}
+
+.vg-candidaturas__conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.vg-candidatura {
+    cursor: default;
+}
+
+.vg-candidatura:hover {
+    padding-left: 20px;
+}
+
+.vg-desistir {
+    font-size: 13px;
+    color: var(--vg-perigo);
+}
+
+.vg-vazio {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1200px) {
+    .vg-grade {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 960px) {
+    .vg-coluna--larga {
+        flex: 1 1 100%;
+    }
+
+    .vg-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .vg-visoes {
+        gap: 18px;
+    }
+
+    .vg-visoes button {
+        font-size: 14px;
+    }
+
+    .vg-coluna--larga {
+        grid-template-columns: 1fr;
+    }
+
+    .vg-filtros .sq-filtros__coluna {
+        flex: 1 1 100%;
+    }
+
+    .vg-kpis,
+    .vg-grade {
+        grid-template-columns: 1fr;
+    }
+
+    .vg-cv__ficha {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .vg-cv__monograma {
+        font-size: 72px;
+    }
+
+    .vg-interruptor {
+        align-items: flex-start;
+        padding: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vg-visao,
+    .vg-chips li,
+    .vg-etiqueta,
+    .vg-candidato,
+    .vg-aviso {
+        animation: none !important;
+    }
+
+    .vg-cv:hover .vg-cv__capa,
+    .vg-cv:hover .vg-cv__monograma,
+    .vg-sugestao:hover:not(:disabled),
+    .vg-etiqueta button:hover {
+        transform: none;
+    }
+
+    .vg-capa::after,
+    .vg-cv__capa::after,
+    .vg-interruptor__trilho span {
+        transition: none;
+    }
+}
